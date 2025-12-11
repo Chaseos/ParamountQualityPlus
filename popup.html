@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #10b981;
+      --danger: #ef4444;
+      --border: #334155;
+    }
+
+    body {
+      width: 320px;
+      padding: 16px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      margin: 0;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-img {
+      width: 24px;
+      height: 24px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--text-muted);
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.active {
+      background-color: var(--success);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+      animation: pulse 2s infinite;
+    }
+
+    /* Stats Card */
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .stat-unit {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    /* Controls */
+    .section-title {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s ease;
+      text-align: left;
+    }
+
+    .btn:hover {
+      background: #283548;
+      border-color: #475569;
+    }
+
+    .btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn.active .check-icon {
+      opacity: 1;
+    }
+
+    .check-icon {
+      opacity: 0;
+      width: 16px;
+      height: 16px;
+    }
+
+    .quality-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 180px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    /* Scrollbar */
+    .quality-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .quality-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .quality-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .q-btn {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-main);
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+
+    .q-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .q-btn.active {
+      background: rgba(59, 130, 246, 0.2);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(0.95);
+        opacity: 0.8;
+      }
+
+      50% {
+        transform: scale(1.05);
+        opacity: 1;
+      }
+
+      100% {
+        transform: scale(0.95);
+        opacity: 0.8;
+      }
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .notice {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .notice-icon {
+      display: inline-block;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div class="brand">
+      <img src="icons/icon48.png" class="logo-img">
+      <span style="font-weight: 700;">ParamountPlusQualityController</span>
+    </div>
+    <div class="status-dot" id="connection-dot" title="Not connected"></div>
+  </div>
+
+  <div class="card">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <span class="stat-label">Resolution</span>
+        <span class="stat-value" id="res-val">--</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Bitrate</span>
+        <span class="stat-value" id="bitrate-val">--</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="section-title">Quality Control</div>
+
+    <div class="btn-group">
+      <!-- Auto Mode -->
+      <button class="btn active" id="btn-auto">
+        <span>Auto (Default)</span>
+        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </button>
+
+      <!-- Force Max -->
+      <button class="btn" id="btn-max">
+        <div>
+          <span>Force Max Quality</span>
+          <div style="font-size:10px; opacity:0.7; font-weight:400; margin-top:2px;">Prefers 1080p+</div>
+        </div>
+        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Specific Qualities -->
+    <div id="quality-list-container" class="hidden">
+      <div class="section-title" style="margin-top: 16px; margin-bottom:8px;">Available Qualities</div>
+      <div class="quality-list" id="quality-list">
+        <!-- Javascript will populate this -->
+      </div>
+    </div>
+
+    <!-- Notice for limited streams -->
+    <div id="limited-notice" class="notice hidden">
+      <span class="notice-icon">ℹ️</span>
+      This stream does not have quality options available. This may be a live stream or recently uploaded content.
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>
