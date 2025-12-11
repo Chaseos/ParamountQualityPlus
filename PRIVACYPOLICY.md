@@ -7,7 +7,7 @@ Paramount Plus Quality Controller ("the extension") is a browser extension desig
 ## Data Collection and Use
 
 - **No personal data collected:** The extension does not collect, store, or transmit any personal information or browsing history.
-- **Local-only settings:** Quality preferences and other configuration options are stored locally in your browser using extension storage. They are only used to apply your chosen settings to Paramount+ playback.
+- **Settings stored via browser sync:** Quality preferences (including `forceMax` and `forcedId`) and other configuration options are saved using the browser's extension storage. In Chromium-based browsers, this uses `chrome.storage.sync`, which may sync your settings to your Google account and store them on Google servers so they can be restored on other devices where you are signed in. These values are only used to apply your chosen settings to Paramount+ playback.
 - **No tracking or analytics:** The extension does not include third-party analytics, trackers, or advertising libraries.
 
 ## Permissions
