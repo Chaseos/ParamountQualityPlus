@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "ParamountPlusQualityController",
+  "version": "1.0",
+  "description": " Inspects and displays real-time streaming quality (resolution, bitrate) on Paramount+.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.paramountplus.com/*",
+    "*://*.paramount.tech/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.paramountplus.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "injected.js"
+      ],
+      "matches": [
+        "*://*.paramountplus.com/*"
+      ]
+    }
+  ]
+}
