@@ -55,6 +55,23 @@ function setMode(forceMax, forcedId) {
     });
 
     updateSelectionUI();
+
+    // Show feedback
+    showToast("Updating quality... buffer may take 5-10s to clear.");
+}
+
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+
+    toast.textContent = msg;
+    toast.classList.add('visible');
+
+    // Hide after 3s
+    if (toast.timeout) clearTimeout(toast.timeout);
+    toast.timeout = setTimeout(() => {
+        toast.classList.remove('visible');
+    }, 3500);
 }
 
 function updateSelectionUI() {

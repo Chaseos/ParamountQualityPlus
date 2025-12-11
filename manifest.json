@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ParamountPlusQualityController",
+  "name": "Paramount+ Quality Controller",
   "version": "1.0",
   "description": " Inspects and displays real-time streaming quality (resolution, bitrate) on Paramount+.",
   "permissions": [

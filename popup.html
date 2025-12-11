@@ -247,6 +247,33 @@
       display: inline-block;
       margin-right: 6px;
     }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background-color: var(--card-bg);
+      color: var(--text-main);
+      padding: 10px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--accent);
+      font-size: 13px;
+      z-index: 100;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+      pointer-events: none;
+      width: max-content;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .toast.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
   </style>
 </head>
 
@@ -308,6 +335,11 @@
     <div id="limited-notice" class="notice hidden">
       <span class="notice-icon">ℹ️</span>
       This stream does not have quality options available. This may be a live stream or recently uploaded content.
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+      Settings saved. Changes may take a few seconds...
     </div>
   </div>
 
