@@ -8,6 +8,7 @@ export const RESOLUTION_REGEX = /_(\d{3,4}p)_/;
 // resolution. Keeps the logic centralized so both DASH/HLS parsing and
 // telemetry can agree on a quality label.
 export const BITRATE_RESOLUTION_MAP = [
+  { maxBitrate: 200, resolution: '234p' },
   { maxBitrate: 400, resolution: '270p' },
   { maxBitrate: 900, resolution: '360p' },
   { maxBitrate: 1700, resolution: '480p' },
