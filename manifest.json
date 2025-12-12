@@ -39,7 +39,15 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "injected.js"
+        "injected/index.js",
+        "injected/constants.js",
+        "injected/config.js",
+        "injected/manifest-parser.js",
+        "injected/network-hooks.js",
+        "injected/rewriter.js",
+        "injected/state.js",
+        "injected/url-analysis.js",
+        "injected/url-utils.js"
       ],
       "matches": [
         "*://*.paramountplus.com/*"

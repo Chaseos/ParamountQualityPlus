@@ -1,13 +1,27 @@
-const {
-    parseManifest,
-    maybeRewriteUrl,
-    retryRewriteUrl,
-    setAvailableRepresentations,
-    setConfig,
-    getAvailableRepresentations,
-    analyzeUrl,
-    estimateResolutionFromBitrate
-} = require('../injected.js');
+import { jest } from '@jest/globals';
+
+let parseManifest;
+let maybeRewriteUrl;
+let retryRewriteUrl;
+let setAvailableRepresentations;
+let setConfig;
+let getAvailableRepresentations;
+let analyzeUrl;
+let estimateResolutionFromBitrate;
+
+beforeAll(async () => {
+    const api = await import('../injected/index.js');
+    ({
+        parseManifest,
+        maybeRewriteUrl,
+        retryRewriteUrl,
+        setAvailableRepresentations,
+        setConfig,
+        getAvailableRepresentations,
+        analyzeUrl,
+        estimateResolutionFromBitrate
+    } = api);
+});
 
 // --- Mocks & Setup ---
 // Mocks
