@@ -1,4 +1,4 @@
-module.exports = {
-    testEnvironment: 'jsdom',
-    verbose: true,
+export default {
+  testEnvironment: 'jsdom',
+  verbose: true,
 };
