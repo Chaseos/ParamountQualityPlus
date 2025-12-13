@@ -8,7 +8,8 @@ let streamState = {
     timestamp: null,
     isEstimated: false, // true if resolution is estimated from bitrate
     isLimitedStream: false, // true if stream detected but no quality options
-    hasActiveStream: false // true if we're receiving segment data
+    hasActiveStream: false, // true if we're receiving segment data
+    isArchivedStream: false // true if archived HLS detected
 };
 
 // --- Injection Logic ---
@@ -36,7 +37,7 @@ window.addEventListener('message', (event) => {
     streamState.hasActiveStream = true;
 
     // Attempt to derive resolution from bitrate if missing
-    if (!resolution && bitrate && streamState.manifestQualities) {
+    if (!resolution && bitrate && streamState.manifestQualities && !streamState.isArchivedStream) {
         const bitrateBps = bitrate * 1000;
         const match = streamState.manifestQualities.find(q => {
             const diff = Math.abs(q.bandwidth - bitrateBps);
@@ -71,7 +72,9 @@ window.addEventListener('message', (event) => {
     streamState.timestamp = timestamp;
 
     // Check if this is a limited stream (has data but no manifest qualities)
-    if (streamState.hasActiveStream &&
+    if (streamState.isArchivedStream) {
+        streamState.isLimitedStream = true;
+    } else if (streamState.hasActiveStream &&
         (!streamState.manifestQualities || streamState.manifestQualities.length === 0)) {
         streamState.isLimitedStream = true;
     } else {
@@ -87,6 +90,7 @@ window.addEventListener('message', (event) => {
     if (event.source === window && event.data) {
         if (event.data.type === 'PQI_MANIFEST_DATA') {
             streamState.manifestQualities = event.data.payload;
+            streamState.isArchivedStream = false;
         } else if (event.data.type === 'PQI_ACTIVE_QUALITY') {
             // Update live stats from DAI variant playlist match
             const { resolution, bitrate, daiId } = event.data.payload;
@@ -95,7 +99,9 @@ window.addEventListener('message', (event) => {
             streamState.isEstimated = false; // Known from playlist URL match
         } else if (event.data.type === 'PQI_ARCHIVED_HLS_DETECTED') {
             // This is an archived live stream where quality can't be controlled
+            streamState.isArchivedStream = true;
             streamState.isLimitedStream = true;
+            streamState.manifestQualities = null;
         }
     }
 });
