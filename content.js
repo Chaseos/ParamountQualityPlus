@@ -82,6 +82,7 @@ window.addEventListener('message', (event) => {
 // Listen for manifest data and active quality updates from the injected script.
 // PQI_MANIFEST_DATA: Provides available quality options parsed from the master playlist.
 // PQI_ACTIVE_QUALITY: Provides the currently playing quality (inferred from variant playlist URL).
+// PQI_ARCHIVED_HLS_DETECTED: Signals that this is an archived HLS stream without quality control.
 window.addEventListener('message', (event) => {
     if (event.source === window && event.data) {
         if (event.data.type === 'PQI_MANIFEST_DATA') {
@@ -92,6 +93,9 @@ window.addEventListener('message', (event) => {
             if (resolution) streamState.resolution = resolution;
             if (bitrate) streamState.bitrate = bitrate;
             streamState.isEstimated = false; // Known from playlist URL match
+        } else if (event.data.type === 'PQI_ARCHIVED_HLS_DETECTED') {
+            // This is an archived live stream where quality can't be controlled
+            streamState.isLimitedStream = true;
         }
     }
 });

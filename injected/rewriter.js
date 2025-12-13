@@ -111,10 +111,18 @@ export function maybeRewriteUrl(url) {
 
     const bestRep = availableRepresentations[0];
 
-    if (config.forceMax && bestRep && bestRep.hlsTier !== undefined) {
-      const targetTier = bestRep.hlsTier;
+    // Use hlsTier from HLS manifest parsing if available
+    if ((config.forceMax || config.forcedId) && bestRep && bestRep.hlsTier !== undefined) {
+      let targetTier = null;
 
-      if (targetTier !== currentTier) {
+      if (config.forcedId) {
+        const targetRep = availableRepresentations.find(r => r.id === config.forcedId);
+        if (targetRep && targetRep.hlsTier) targetTier = targetRep.hlsTier;
+      } else if (config.forceMax) {
+        targetTier = bestRep.hlsTier;
+      }
+
+      if (targetTier && targetTier !== currentTier) {
         return url.replace(
           `manifest_video_${currentTier}_${trackIndex}_${segmentNum}.mp4`,
           `manifest_video_${targetTier}_${trackIndex}_${segmentNum}.mp4`
@@ -122,6 +130,7 @@ export function maybeRewriteUrl(url) {
       }
     }
 
+    // For archived streams without hlsTier, we can't rewrite - detection happens in url-analysis.js
     return url;
   }
 

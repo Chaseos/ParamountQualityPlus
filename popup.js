@@ -115,13 +115,14 @@ function startPolling() {
                     setConnectionStatus(true);
                     updateStats(response);
 
-                    // Check if we have manifest qualities OR if it's a limited stream
-                    if (response.manifestQualities && response.manifestQualities.length > 0) {
+                    // IMPORTANT: Check isLimitedStream FIRST - it may be set even when
+                    // manifestQualities exist (e.g., archived streams where rewriting doesn't work)
+                    if (response.isLimitedStream) {
+                        // Stream detected but quality changes don't work
+                        setLimitedStreamUI(true);
+                    } else if (response.manifestQualities && response.manifestQualities.length > 0) {
                         setLimitedStreamUI(false);
                         renderQualityList(response.manifestQualities);
-                    } else if (response.isLimitedStream) {
-                        // Stream detected but no quality options available
-                        setLimitedStreamUI(true);
                     }
                 }
             });
