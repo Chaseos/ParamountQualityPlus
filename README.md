@@ -14,6 +14,11 @@ A Chrome extension that surfaces real-time streaming quality information on Para
 - Start playback on Paramount+ and open the popup to view real-time metrics and available quality tiers.
 - When multiple quality options exist, the popup highlights the current selection and max limits.
 
+## Supported Content
+- **On-Demand VOD (Episodes & Movies)**: Observes both MPEG-DASH (`.mpd`) and HLS (`.m3u8`) manifests used for standard Paramount+ playback, listing detected video representations and tracking segment-level bitrate/CMCD data.
+- **Google DAI Live Streams**: Understands the variant-based HLS playlists used for live channels and events, including extracting DAI variant IDs, inferring the active playlist quality, and rewriting variant URLs when forcing max quality.
+- **Manifest-Limited Streams**: Continues to surface telemetry when only segment requests are visible (e.g., ad breaks or limited live feeds) by estimating resolution/bitrate from segment paths and CMCD hints while flagging the stream as limited.
+
 ## Development
 - Main logic lives in [`content.js`](./content.js) (content script) and [`injected.js`](./injected.js) (page instrumentation).
 - The popup UI is defined in [`popup.html`](./popup.html) with behavior in [`popup.js`](./popup.js).
