@@ -1,4 +1,4 @@
-# ParamountQuality+
+# Paramount Quality+
 
 A Chrome extension that surfaces real-time streaming quality information on Paramount+, including resolution, bitrate, and available representations. The extension injects lightweight instrumentation to inspect manifests/segments and displays status in a polished popup UI. This README highlights what users can expect while also giving contributors a quick orientation to the codebase.
 
