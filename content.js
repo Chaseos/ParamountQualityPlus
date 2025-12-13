@@ -70,13 +70,7 @@ window.addEventListener('message', (event) => {
     if (maxBitrate) streamState.maxBitrate = maxBitrate;
     streamState.timestamp = timestamp;
 
-    // Check if this is a limited stream (has data but no manifest qualities)
-    if (streamState.hasActiveStream &&
-        (!streamState.manifestQualities || streamState.manifestQualities.length === 0)) {
-        streamState.isLimitedStream = true;
-    } else {
-        streamState.isLimitedStream = false;
-    }
+    // Check for limited stream check removed - relying solely on PQI_ARCHIVED_HLS_DETECTED
 });
 
 // Listen for manifest data and active quality updates from the injected script.
@@ -87,6 +81,8 @@ window.addEventListener('message', (event) => {
     if (event.source === window && event.data) {
         if (event.data.type === 'PQI_MANIFEST_DATA') {
             streamState.manifestQualities = event.data.payload;
+            // If we get manifest qualities, it is NOT a limited stream
+            streamState.isLimitedStream = false;
         } else if (event.data.type === 'PQI_ACTIVE_QUALITY') {
             // Update live stats from DAI variant playlist match
             const { resolution, bitrate, daiId } = event.data.payload;
