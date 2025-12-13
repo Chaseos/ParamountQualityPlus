@@ -104,15 +104,27 @@ export function parseHlsManifest(content, requestUrl) {
       return;
     }
 
-    // Deduplicate by height keeping the highest bandwidth variant for each
-    // resolution to present a clean list of available qualities.
-    const byHeight = new Map();
+    // Deduplicate by height+hlsTier keeping the highest bandwidth variant for each
+    // unique combination to present a clean list of available qualities.
+    // For archived live streams, the same height may appear with different hlsTier values.
+    const byKey = new Map();
     for (const q of qualities) {
       if (q.height) {
-        const existing = byHeight.get(q.height);
+        // Use height+hlsTier as key to properly dedupe
+        const key = `${q.height}_${q.hlsTier || 'none'}`;
+        const existing = byKey.get(key);
         if (!existing || (q.bandwidth > existing.bandwidth)) {
-          byHeight.set(q.height, q);
+          byKey.set(key, q);
         }
+      }
+    }
+
+    // Now dedupe by height only, keeping highest bandwidth for display
+    const byHeight = new Map();
+    for (const q of byKey.values()) {
+      const existing = byHeight.get(q.height);
+      if (!existing || (q.bandwidth > existing.bandwidth)) {
+        byHeight.set(q.height, q);
       }
     }
     let unique = Array.from(byHeight.values());
@@ -237,6 +249,17 @@ export function parseDashManifest(xmlString, requestUrl) {
       t.id === v.id
     )) === i);
 
+    unique.sort((a, b) => b.height - a.height);
+
+    // Final pass: dedupe by height only for display, keeping highest bandwidth
+    const byHeight = new Map();
+    for (const q of unique) {
+      const existing = byHeight.get(q.height);
+      if (!existing || (q.bandwidth > existing.bandwidth)) {
+        byHeight.set(q.height, q);
+      }
+    }
+    unique = Array.from(byHeight.values());
     unique.sort((a, b) => b.height - a.height);
 
     setRepresentations(unique);

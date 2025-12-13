@@ -2,6 +2,9 @@ import { estimateResolutionFromBitrate } from './constants.js';
 import { extractResolutionFromPath, isSegmentUrl } from './url-utils.js';
 import { getRepresentations } from './state.js';
 
+// Track if we've already detected an archived HLS stream to avoid spamming
+let archivedHlsDetected = false;
+
 // Inspect requested media segment URLs, infer their resolution/bitrate, and
 // surface the data to the extension UI via postMessage for live telemetry.
 export function analyzeUrl(url) {
@@ -50,6 +53,18 @@ export function analyzeUrl(url) {
       });
     }
 
+    // Detect archived HLS streams: manifest_video_{tier}_ pattern with no hlsTier in reps
+    // Detect archived HLS streams: manifest_video_{tier}_ pattern
+    // User requested to base this simply on the URL type (manifest_video) so it updates immediately
+    const hlsTierMatch = pathname.match(/manifest_video_(\d+)[_\/]/);
+    if (hlsTierMatch && !archivedHlsDetected) {
+      archivedHlsDetected = true;
+      window.postMessage({
+        type: 'PQI_ARCHIVED_HLS_DETECTED',
+        payload: { currentTier: hlsTierMatch[1] }
+      }, '*');
+    }
+
     let requestedTier = null;
     if (!resolution) {
       const dashTierMatch = pathname.match(/_(\d{3,5})\/seg_/);
@@ -60,9 +75,7 @@ export function analyzeUrl(url) {
       }
 
       // --- Google DAI Fallback ---
-      // If we still have no resolution, check if the URL contains a known DAI ID
       if (!resolution && availableRepresentations.length > 0) {
-        // Look for any ID in the URL that matches a quality's daiId
         const match = availableRepresentations.find(r => r.daiId && pathname.includes(r.daiId));
         if (match) {
           resolution = match.height + 'p';
@@ -70,7 +83,6 @@ export function analyzeUrl(url) {
           isEstimated = false;
         }
       }
-      // --- End Google DAI Fallback ---
     }
 
     if (!resolution && bitrate) {
@@ -101,3 +113,4 @@ export function analyzeUrl(url) {
     console.error('[PQI] Error analyzing URL:', e);
   }
 }
+
