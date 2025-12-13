@@ -1,9 +1,9 @@
 import { estimateResolutionFromBitrate } from './constants.js';
-import { setRepresentations } from './state.js';
+import { setRepresentations, getRepresentations } from './state.js';
 
 // Parse HLS or DASH manifests, normalize the discovered representations, and
 // broadcast them to the extension UI via postMessage for display/selection.
-export function parseHlsManifest(content) {
+export function parseHlsManifest(content, requestUrl) {
   try {
     const lines = content.split('\n');
     const qualities = [];
@@ -51,11 +51,17 @@ export function parseHlsManifest(content) {
           }
 
           let hlsTier = null;
+          let daiId = null;
           if (variantUrl) {
             const tierMatch = variantUrl.match(/manifest_video_(\d+)[_\/]/) ||
               variantUrl.match(/video[_\/](\d+)[_\/]/);
             if (tierMatch) {
               hlsTier = tierMatch[1];
+            }
+
+            const daiMatch = variantUrl.match(/\/variant\/([^\/]+)\//);
+            if (daiMatch) {
+              daiId = daiMatch[1];
             }
           }
 
@@ -68,11 +74,34 @@ export function parseHlsManifest(content) {
             codecs,
             variantUrl,
             hlsTier,
+            daiId,
             isHls: true
           });
           variantIndex++;
         }
       }
+    }
+
+    // --- Google DAI Live Stats Inference ---
+    // If this is a Media Playlist (no EXT-X-STREAM-INF tags found), it's likely
+    // a variant playlist being polled by the player. We infer the active quality
+    // by matching the DAI Variant ID in the request URL against our known qualities.
+    if (qualities.length === 0 && requestUrl) {
+      const availableRepresentations = getRepresentations();
+      if (availableRepresentations.length > 0) {
+        const match = availableRepresentations.find(r => r.daiId && requestUrl.includes(r.daiId));
+        if (match) {
+          window.postMessage({
+            type: 'PQI_ACTIVE_QUALITY',
+            payload: {
+              resolution: match.height + 'p',
+              bitrate: match.bandwidth ? Math.round(match.bandwidth / 1000) : null,
+              daiId: match.daiId
+            }
+          }, '*');
+        }
+      }
+      return;
     }
 
     // Deduplicate by height keeping the highest bandwidth variant for each
@@ -102,7 +131,7 @@ export function parseHlsManifest(content) {
   }
 }
 
-export function parseDashManifest(xmlString) {
+export function parseDashManifest(xmlString, requestUrl) {
   try {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
@@ -246,12 +275,12 @@ export function parseDashManifest(xmlString) {
   }
 }
 
-export function parseManifest(content) {
+export function parseManifest(content, requestUrl) {
   const trimmed = content.trim();
   if (trimmed.startsWith('#EXTM3U')) {
-    parseHlsManifest(content);
+    parseHlsManifest(content, requestUrl);
   } else if (trimmed.startsWith('<?xml') || trimmed.startsWith('<MPD')) {
-    parseDashManifest(content);
+    parseDashManifest(content, requestUrl);
   } else {
     console.log('[PQI] Unknown manifest format');
   }
