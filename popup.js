@@ -146,6 +146,7 @@ function setLimitedStreamUI(isLimited) {
     const btnMax = document.getElementById('btn-max');
     const qualityContainer = document.getElementById('quality-list-container');
     const notice = document.getElementById('limited-notice');
+    const list = document.getElementById('quality-list');
 
     if (isLimited) {
         // Disable buttons
@@ -154,6 +155,7 @@ function setLimitedStreamUI(isLimited) {
 
         // Hide quality list
         if (qualityContainer) qualityContainer.classList.add('hidden');
+        if (list) list.innerHTML = '';
 
         // Show notice
         if (notice) notice.classList.remove('hidden');
