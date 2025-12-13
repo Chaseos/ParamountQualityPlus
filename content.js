@@ -69,8 +69,6 @@ window.addEventListener('message', (event) => {
     if (bitrate) streamState.bitrate = bitrate;
     if (maxBitrate) streamState.maxBitrate = maxBitrate;
     streamState.timestamp = timestamp;
-
-    // Check for limited stream check removed - relying solely on PQI_ARCHIVED_HLS_DETECTED
 });
 
 // Listen for manifest data and active quality updates from the injected script.
