@@ -12,7 +12,7 @@ A Chrome extension that surfaces real-time streaming quality information on Para
 ## Supported Content
 - **On-Demand VOD (Episodes & Movies)**: Observes both MPEG-DASH (`.mpd`) and HLS (`.m3u8`) manifests used for standard Paramount+ playback, listing detected video representations and tracking segment-level bitrate/CMCD data.
 - **Google DAI Live Streams**: Understands the variant-based HLS playlists used for live channels and events, including extracting DAI variant IDs, inferring the active playlist quality, and rewriting variant URLs when forcing max quality.
-- **Manifest-Limited Streams**: Continues to surface telemetry when only segment requests are visible (e.g., ad breaks or limited live feeds) by estimating resolution/bitrate from segment paths and CMCD hints while flagging the stream as limited.
+- **Manifest-Limited Streams**: Automatically detects recently archived live streams (via `manifest_video` URL patterns) where quality control is temporarily unavailable. The UI updates immediately to a "limited" state, disabling controls and informing the user to check back later for a processed version.
 
 ## Development
 - **Project layout**:
