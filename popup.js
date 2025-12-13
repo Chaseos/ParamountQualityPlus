@@ -111,18 +111,22 @@ function startPolling() {
                 if (chrome.runtime.lastError) {
                     setConnectionStatus(false);
                     setLimitedStreamUI(false); // Reset limited state when disconnected
+                    clearQualityList();
                 } else if (response) {
                     setConnectionStatus(true);
                     updateStats(response);
 
-                    // IMPORTANT: Check isLimitedStream FIRST - it may be set even when
-                    // manifestQualities exist (e.g., archived streams where rewriting doesn't work)
+                    // Always update limited UI first so the popup reflects archived/limited states
+                    setLimitedStreamUI(response.isLimitedStream);
+
                     if (response.isLimitedStream) {
-                        // Stream detected but quality changes don't work
-                        setLimitedStreamUI(true);
+                        // Prevent stale quality lists from showing when the stream is limited
+                        clearQualityList();
                     } else if (response.manifestQualities && response.manifestQualities.length > 0) {
-                        setLimitedStreamUI(false);
                         renderQualityList(response.manifestQualities);
+                    } else {
+                        // No manifest yet: keep the quality section hidden
+                        clearQualityList();
                     }
                 }
             });
@@ -138,6 +142,16 @@ function setConnectionStatus(connected) {
     if (dot) {
         if (connected) dot.classList.add('active');
         else dot.classList.remove('active');
+    }
+}
+
+function clearQualityList() {
+    const container = document.getElementById('quality-list-container');
+    const list = document.getElementById('quality-list');
+
+    if (container) container.classList.add('hidden');
+    if (list && list.children.length > 0) {
+        list.innerHTML = '';
     }
 }
 
