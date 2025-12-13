@@ -8,8 +8,16 @@ let streamState = {
     timestamp: null,
     isEstimated: false, // true if resolution is estimated from bitrate
     isLimitedStream: false, // true if stream detected but no quality options
-    hasActiveStream: false // true if we're receiving segment data
+    hasActiveStream: false, // true if we're receiving segment data
+    archivedStreamDetected: false // true if PQI_ARCHIVED_HLS_DETECTED was seen
 };
+
+function updateLimitedStream() {
+    streamState.isLimitedStream = !!(
+        streamState.archivedStreamDetected ||
+        (streamState.hasActiveStream && (!streamState.manifestQualities || streamState.manifestQualities.length === 0))
+    );
+}
 
 // --- Injection Logic ---
 function injectScript() {
@@ -70,13 +78,7 @@ window.addEventListener('message', (event) => {
     if (maxBitrate) streamState.maxBitrate = maxBitrate;
     streamState.timestamp = timestamp;
 
-    // Check if this is a limited stream (has data but no manifest qualities)
-    if (streamState.hasActiveStream &&
-        (!streamState.manifestQualities || streamState.manifestQualities.length === 0)) {
-        streamState.isLimitedStream = true;
-    } else {
-        streamState.isLimitedStream = false;
-    }
+    updateLimitedStream();
 });
 
 // Listen for manifest data and active quality updates from the injected script.
@@ -87,6 +89,7 @@ window.addEventListener('message', (event) => {
     if (event.source === window && event.data) {
         if (event.data.type === 'PQI_MANIFEST_DATA') {
             streamState.manifestQualities = event.data.payload;
+            updateLimitedStream();
         } else if (event.data.type === 'PQI_ACTIVE_QUALITY') {
             // Update live stats from DAI variant playlist match
             const { resolution, bitrate, daiId } = event.data.payload;
@@ -95,7 +98,8 @@ window.addEventListener('message', (event) => {
             streamState.isEstimated = false; // Known from playlist URL match
         } else if (event.data.type === 'PQI_ARCHIVED_HLS_DETECTED') {
             // This is an archived live stream where quality can't be controlled
-            streamState.isLimitedStream = true;
+            streamState.archivedStreamDetected = true;
+            updateLimitedStream();
         }
     }
 });
