@@ -54,16 +54,15 @@ export function analyzeUrl(url) {
     }
 
     // Detect archived HLS streams: manifest_video_{tier}_ pattern with no hlsTier in reps
+    // Detect archived HLS streams: manifest_video_{tier}_ pattern
+    // User requested to base this simply on the URL type (manifest_video) so it updates immediately
     const hlsTierMatch = pathname.match(/manifest_video_(\d+)[_\/]/);
     if (hlsTierMatch && !archivedHlsDetected) {
-      const hasHlsTier = availableRepresentations.some(r => r.hlsTier !== undefined);
-      if (availableRepresentations.length > 0 && !hasHlsTier) {
-        archivedHlsDetected = true;
-        window.postMessage({
-          type: 'PQI_ARCHIVED_HLS_DETECTED',
-          payload: { currentTier: hlsTierMatch[1] }
-        }, '*');
-      }
+      archivedHlsDetected = true;
+      window.postMessage({
+        type: 'PQI_ARCHIVED_HLS_DETECTED',
+        payload: { currentTier: hlsTierMatch[1] }
+      }, '*');
     }
 
     let requestedTier = null;
