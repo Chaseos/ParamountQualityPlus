@@ -8,7 +8,8 @@ let streamState = {
     timestamp: null,
     isEstimated: false, // true if resolution is estimated from bitrate
     isLimitedStream: false, // true if stream detected but no quality options
-    hasActiveStream: false // true if we're receiving segment data
+    hasActiveStream: false, // true if we're receiving segment data
+    archivedLimited: false // true if the stream is an archived limited stream
 };
 
 // --- Injection Logic ---
@@ -71,8 +72,10 @@ window.addEventListener('message', (event) => {
     streamState.timestamp = timestamp;
 
     // Check if this is a limited stream (has data but no manifest qualities)
+    const hasManifestQualities = streamState.manifestQualities && streamState.manifestQualities.length > 0;
+
     if (streamState.hasActiveStream &&
-        (!streamState.manifestQualities || streamState.manifestQualities.length === 0)) {
+        (!hasManifestQualities || streamState.archivedLimited)) {
         streamState.isLimitedStream = true;
     } else {
         streamState.isLimitedStream = false;
@@ -95,6 +98,7 @@ window.addEventListener('message', (event) => {
             streamState.isEstimated = false; // Known from playlist URL match
         } else if (event.data.type === 'PQI_ARCHIVED_HLS_DETECTED') {
             // This is an archived live stream where quality can't be controlled
+            streamState.archivedLimited = true;
             streamState.isLimitedStream = true;
         }
     }
