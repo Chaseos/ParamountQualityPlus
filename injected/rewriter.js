@@ -76,6 +76,32 @@ export function maybeRewriteUrl(url) {
 
   if (availableRepresentations.length === 0) return url;
 
+  if (availableRepresentations.length === 0) return url;
+
+  // --- Google DAI Live Stream Logic ---
+  // We rewrite the Playlist URL itself, not the segments.
+
+  if (config.forceMax || config.forcedId) {
+    let targetRep = null;
+    if (config.forcedId) {
+      targetRep = availableRepresentations.find(r => r.id === config.forcedId);
+    } else if (config.forceMax) {
+      targetRep = availableRepresentations.find(r => r.height >= 1080) || availableRepresentations[0];
+    }
+
+    if (targetRep && targetRep.daiId) {
+      // Check if this is a Variant Playlist URL (contains /variant/{ID}/)
+      const idMatch = url.match(/\/variant\/([a-f0-9]{32})\//);
+      if (idMatch) {
+        const currentId = idMatch[1];
+        if (currentId !== targetRep.daiId) {
+          return url.replace(currentId, targetRep.daiId);
+        }
+      }
+    }
+  }
+  // --- End DAI Logic ---
+
   const hlsMatch = url.match(/manifest_video_(\d+)_(\d+)_(\d+)\.mp4/);
 
   if (hlsMatch) {

@@ -58,6 +58,19 @@ export function analyzeUrl(url) {
         resolution = estimateResolutionFromBitrate(requestedTier);
         isEstimated = true;
       }
+
+      // --- Google DAI Fallback ---
+      // If we still have no resolution, check if the URL contains a known DAI ID
+      if (!resolution && availableRepresentations.length > 0) {
+        // Look for any ID in the URL that matches a quality's daiId
+        const match = availableRepresentations.find(r => r.daiId && pathname.includes(r.daiId));
+        if (match) {
+          resolution = match.height + 'p';
+          exactBandwidth = match.bandwidth;
+          isEstimated = false;
+        }
+      }
+      // --- End Google DAI Fallback ---
     }
 
     if (!resolution && bitrate) {

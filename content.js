@@ -79,9 +79,20 @@ window.addEventListener('message', (event) => {
     }
 });
 
+// Listen for manifest data and active quality updates from the injected script.
+// PQI_MANIFEST_DATA: Provides available quality options parsed from the master playlist.
+// PQI_ACTIVE_QUALITY: Provides the currently playing quality (inferred from variant playlist URL).
 window.addEventListener('message', (event) => {
-    if (event.source === window && event.data && event.data.type === 'PQI_MANIFEST_DATA') {
-        streamState.manifestQualities = event.data.payload;
+    if (event.source === window && event.data) {
+        if (event.data.type === 'PQI_MANIFEST_DATA') {
+            streamState.manifestQualities = event.data.payload;
+        } else if (event.data.type === 'PQI_ACTIVE_QUALITY') {
+            // Update live stats from DAI variant playlist match
+            const { resolution, bitrate, daiId } = event.data.payload;
+            if (resolution) streamState.resolution = resolution;
+            if (bitrate) streamState.bitrate = bitrate;
+            streamState.isEstimated = false; // Known from playlist URL match
+        }
     }
 });
 
