@@ -20,17 +20,22 @@ A Chrome extension that surfaces real-time streaming quality information on Para
 - **Manifest-Limited Streams**: Continues to surface telemetry when only segment requests are visible (e.g., ad breaks or limited live feeds) by estimating resolution/bitrate from segment paths and CMCD hints while flagging the stream as limited.
 
 ## Development
-- Main logic lives in [`content.js`](./content.js) (content script) and [`injected.js`](./injected.js) (page instrumentation).
-- The popup UI is defined in [`popup.html`](./popup.html) with behavior in [`popup.js`](./popup.js).
-- Update icons in the [`icons/`](./icons) directory and extension metadata in [`manifest.json`](./manifest.json).
+- **Project layout**:
+  - [`content.js`](./content.js) is the Chrome content script that bridges the injected page logic to the popup, keeps a rolling stream state, and relays storage updates to the page context.
+  - [`injected/`](./injected) contains the page-level instrumentation loaded as a module. [`index.js`](./injected/index.js) wires together network interception, manifest parsing, URL analysis, and adaptive quality rewriting helpers defined in sibling modules like [`network-hooks.js`](./injected/network-hooks.js), [`manifest-parser.js`](./injected/manifest-parser.js), and [`rewriter.js`](./injected/rewriter.js).
+  - [`popup.html`](./popup.html) and [`popup.js`](./popup.js) render the status UI, poll the active tab for stream state, and let users toggle automatic vs. forced quality tiers.
+  - Extension metadata lives in [`manifest.json`](./manifest.json), and the icon used in the toolbar is [`icon.png`](./icon.png).
 
-### Testing
-Run the Jest suite:
-```bash
-npm test
-```
+- **Local setup**:
+  - Install dependencies once with `npm install` (the project uses native ES modules and Jest with JSDOM for tests).
+  - Load the repository folder as an unpacked extension from `chrome://extensions` with Developer Mode enabled; changes to scripts require reloading the extension plus a page refresh on Paramount+.
 
-Tests focus on manifest parsing and quality estimation helpers used by `injected.js`.
+- **Testing**:
+  - The Jest suite exercises manifest parsing, URL analysis, and quality rewriting logic in `injected/`. Run it with:
+    ```bash
+    npm test
+    ```
+  - Tests live in [`tests/`](./tests) alongside fixtures that mirror live DAI and VOD manifest shapes.
 
 ## Notes
 - Host permissions are limited to `*.paramountplus.com` and `*.paramount.tech` for quality inspection.
