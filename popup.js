@@ -115,9 +115,10 @@ function startPolling() {
                     setConnectionStatus(true);
                     updateStats(response);
 
-                    // IMPORTANT: Check isLimitedStream FIRST - it may be set even when
+                    // IMPORTANT: Check limited flags FIRST - they may be set even when
                     // manifestQualities exist (e.g., archived streams where rewriting doesn't work)
-                    if (response.isLimitedStream) {
+                    const isLimited = response.isLimitedStream || response.archivedLimited;
+                    if (isLimited) {
                         // Stream detected but quality changes don't work
                         setLimitedStreamUI(true);
                     } else if (response.manifestQualities && response.manifestQualities.length > 0) {
