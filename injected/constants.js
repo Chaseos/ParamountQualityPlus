@@ -1,6 +1,6 @@
 // Shared constants for determining whether a URL points to a manifest or media
 // segment and for translating bandwidth to an approximate resolution.
-export const SEGMENT_EXTENSIONS = ['.m4s', '.mp4'];
+export const SEGMENT_EXTENSIONS = ['.m4s', '.mp4', '.ts'];
 export const MANIFEST_EXTENSIONS = ['.mpd', '.m3u8'];
 export const RESOLUTION_REGEX = /_(\d{3,4}p)_/;
 

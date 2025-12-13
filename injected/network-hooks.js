@@ -25,64 +25,91 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
     let attemptsMade = false;
 
     const config = getConfig();
-    if (url && (config.forceMax || config.forcedId) && isSegmentUrl(url)) {
-      newUrl = maybeRewriteUrl(url);
-      if (newUrl !== url) {
-        attemptsMade = true;
-        if (typeof resource === 'string') {
-          args[0] = newUrl;
-        } else if (resource instanceof Request) {
-          args[0] = new Request(newUrl, resource);
+
+    if (url && (config.forceMax || config.forcedId)) {
+      // Check if it's a Segment OR a Manifest (for playlist rewriting)
+      if (isSegmentUrl(url) || isManifestUrl(url)) {
+        newUrl = maybeRewriteUrl(url);
+        if (newUrl !== url) {
+          attemptsMade = true;
+          if (typeof resource === 'string') {
+            args[0] = newUrl;
+          } else if (resource instanceof Request) {
+            args[0] = new Request(newUrl, resource);
+          }
+          analyzeUrl(newUrl);
+        } else {
+          analyzeUrl(url);
         }
-        analyzeUrl(newUrl);
-      } else {
+      } else if (url) {
         analyzeUrl(url);
       }
-    } else if (url) {
-      analyzeUrl(url);
-    }
 
-    if (attemptsMade) {
-      try {
-        const response = await ORIGINAL_FETCH.apply(this, args);
-        if (response.ok) return response;
-
-        console.warn(`[PQI] Force/Rewrite failed (${response.status}) on: ${newUrl}`);
-
-        const nextBest = resolveNextBestRepresentation();
-
-        if (nextBest && nextBest.height >= 720) {
-          const fallbackUrl = retryRewriteUrl(url, nextBest);
-          if (fallbackUrl !== url && fallbackUrl !== newUrl) {
-            if (typeof resource === 'string') args[0] = fallbackUrl;
-            else if (resource instanceof Request) args[0] = new Request(fallbackUrl, resource);
-
-            const fbResponse = await ORIGINAL_FETCH.apply(this, args);
-            if (fbResponse.ok) {
-              analyzeUrl(fallbackUrl);
-              return fbResponse;
+      if (attemptsMade) {
+        try {
+          const response = await ORIGINAL_FETCH.apply(this, args);
+          if (response.ok) {
+            // Parse manifest responses to update live stats (e.g., PQI_ACTIVE_QUALITY)
+            if (isManifestUrl(newUrl)) {
+              const clone = response.clone();
+              clone.text().then(text => {
+                parseManifest(text, newUrl);
+              }).catch(e => console.error('[PQI] Error reading rewritten manifest:', e));
             }
-            console.warn(`[PQI] Fallback failed (${fbResponse.status}) on: ${fallbackUrl}`);
+            return response;
           }
+
+          console.warn(`[PQI] Force/Rewrite failed (${response.status}) on: ${newUrl}`);
+
+          const nextBest = resolveNextBestRepresentation();
+
+          if (nextBest && nextBest.height >= 720) {
+            const fallbackUrl = retryRewriteUrl(url, nextBest);
+            if (fallbackUrl !== url && fallbackUrl !== newUrl) {
+              if (typeof resource === 'string') args[0] = fallbackUrl;
+              else if (resource instanceof Request) args[0] = new Request(fallbackUrl, resource);
+
+              const fbResponse = await ORIGINAL_FETCH.apply(this, args);
+              if (fbResponse.ok) {
+                analyzeUrl(fallbackUrl);
+                return fbResponse;
+              }
+              console.warn(`[PQI] Fallback failed (${fbResponse.status}) on: ${fallbackUrl}`);
+            }
+          }
+
+          console.warn('[PQI] All forces failed, reverting to original.');
+          args[0] = originalResource;
+          if (typeof originalResource === 'string') analyzeUrl(originalResource);
+          else if (originalResource instanceof Request) analyzeUrl(originalResource.url);
+          return ORIGINAL_FETCH.apply(this, args);
+
+        } catch (err) {
+          console.warn('[PQI] Network error during rewrite, reverting.', err);
+          args[0] = originalResource;
+          if (typeof originalResource === 'string') analyzeUrl(originalResource);
+          else if (originalResource instanceof Request) analyzeUrl(originalResource.url);
+          return ORIGINAL_FETCH.apply(this, args);
         }
-
-        console.warn('[PQI] All forces failed, reverting to original.');
-        args[0] = originalResource;
-        if (typeof originalResource === 'string') analyzeUrl(originalResource);
-        else if (originalResource instanceof Request) analyzeUrl(originalResource.url);
-        return ORIGINAL_FETCH.apply(this, args);
-
-      } catch (err) {
-        console.warn('[PQI] Network error during rewrite, reverting.', err);
-        args[0] = originalResource;
-        if (typeof originalResource === 'string') analyzeUrl(originalResource);
-        else if (originalResource instanceof Request) analyzeUrl(originalResource.url);
-        return ORIGINAL_FETCH.apply(this, args);
       }
+
+      // For untouched requests, still mirror manifest responses to the parser so
+      // available quality tiers stay in sync with the player session.
+      const response = await ORIGINAL_FETCH.apply(this, args);
+
+      if (isManifestUrl(url)) {
+        const clone = response.clone();
+        clone.text().then(text => {
+          parseManifest(text, url);
+        }).catch(e => console.error('[PQI] Error reading manifest:', e));
+      }
+
+      return response;
     }
 
-    // For untouched requests, still mirror manifest responses to the parser so
-    // available quality tiers stay in sync with the player session.
+    // Default path: If no forced quality is configured, or if the request
+    // didn't match any criteria for rewriting, simply perform the request
+    // and observe the response for manifests.
     const response = await ORIGINAL_FETCH.apply(this, args);
 
     if (isManifestUrl(url)) {
@@ -97,9 +124,11 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
 
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
     let finalUrl = url;
-    if (url && typeof url === 'string' && isSegmentUrl(url)) {
-      finalUrl = maybeRewriteUrl(url);
-      analyzeUrl(finalUrl);
+    if (url && typeof url === 'string') {
+      if (isSegmentUrl(url) || isManifestUrl(url)) {
+        finalUrl = maybeRewriteUrl(url);
+        analyzeUrl(finalUrl);
+      }
       this._pqi_url = finalUrl;
     }
     return ORIGINAL_XHR_OPEN.apply(this, [method, finalUrl, ...rest]);
