@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Paramount Quality+",
   "version": "1.0",
-  "description": " Inspects and displays real-time streaming quality (resolution, bitrate) on Paramount+.",
+  "description": " Set and manage playback resolution on Paramount+ for on-demand videos and live streams, with simple controls and clear feedback.",
   "permissions": [
     "activeTab",
     "storage",
