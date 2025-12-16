@@ -58,8 +58,9 @@
     "gecko": {
       "id": "chaseosapps@gmail.com",
       "data_collection_permissions": {
-        "required": [],
-        "optional": []
+        "required": [
+          "none"
+        ]
       }
     }
   }
