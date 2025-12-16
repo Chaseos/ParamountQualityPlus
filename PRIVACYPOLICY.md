@@ -2,7 +2,7 @@
 
 _Last updated: December 10, 2025_
 
-ParamountQuality+ ("the extension") is a browser extension designed to help you adjust streaming quality and related playback settings on Paramount+. We respect your privacy and aim to be transparent about how the extension handles data.
+Paramount Quality+ ("the extension") is a browser extension designed to help you adjust streaming quality and related playback settings on Paramount+. We respect your privacy and aim to be transparent about how the extension handles data.
 
 ## Data Collection and Use
 
@@ -37,4 +37,4 @@ We may update this Privacy Policy to reflect changes in functionality or legal r
 
 ## Contact
 
-If you have questions or concerns about this Privacy Policy, please contact the maintainer of the ParamountQuality+project.
+If you have questions or concerns about this Privacy Policy, please contact the maintainer of the Paramount Quality+ project.
