@@ -53,5 +53,10 @@
         "*://*.paramountplus.com/*"
       ]
     }
-  ]
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "chaseosapps@gmail.com"
+    }
+  }
 }
