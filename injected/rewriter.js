@@ -76,7 +76,17 @@ export function maybeRewriteUrl(url) {
 
   if (availableRepresentations.length === 0) return url;
 
-  if (availableRepresentations.length === 0) return url;
+  const adStrings = ['google', 'dai', 'doubleclick', 'video_ads', 'googlevideo', 'dclk', '/ad/', '_ad_', 'ads/'];
+  const lowerUrl = url.toLowerCase();
+  const isAd = adStrings.some(s => lowerUrl.includes(s));
+
+  // Google DAI variant playlists (/variant/....m3u8) are the target of our quality switching
+  // for live streams, so do NOT skip them even though they match 'google/dai'.
+  const isDaiPlaylist = lowerUrl.includes('/variant/') && lowerUrl.includes('.m3u8');
+
+  if (isAd && !isDaiPlaylist) {
+    return url;
+  }
 
   // --- Google DAI Live Stream Logic ---
   // We rewrite the Playlist URL itself, not the segments.
@@ -167,6 +177,21 @@ export function maybeRewriteUrl(url) {
       if (currentRes !== targetRes) {
         let newUrl = url.replace(`_${currentRes}_`, `_${targetRes}_`);
 
+        // --- DASH Strategy 1: Path Swap (Robust segment replacement) ---
+        if (targetRep.pathId || targetRep.dashTier) {
+          const currentIdSegmentMatch = url.match(/\/([^\/?]+)(?=\/[^\/]*?seg_)/i);
+          if (currentIdSegmentMatch) {
+            const currentIdSegment = currentIdSegmentMatch[1];
+            const targetIdSegment = targetRep.pathId || targetRep.id;
+
+            // Only swap if the target is a complex string (to avoid mangling or numeric IDs)
+            if (targetIdSegment && targetIdSegment.includes('_') && !targetIdSegment.includes('$') && currentIdSegment !== targetIdSegment) {
+              return url.replace(`/${currentIdSegment}/`, `/${targetIdSegment}/`);
+            }
+          }
+        }
+
+        // --- DASH Strategy 2: Targeted Bitrate Replacement (Fallback) ---
         if (targetRep.dashTier) {
           const bitrateMatch = url.match(/_(\d{3,5})\/seg_/);
           if (bitrateMatch) {

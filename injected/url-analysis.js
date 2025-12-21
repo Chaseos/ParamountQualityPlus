@@ -70,8 +70,15 @@ export function analyzeUrl(url) {
       const dashTierMatch = pathname.match(/_(\d{3,5})\/seg_/);
       if (dashTierMatch) {
         requestedTier = parseInt(dashTierMatch[1], 10);
-        resolution = estimateResolutionFromBitrate(requestedTier);
-        isEstimated = true;
+        const match = availableRepresentations.find(r => r.dashTier === dashTierMatch[1]);
+        if (match) {
+          resolution = match.height + 'p';
+          isEstimated = false;
+          exactBandwidth = match.bandwidth;
+        } else {
+          resolution = estimateResolutionFromBitrate(requestedTier);
+          isEstimated = true;
+        }
       }
 
       // --- Google DAI Fallback ---

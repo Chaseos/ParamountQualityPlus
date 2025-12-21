@@ -148,12 +148,14 @@ export function parseDashManifest(xmlString, requestUrl) {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
 
-    const representations = xmlDoc.getElementsByTagName('Representation');
+    const representations = xmlDoc.getElementsByTagNameNS('*', 'Representation');
     const qualities = [];
 
     function isVideoAdaptation(node) {
       const adaptSet = node.parentNode;
-      if (!adaptSet || adaptSet.tagName !== 'AdaptationSet') return true;
+      if (!adaptSet) return true;
+      const ln = adaptSet.localName || adaptSet.tagName;
+      if (ln !== 'AdaptationSet') return true;
       const mime = adaptSet.getAttribute('mimeType');
       const contentType = adaptSet.getAttribute('contentType');
       if (mime && !mime.includes('video')) return false;
@@ -161,105 +163,142 @@ export function parseDashManifest(xmlString, requestUrl) {
       return true;
     }
 
-    const adaptSets = xmlDoc.getElementsByTagName('AdaptationSet');
-    let globalTemplate = null;
+    const adaptSets = xmlDoc.getElementsByTagNameNS('*', 'AdaptationSet');
+    const videoAdaptSets = [];
+
     if (adaptSets.length > 0) {
       for (let i = 0; i < adaptSets.length; i++) {
         const mime = adaptSets[i].getAttribute('mimeType');
         const contentType = adaptSets[i].getAttribute('contentType');
-        if ((mime && mime.includes('video')) || (contentType && contentType === 'video')) {
-          const tmpl = adaptSets[i].getElementsByTagName('SegmentTemplate')[0];
-          if (tmpl) globalTemplate = tmpl.getAttribute('media');
-          break;
+        const isVideo = (mime && mime.toLowerCase().includes('video')) ||
+          (contentType && contentType.toLowerCase().includes('video'));
+        if (isVideo) {
+          videoAdaptSets.push(adaptSets[i]);
         }
       }
     }
 
-    for (let i = 0; i < representations.length; i++) {
-      const rep = representations[i];
+    for (const adaptSet of videoAdaptSets) {
+      const adaptTmplNode = adaptSet.getElementsByTagNameNS('*', 'SegmentTemplate')[0];
+      const adaptTemplate = adaptTmplNode ? adaptTmplNode.getAttribute('media') : null;
 
-      if (!isVideoAdaptation(rep)) continue;
+      const setRepresentations = adaptSet.getElementsByTagNameNS('*', 'Representation');
+      for (let j = 0; j < setRepresentations.length; j++) {
+        const rep = setRepresentations[j];
 
-      const w = rep.getAttribute('width');
-      const h = rep.getAttribute('height');
-      const bw = rep.getAttribute('bandwidth');
-      const id = rep.getAttribute('id');
-      const codecs = rep.getAttribute('codecs');
+        const w = rep.getAttribute('width');
+        const h = rep.getAttribute('height');
+        const bw = rep.getAttribute('bandwidth');
+        const rawId = rep.getAttribute('id');
+        const setIndex = videoAdaptSets.indexOf(adaptSet);
+        const id = `s${setIndex}-${rawId}`;
 
-      const baseUrlNode = rep.getElementsByTagName('BaseURL')[0];
-      const baseUrl = baseUrlNode ? baseUrlNode.textContent.trim() : null;
+        const baseUrlNode = rep.getElementsByTagNameNS('*', 'BaseURL')[0];
+        const baseUrl = baseUrlNode ? baseUrlNode.textContent.trim() : null;
 
-      const repTmplNode = rep.getElementsByTagName('SegmentTemplate')[0];
-      const repTemplate = repTmplNode ? repTmplNode.getAttribute('media') : null;
+        const repTmplNode = rep.getElementsByTagNameNS('*', 'SegmentTemplate')[0];
+        const repTemplate = repTmplNode ? repTmplNode.getAttribute('media') : null;
 
-      const finalTemplate = repTemplate || globalTemplate;
+        const finalTemplate = repTemplate || adaptTemplate;
 
-      let dashTier = null;
-      const tierSource = baseUrl || finalTemplate || id;
-      if (tierSource) {
-        const tierMatch = tierSource.match(/_(\d{3,5})[\/\.]/);
-        if (tierMatch) {
-          dashTier = tierMatch[1];
+        let dashTier = null;
+        let pathId = rawId;
+
+        // Search for complex bitrate and path-segments in ID, BaseURL, or Template
+        const sources = [baseUrl, rawId, finalTemplate].filter(s => s && s.length > 0);
+        for (const src of sources) {
+          if (!dashTier) {
+            const tierMatch = src.match(/_(\d{3,5})(?=[_/\.]|$)/);
+            if (tierMatch) dashTier = tierMatch[1];
+          }
+
+          if (src.includes('_')) {
+            let cleanSrc = src;
+            if (src.includes('$')) {
+              const parts = src.split('/');
+              if (parts.length > 1 && parts[parts.length - 1].includes('$')) cleanSrc = parts[parts.length - 2];
+            }
+            const chunks = cleanSrc.split('/').filter(c => c.length > 0 && c.includes('_'));
+            if (chunks.length > 0) {
+              const best = chunks[chunks.length - 1];
+              if (best.includes('PPUSA') || best.split('_').length > 3) {
+                pathId = best;
+                // Optimization: extract tier directly from complex ID if present
+                const tMatch = best.match(/_(\d{3,5})$/);
+                if (tMatch) dashTier = tMatch[1];
+                break;
+              } else if (pathId === id) {
+                pathId = best;
+              }
+            }
+          }
         }
-      }
 
-      if (!dashTier && bw) {
-        const bwKbps = Math.round(parseInt(bw) / 1000);
-        const targetAvgBitrate = bwKbps / 1.3;
-        const KNOWN_TIERS = [4500, 3000, 2100, 1500, 750, 380];
-
-        const closest = KNOWN_TIERS.reduce((prev, curr) => {
-          return (Math.abs(curr - targetAvgBitrate) < Math.abs(prev - targetAvgBitrate) ? curr : prev);
-        });
-
-        if (Math.abs(closest - targetAvgBitrate) / targetAvgBitrate < 0.4) {
-          dashTier = closest.toString();
+        // Exact bitrate fallback
+        if (!dashTier && bw) {
+          dashTier = Math.round(parseInt(bw) / 1000).toString();
         }
-      }
 
-      if (h) {
-        qualities.push({
-          id,
-          baseUrl,
-          template: finalTemplate,
-          dashTier,
-          width: parseInt(w),
-          height: parseInt(h),
-          bandwidth: parseInt(bw),
-          codecs
-        });
+        if (h || bw) {
+          let finalHeight = h ? parseInt(h) : 0;
+          if (!finalHeight && bw) {
+            const estimatedRes = estimateResolutionFromBitrate(parseInt(bw) / 1000);
+            finalHeight = parseInt(estimatedRes.replace('p', ''));
+          }
+
+          const adStrings = ['google', 'dai', 'doubleclick', 'video_ads', 'googlevideo', 'dclk', '/ad/', '_ad_', 'ads/'];
+          const lowerId = (rawId || '').toLowerCase();
+          const lowerPath = (pathId || '').toLowerCase();
+          const lowerBase = (baseUrl || '').toLowerCase();
+          const lowerTempl = (finalTemplate || '').toLowerCase();
+
+          const isAd = adStrings.some(s => lowerBase.includes(s) || lowerId.includes(s) || lowerPath.includes(s) || lowerTempl.includes(s));
+
+          const hasContentMarker = !!(pathId && (
+            pathId.includes('PPUSA') ||
+            /feature|movie|show|uhd|8ch|apple|amazon|c26|c24|hvc1|avc1|cenc|dash|prod|ftr|vmaster|vtrack|eng|spa|fra|live|event|pplus|match|replay|efl|sport|league|en[-_]|es[-_]/i.test(pathId)
+          ));
+
+          const q = {
+            id,
+            rawId,
+            pathId: (pathId && pathId !== rawId) ? pathId : null,
+            baseUrl,
+            template: finalTemplate,
+            dashTier,
+            width: w ? parseInt(w) : 0,
+            height: finalHeight,
+            bandwidth: parseInt(bw),
+            isContent: hasContentMarker && !isAd
+          };
+
+          qualities.push(q);
+        }
       }
     }
 
-    // Some manifests repeat representations; keep only the first instance of
-    // each ID and then dedupe on (height, bandwidth, id) to avoid clutter.
-    const seenIds = new Set();
-    let unique = qualities.filter(q => {
-      if (q.id) {
-        if (seenIds.has(q.id)) return false;
-        seenIds.add(q.id);
-        return true;
-      }
-      return true;
-    });
+    // Deduplication: Prioritize movie content (PPUSA) over Ads
+    const byHeightMap = new Map();
+    let hasAnyTrueContent = false;
 
-    unique = unique.filter((v, i, a) => a.findIndex(t => (
-      t.height === v.height &&
-      t.bandwidth === v.bandwidth &&
-      t.id === v.id
-    )) === i);
+    for (const q of qualities) {
+      if (q.isContent) hasAnyTrueContent = true;
 
-    unique.sort((a, b) => b.height - a.height);
-
-    // Final pass: dedupe by height only for display, keeping highest bandwidth
-    const byHeight = new Map();
-    for (const q of unique) {
-      const existing = byHeight.get(q.height);
-      if (!existing || (q.bandwidth > existing.bandwidth)) {
-        byHeight.set(q.height, q);
-      }
+      const existing = byHeightMap.get(q.height);
+      const isBetter = !existing ||
+        (q.isContent && !existing.isContent) ||
+        (q.pathId && !existing.pathId && q.bandwidth >= existing.bandwidth) ||
+        (q.bandwidth > existing.bandwidth && q.isContent === existing.isContent);
+      if (isBetter) byHeightMap.set(q.height, q);
     }
-    unique = Array.from(byHeight.values());
+
+    let unique = Array.from(byHeightMap.values());
+
+    // If we confidently found content, discard everything else (Ads, traps)
+    if (hasAnyTrueContent) {
+      unique = unique.filter(q => q.isContent);
+    }
+
     unique.sort((a, b) => b.height - a.height);
 
     setRepresentations(unique);
@@ -280,7 +319,7 @@ export function parseDashManifest(xmlString, requestUrl) {
           return {
             ...q,
             bandwidth: parseInt(q.dashTier) * 1000,
-            height: estimateResolutionFromBitrate(parseInt(q.dashTier)).replace('p', '')
+            height: q.height || estimateResolutionFromBitrate(parseInt(q.dashTier)).replace('p', '')
           };
         }
         return q;
@@ -305,6 +344,6 @@ export function parseManifest(content, requestUrl) {
   } else if (trimmed.startsWith('<?xml') || trimmed.startsWith('<MPD')) {
     parseDashManifest(content, requestUrl);
   } else {
-    console.log('[PQI] Unknown manifest format');
+    // Unknown format
   }
 }
