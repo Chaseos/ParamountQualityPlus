@@ -112,16 +112,19 @@ export function maybeRewriteUrl(url) {
   }
   // --- End DAI Logic ---
 
-  const hlsMatch = url.match(/manifest_video_(\d+)_(\d+)_(\d+)\.mp4/);
+  const hlsMatch = url.match(/manifest_video_(\d+)_(\d+)_(\d+)\.(mp4|ts|m4s)/);
+  const hlsMatchSimple = url.match(/manifest_(\d+)_(\d+)\.(ts|mp4|m4s)/);
 
-  if (hlsMatch) {
-    const currentTier = hlsMatch[1];
-    const trackIndex = hlsMatch[2];
-    const segmentNum = hlsMatch[3];
+  if (hlsMatch || hlsMatchSimple) {
+    const match = hlsMatch || hlsMatchSimple;
+    const isComplex = !!hlsMatch;
+    const currentTier = match[1];
+    const part2 = match[2];
+    const part3 = isComplex ? match[3] : null;
+    const ext = isComplex ? match[4] : match[3];
 
     const bestRep = availableRepresentations[0];
 
-    // Use hlsTier from HLS manifest parsing if available
     if ((config.forceMax || config.forcedId) && bestRep && bestRep.hlsTier !== undefined) {
       let targetTier = null;
 
@@ -133,10 +136,17 @@ export function maybeRewriteUrl(url) {
       }
 
       if (targetTier && targetTier !== currentTier) {
-        return url.replace(
-          `manifest_video_${currentTier}_${trackIndex}_${segmentNum}.mp4`,
-          `manifest_video_${targetTier}_${trackIndex}_${segmentNum}.mp4`
-        );
+        if (isComplex) {
+          return url.replace(
+            `manifest_video_${currentTier}_${part2}_${part3}.${ext}`,
+            `manifest_video_${targetTier}_${part2}_${part3}.${ext}`
+          );
+        } else {
+          return url.replace(
+            `manifest_${currentTier}_${part2}.${ext}`,
+            `manifest_${targetTier}_${part2}.${ext}`
+          );
+        }
       }
     }
 

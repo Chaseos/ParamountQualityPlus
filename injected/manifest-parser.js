@@ -53,7 +53,7 @@ export function parseHlsManifest(content, requestUrl) {
           let hlsTier = null;
           let daiId = null;
           if (variantUrl) {
-            const tierMatch = variantUrl.match(/manifest_video_(\d+)[_\/]/) ||
+            const tierMatch = variantUrl.match(/manifest(?:_video)?_(\d+)(?:[_\/\.]|$)/) ||
               variantUrl.match(/video[_\/](\d+)[_\/]/);
             if (tierMatch) {
               hlsTier = tierMatch[1];

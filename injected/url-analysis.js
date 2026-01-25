@@ -56,7 +56,7 @@ export function analyzeUrl(url) {
     // Detect archived HLS streams: manifest_video_{tier}_ pattern with no hlsTier in reps
     // Detect archived HLS streams: manifest_video_{tier}_ pattern
     // User requested to base this simply on the URL type (manifest_video) so it updates immediately
-    const hlsTierMatch = pathname.match(/manifest_video_(\d+)[_\/]/);
+    const hlsTierMatch = pathname.match(/manifest(?:_video)?_(\d+)[_\/]/);
     if (hlsTierMatch && !archivedHlsDetected) {
       archivedHlsDetected = true;
       window.postMessage({
