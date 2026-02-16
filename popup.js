@@ -57,7 +57,7 @@ function setMode(forceMax, forcedId) {
     updateSelectionUI();
 
     // Show feedback
-    showToast("Updating quality... buffer may take 5-10s to clear.");
+    showToast("Updating quality... buffer may take 10-20 seconds to clear.");
 }
 
 function showToast(msg) {
@@ -67,11 +67,11 @@ function showToast(msg) {
     toast.textContent = msg;
     toast.classList.add('visible');
 
-    // Hide after 3s
+    // Hide after 5s
     if (toast.timeout) clearTimeout(toast.timeout);
     toast.timeout = setTimeout(() => {
         toast.classList.remove('visible');
-    }, 3500);
+    }, 5000);
 }
 
 function updateSelectionUI() {

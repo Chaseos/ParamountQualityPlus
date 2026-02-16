@@ -112,6 +112,10 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
     // Default path: If no forced quality is configured, or if the request
     // didn't match any criteria for rewriting, simply perform the request
     // and observe the response for manifests.
+    if (url && isSegmentUrl(url)) {
+      analyzeUrl(url);
+    }
+
     const response = await ORIGINAL_FETCH.apply(this, args);
 
     if (isManifestUrl(url)) {

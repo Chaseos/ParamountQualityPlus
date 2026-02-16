@@ -57,17 +57,22 @@ window.addEventListener('message', (event) => {
 
     const newHeight = getHeight(resolution);
     const currentHeight = getHeight(streamState.resolution);
+    const timeSinceLastUpdate = Date.now() - (streamState.timestamp || 0);
 
-    // Always update resolution if present (remove "only higher" check to support manual changes)
+    // Prefer higher resolution if multiple segments are buffering at once.
+    // Allow downgrades only after a short delay (3s) to avoid UI flickering 
+    // during transient buffering or initial playback ramps.
     if (resolution) {
-        streamState.resolution = resolution;
-        streamState.isEstimated = isEstimated || false;
+        if (newHeight >= currentHeight || timeSinceLastUpdate > 3000 || streamState.isEstimated) {
+            streamState.resolution = resolution;
+            streamState.isEstimated = isEstimated || false;
+            streamState.timestamp = timestamp;
+        }
     }
 
     // Always update bitrate to show current segment rate
     if (bitrate) streamState.bitrate = bitrate;
     if (maxBitrate) streamState.maxBitrate = maxBitrate;
-    streamState.timestamp = timestamp;
 });
 
 window.addEventListener('message', (event) => {
@@ -80,6 +85,7 @@ window.addEventListener('message', (event) => {
             if (resolution) streamState.resolution = resolution;
             if (bitrate) streamState.bitrate = bitrate;
             streamState.isEstimated = false; // Known from playlist URL match
+            streamState.timestamp = Date.now();
         }
     }
 });
