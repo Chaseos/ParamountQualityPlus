@@ -2,8 +2,6 @@ import { estimateResolutionFromBitrate } from './constants.js';
 import { extractResolutionFromPath, isSegmentUrl } from './url-utils.js';
 import { getRepresentations } from './state.js';
 
-// Track if we've already detected an archived HLS stream to avoid spamming
-let archivedHlsDetected = false;
 
 // Inspect requested media segment URLs, infer their resolution/bitrate, and
 // surface the data to the extension UI via postMessage for live telemetry.
@@ -53,17 +51,8 @@ export function analyzeUrl(url) {
       });
     }
 
-    // Detect archived HLS streams: manifest_video_{tier}_ pattern with no hlsTier in reps
-    // Detect archived HLS streams: manifest_video_{tier}_ pattern
-    // User requested to base this simply on the URL type (manifest_video) so it updates immediately
+    // Detect manifest_video pattern for stats mapping
     const hlsTierMatch = pathname.match(/manifest(?:_video)?_(\d+)[_\/]/);
-    if (hlsTierMatch && !archivedHlsDetected) {
-      archivedHlsDetected = true;
-      window.postMessage({
-        type: 'PQI_ARCHIVED_HLS_DETECTED',
-        payload: { currentTier: hlsTierMatch[1] }
-      }, '*');
-    }
 
     let requestedTier = null;
     if (!resolution) {
@@ -78,6 +67,17 @@ export function analyzeUrl(url) {
         } else {
           resolution = estimateResolutionFromBitrate(requestedTier);
           isEstimated = true;
+        }
+      }
+
+      // --- Hybrid HLS/DASH manifest_video Mapping ---
+      if (!resolution && hlsTierMatch) {
+        const tier = hlsTierMatch[1];
+        const match = availableRepresentations.find(r => r.hlsTier === tier || r.rawId === tier);
+        if (match) {
+          resolution = match.height + 'p';
+          exactBandwidth = match.bandwidth;
+          isEstimated = false;
         }
       }
 
@@ -119,5 +119,10 @@ export function analyzeUrl(url) {
   } catch (e) {
     console.error('[PQI] Error analyzing URL:', e);
   }
+}
+
+// For testing
+export function resetAnalysisState() {
+  // Logic removed
 }
 

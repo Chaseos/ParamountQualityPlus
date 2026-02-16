@@ -29,7 +29,9 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
     if (url && (config.forceMax || config.forcedId)) {
       // Check if it's a Segment OR a Manifest (for playlist rewriting)
       if (isSegmentUrl(url) || isManifestUrl(url)) {
+
         newUrl = maybeRewriteUrl(url);
+        
         if (newUrl !== url) {
           attemptsMade = true;
           if (typeof resource === 'string') {

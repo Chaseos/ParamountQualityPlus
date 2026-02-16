@@ -20,5 +20,16 @@ export function getRepresentations() {
 }
 
 export function setRepresentations(reps) {
-  availableRepresentations = reps;
+  const hasHls = reps.some(r => r.hlsTier !== undefined);
+  const existingHls = availableRepresentations.some(r => r.hlsTier !== undefined);
+
+  // If we have existing HLS tiers (main content) and the new manifest is DASH
+  // (which on Paramount+ is often an Ad or supplementary), we MERGE them 
+  // instead of overwriting, to ensure our forcedId for HLS still works.
+  if (existingHls && !hasHls && reps.length < 10) {
+    console.log('[PQI_DEBUG] Preserving HLS tiers; appending new DASH reps.');
+    availableRepresentations = [...availableRepresentations.filter(r => r.hlsTier !== undefined), ...reps];
+  } else {
+    availableRepresentations = reps;
+  }
 }

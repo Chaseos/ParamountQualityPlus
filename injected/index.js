@@ -1,5 +1,5 @@
 import { initConfigListener } from './config.js';
-import { analyzeUrl } from './url-analysis.js';
+import { analyzeUrl, resetAnalysisState } from './url-analysis.js';
 import { parseManifest, parseDashManifest, parseHlsManifest } from './manifest-parser.js';
 import { maybeRewriteUrl, retryRewriteUrl, resolveNextBestRepresentation, resolveTargetRepresentation } from './rewriter.js';
 import { initNetworkHooks } from './network-hooks.js';
@@ -15,6 +15,7 @@ initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest });
 // logic while keeping the runtime side effects (above) intact.
 export {
   analyzeUrl,
+  resetAnalysisState,
   estimateResolutionFromBitrate,
   getConfig,
   getRepresentations as getAvailableRepresentations,

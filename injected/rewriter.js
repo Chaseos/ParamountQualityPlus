@@ -112,7 +112,8 @@ export function maybeRewriteUrl(url) {
   }
   // --- End DAI Logic ---
 
-  const hlsMatch = url.match(/manifest_video_(\d+)_(\d+)_(\d+)\.(mp4|ts|m4s)/);
+  // Allow 'init' or other alphanumeric strings in the 3rd group
+  const hlsMatch = url.match(/manifest_video_(\d+)_(\d+)_([a-zA-Z0-9]+)\.(mp4|ts|m4s)/);
   const hlsMatchSimple = url.match(/manifest_(\d+)_(\d+)\.(ts|mp4|m4s)/);
 
   if (hlsMatch || hlsMatchSimple) {
@@ -123,34 +124,48 @@ export function maybeRewriteUrl(url) {
     const part3 = isComplex ? match[3] : null;
     const ext = isComplex ? match[4] : match[3];
 
-    const bestRep = availableRepresentations[0];
-
-    if ((config.forceMax || config.forcedId) && bestRep && bestRep.hlsTier !== undefined) {
+    if (config.forceMax || config.forcedId) {
       let targetTier = null;
 
       if (config.forcedId) {
         const targetRep = availableRepresentations.find(r => r.id === config.forcedId);
-        if (targetRep && targetRep.hlsTier) targetTier = targetRep.hlsTier;
+        if (targetRep) {
+          if (targetRep.hlsTier) {
+            targetTier = targetRep.hlsTier;
+          } else if (targetRep.rawId && targetRep.rawId.length <= 2) {
+            // Hybrid logic: Use numeric rawId as tier if it's a short string (1, 2, 8 etc)
+            targetTier = targetRep.rawId;
+          } else {
+            // Cross-format fallback: try to find an HLS tier or rawId with the same height
+            const matchRep = availableRepresentations.find(r => r.height === targetRep.height && (r.hlsTier || (r.rawId && r.rawId.length <= 2)));
+            if (matchRep) {
+              targetTier = matchRep.hlsTier || matchRep.rawId;
+            }
+          }
+        }
       } else if (config.forceMax) {
-        targetTier = bestRep.hlsTier;
+        // Find best tier from any representation that has one
+        const bestWithTier = availableRepresentations.find(r => r.hlsTier || (r.rawId && r.rawId.length <= 2));
+        if (bestWithTier) targetTier = bestWithTier.hlsTier || bestWithTier.rawId;
       }
 
       if (targetTier && targetTier !== currentTier) {
+        let newUrl;
         if (isComplex) {
-          return url.replace(
+          newUrl = url.replace(
             `manifest_video_${currentTier}_${part2}_${part3}.${ext}`,
             `manifest_video_${targetTier}_${part2}_${part3}.${ext}`
           );
         } else {
-          return url.replace(
+          newUrl = url.replace(
             `manifest_${currentTier}_${part2}.${ext}`,
             `manifest_${targetTier}_${part2}.${ext}`
           );
         }
+        return newUrl;
       }
     }
 
-    // For archived streams without hlsTier, we can't rewrite - detection happens in url-analysis.js
     return url;
   }
 

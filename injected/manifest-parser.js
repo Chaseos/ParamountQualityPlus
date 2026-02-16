@@ -301,9 +301,8 @@ export function parseDashManifest(xmlString, requestUrl) {
 
     unique.sort((a, b) => b.height - a.height);
 
-    setRepresentations(unique);
-
     if (unique.length > 0) {
+      setRepresentations(unique);
       const displayQualities = unique.map(q => {
         if (q.dashTier) {
           const src = q.template || q.baseUrl || '';
@@ -341,7 +340,7 @@ export function parseManifest(content, requestUrl) {
   const trimmed = content.trim();
   if (trimmed.startsWith('#EXTM3U')) {
     parseHlsManifest(content, requestUrl);
-  } else if (trimmed.startsWith('<?xml') || trimmed.startsWith('<MPD')) {
+  } else if (trimmed.startsWith('<?xml') || (trimmed.startsWith('<MPD') || trimmed.includes('<MPD'))) {
     parseDashManifest(content, requestUrl);
   } else {
     // Unknown format

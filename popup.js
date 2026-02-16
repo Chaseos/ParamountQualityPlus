@@ -110,18 +110,11 @@ function startPolling() {
             chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_STREAM_STATE' }, (response) => {
                 if (chrome.runtime.lastError) {
                     setConnectionStatus(false);
-                    setLimitedStreamUI(false); // Reset limited state when disconnected
                 } else if (response) {
                     setConnectionStatus(true);
                     updateStats(response);
 
-                    // IMPORTANT: Check isLimitedStream FIRST - it may be set even when
-                    // manifestQualities exist (e.g., archived streams where rewriting doesn't work)
-                    if (response.isLimitedStream) {
-                        // Stream detected but quality changes don't work
-                        setLimitedStreamUI(true);
-                    } else if (response.manifestQualities && response.manifestQualities.length > 0) {
-                        setLimitedStreamUI(false);
+                    if (response.manifestQualities && response.manifestQualities.length > 0) {
                         renderQualityList(response.manifestQualities);
                     }
                 }
@@ -141,35 +134,6 @@ function setConnectionStatus(connected) {
     }
 }
 
-function setLimitedStreamUI(isLimited) {
-    const btnAuto = document.getElementById('btn-auto');
-    const btnMax = document.getElementById('btn-max');
-    const qualityContainer = document.getElementById('quality-list-container');
-    const notice = document.getElementById('limited-notice');
-
-    if (isLimited) {
-        // Disable buttons
-        if (btnAuto) btnAuto.disabled = true;
-        if (btnMax) btnMax.disabled = true;
-
-        // Hide quality list
-        if (qualityContainer) qualityContainer.classList.add('hidden');
-
-        // Show notice
-        if (notice) notice.classList.remove('hidden');
-
-        // Set Auto as active (reset to default)
-        if (btnAuto) btnAuto.classList.add('active');
-        if (btnMax) btnMax.classList.remove('active');
-    } else {
-        // Enable buttons
-        if (btnAuto) btnAuto.disabled = false;
-        if (btnMax) btnMax.disabled = false;
-
-        // Hide notice
-        if (notice) notice.classList.add('hidden');
-    }
-}
 
 function updateStats(data) {
     const resEl = document.getElementById('res-val');

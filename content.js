@@ -7,7 +7,6 @@ let streamState = {
     maxBitrate: null, // kbps
     timestamp: null,
     isEstimated: false, // true if resolution is estimated from bitrate
-    isLimitedStream: false, // true if stream detected but no quality options
     hasActiveStream: false // true if we're receiving segment data
 };
 
@@ -71,25 +70,16 @@ window.addEventListener('message', (event) => {
     streamState.timestamp = timestamp;
 });
 
-// Listen for manifest data and active quality updates from the injected script.
-// PQI_MANIFEST_DATA: Provides available quality options parsed from the master playlist.
-// PQI_ACTIVE_QUALITY: Provides the currently playing quality (inferred from variant playlist URL).
-// PQI_ARCHIVED_HLS_DETECTED: Signals that this is an archived HLS stream without quality control.
 window.addEventListener('message', (event) => {
     if (event.source === window && event.data) {
         if (event.data.type === 'PQI_MANIFEST_DATA') {
             streamState.manifestQualities = event.data.payload;
-            // If we get manifest qualities, it is NOT a limited stream
-            streamState.isLimitedStream = false;
         } else if (event.data.type === 'PQI_ACTIVE_QUALITY') {
             // Update live stats from DAI variant playlist match
             const { resolution, bitrate, daiId } = event.data.payload;
             if (resolution) streamState.resolution = resolution;
             if (bitrate) streamState.bitrate = bitrate;
             streamState.isEstimated = false; // Known from playlist URL match
-        } else if (event.data.type === 'PQI_ARCHIVED_HLS_DETECTED') {
-            // This is an archived live stream where quality can't be controlled
-            streamState.isLimitedStream = true;
         }
     }
 });
