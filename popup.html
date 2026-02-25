@@ -259,6 +259,45 @@
       transform: translateX(-50%) translateY(0);
       opacity: 1;
     }
+
+    .review-card {
+      display: none;
+      margin-top: 24px;
+      padding: 12px;
+      background: rgba(59, 130, 246, 0.05);
+      border-radius: 12px;
+      border: 1px dashed var(--border);
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .review-card:hover {
+      background: rgba(59, 130, 246, 0.1);
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .review-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+
+    .review-link:hover {
+      color: var(--text-main);
+    }
+
+    .star-icon {
+      color: #fbbf24;
+      width: 14px;
+      height: 14px;
+      fill: #fbbf24;
+    }
   </style>
 </head>
 
@@ -321,6 +360,20 @@
     <!-- Toast Notification -->
     <div id="toast" class="toast">
       Settings saved. Changes may take a few seconds...
+    </div>
+
+    <div id="review-card" class="review-card">
+      <a id="review-link" href="https://chromewebstore.google.com/detail/paramount-quality+/jdhjjddhdmhphkfgcfclekdngihnoann/reviews" target="_blank" class="review-link">
+        <svg class="star-icon" viewBox="0 0 24 24">
+          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+        </svg>
+        <span>Find it useful? Leave a review</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; opacity: 0.6;">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      </a>
     </div>
   </div>
 

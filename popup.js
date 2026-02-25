@@ -12,10 +12,15 @@ document.addEventListener('DOMContentLoaded', () => {
 async function init() {
     // 1. Load Config
     try {
-        const result = await chrome.storage.sync.get(['forceMax', 'forcedId']);
+        const result = await chrome.storage.sync.get(['forceMax', 'forcedId', 'reviewClicked']);
         currentConfig.forceMax = result.forceMax || false;
         currentConfig.forcedId = result.forcedId || null;
         updateSelectionUI();
+
+        if (!result.reviewClicked && (result.forceMax || result.forcedId)) {
+            const reviewCard = document.getElementById('review-card');
+            if (reviewCard) reviewCard.style.display = 'block';
+        }
     } catch (e) {
         console.error('Error loading config', e);
     }
@@ -27,8 +32,34 @@ async function init() {
     if (btnAuto) btnAuto.addEventListener('click', () => setMode(false, null));
     if (btnMax) btnMax.addEventListener('click', () => setMode(true, null));
 
-    // 3. Start Polling
+    // 3. Bind Review Link
+    const reviewLink = document.getElementById('review-link');
+    if (reviewLink) {
+        reviewLink.href = determineStoreUrl();
+        reviewLink.addEventListener('click', () => {
+            chrome.storage.sync.set({ reviewClicked: true });
+            const reviewCard = document.getElementById('review-card');
+            if (reviewCard) reviewCard.style.display = 'none';
+        });
+    }
+
+    // 4. Start Polling
     startPolling();
+}
+
+function determineStoreUrl() {
+    const ua = navigator.userAgent;
+    const isFirefox = ua.includes("Firefox");
+    const isOpera = ua.includes("OPR/") || ua.includes("Opera");
+
+    if (isFirefox) {
+        return "https://addons.mozilla.org/en-US/firefox/addon/paramount-quality/reviews/";
+    } else if (isOpera) {
+        return "https://addons.opera.com/en/extensions/details/paramount-quality/#feedback-container";
+    } else {
+        // Default to Chrome
+        return "https://chromewebstore.google.com/detail/paramount-quality+/jdhjjddhdmhphkfgcfclekdngihnoann/reviews";
+    }
 }
 
 function setMode(forceMax, forcedId) {
