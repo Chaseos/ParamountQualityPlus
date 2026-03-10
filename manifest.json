@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Paramount Quality+",
-  "version": "1.7",
-  "description": " Set and manage playback resolution on Paramount+ for on-demand videos and live streams, with simple controls and clear feedback.",
+  "name": "__MSG_appName__",
+  "version": "1.8",
+  "description": "__MSG_appDesc__",
+  "default_locale": "en",
   "permissions": [
     "activeTab",
     "storage"

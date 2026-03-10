@@ -1,0 +1,54 @@
+{
+  "appName": { 
+    "message": "Paramount Quality+",
+    "description": "Der Name der Erweiterung"
+  },
+  "appDesc": { 
+    "message": "Legen Sie die Wiedergabeauflösung auf Paramount+ für On-Demand-Videos und Live-Streams fest, mit einfachen Steuerelementen und klarem Feedback.",
+    "description": "Die Beschreibung der Erweiterung, die im Web Store und auf der Browser-Erweiterungsseite angezeigt wird"
+  },
+  "notConnected": { 
+    "message": "Nicht verbunden",
+    "description": "Status, der anzeigt, dass die Erweiterung nicht mit einem Videostream verbunden ist"
+  },
+  "resolution": { 
+    "message": "Auflösung",
+    "description": "Label für die Videoauflösungsstatistik"
+  },
+  "bitrate": { 
+    "message": "Bitrate",
+    "description": "Label für die Videobitratenstatistik"
+  },
+  "qualityControl": { 
+    "message": "Qualitätskontrolle",
+    "description": "Kopfzeile für den Bereich, in dem Benutzer die Videoqualität steuern"
+  },
+  "autoDefault": { 
+    "message": "Auto (Standard)",
+    "description": "Schaltflächenbezeichnung zum Umschalten auf automatische Videoqualität"
+  },
+  "forceMaxQuality": { 
+    "message": "Maximale Qualität erzwingen",
+    "description": "Schaltflächenbezeichnung zum Erzwingen der höchsten verfügbaren Videoqualität"
+  },
+  "prefers1080p": { 
+    "message": "Bevorzugt 1080p+",
+    "description": "Zusatzlabel, das anzeigt, dass die erzwungene maximale Qualität 1080p oder höher bevorzugt"
+  },
+  "availableQualities": { 
+    "message": "Verfügbare Qualitäten",
+    "description": "Kopfzeile für die Liste bestimmter Videoqualitäten, aus denen ein Benutzer auswählen kann"
+  },
+  "settingsSaved": { 
+    "message": "Einstellungen gespeichert. Änderungen können einige Sekunden dauern...",
+    "description": "Benachrichtigung, die angezeigt wird, wenn der Benutzer Einstellungen ändert"
+  },
+  "updatingQuality": { 
+    "message": "Qualität wird aktualisiert... es kann 10-20 Sekunden dauern, bis der Puffer geleert ist.",
+    "description": "Längere Benachrichtigung, die erklärt, dass Aktualisierungen der Videoqualität Zeit in Anspruch nehmen"
+  },
+  "leaveReview": { 
+    "message": "Nützlich? Hinterlassen Sie eine Bewertung",
+    "description": "Aufforderung an den Benutzer, die Erweiterung zu bewerten"
+  }
+}

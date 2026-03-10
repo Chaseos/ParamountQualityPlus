@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function init() {
+    localizeUI();
     // 1. Load Config
     try {
         const result = await chrome.storage.sync.get(['forceMax', 'forcedId', 'reviewClicked']);
@@ -88,7 +89,7 @@ function setMode(forceMax, forcedId) {
     updateSelectionUI();
 
     // Show feedback
-    showToast("Updating quality... buffer may take 10-20 seconds to clear.");
+    showToast(chrome.i18n.getMessage("updatingQuality") || "Updating quality... buffer may take 10-20 seconds to clear.");
 }
 
 function showToast(msg) {
@@ -103,6 +104,17 @@ function showToast(msg) {
     toast.timeout = setTimeout(() => {
         toast.classList.remove('visible');
     }, 5000);
+}
+
+function localizeUI() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const msg = chrome.i18n.getMessage(el.getAttribute('data-i18n'));
+        if (msg) el.textContent = msg;
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const msg = chrome.i18n.getMessage(el.getAttribute('data-i18n-title'));
+        if (msg) el.title = msg;
+    });
 }
 
 function updateSelectionUI() {

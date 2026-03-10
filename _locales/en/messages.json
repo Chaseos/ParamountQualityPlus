@@ -1,0 +1,54 @@
+{
+  "appName": { 
+    "message": "Paramount Quality+",
+    "description": "The name of the extension"
+  },
+  "appDesc": { 
+    "message": "Set and manage playback resolution on Paramount+ for on-demand videos and live streams, with simple controls and clear feedback.",
+    "description": "The description of the extension shown in the web store and browser extensions page"
+  },
+  "notConnected": { 
+    "message": "Not connected",
+    "description": "Status indicating the extension is not connected to a video stream"
+  },
+  "resolution": { 
+    "message": "Resolution",
+    "description": "Label for the video resolution stat"
+  },
+  "bitrate": { 
+    "message": "Bitrate",
+    "description": "Label for the video bitrate stat"
+  },
+  "qualityControl": { 
+    "message": "Quality Control",
+    "description": "Header for the section where users control the video quality"
+  },
+  "autoDefault": { 
+    "message": "Auto (Default)",
+    "description": "Button label to switch to automatic video quality"
+  },
+  "forceMaxQuality": { 
+    "message": "Force Max Quality",
+    "description": "Button label to force the highest available video quality"
+  },
+  "prefers1080p": { 
+    "message": "Prefers 1080p+",
+    "description": "Sub-label indicating that force max quality prefers 1080p or higher"
+  },
+  "availableQualities": { 
+    "message": "Available Qualities",
+    "description": "Header for the list of specific video qualities a user can choose from"
+  },
+  "settingsSaved": { 
+    "message": "Settings saved. Changes may take a few seconds...",
+    "description": "Notification message shown when user changes settings"
+  },
+  "updatingQuality": { 
+    "message": "Updating quality... buffer may take 10-20 seconds to clear.",
+    "description": "Longer notification message explaining that video quality updates take time"
+  },
+  "leaveReview": { 
+    "message": "Find it useful? Leave a review",
+    "description": "Prompt asking the user to review the extension"
+  }
+}

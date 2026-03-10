@@ -1,0 +1,54 @@
+{
+  "appName": { 
+    "message": "Paramount Quality+",
+    "description": "Il nome dell'estensione"
+  },
+  "appDesc": { 
+    "message": "Imposta e gestisci la risoluzione di riproduzione su Paramount+ per i video su richiesta e i live streaming, con controlli semplici e un feedback chiaro.",
+    "description": "La descrizione dell'estensione mostrata nel web store e nella pagina delle estensioni del browser"
+  },
+  "notConnected": { 
+    "message": "Non connesso",
+    "description": "Stato che indica che l'estensione non è connessa a un flusso video"
+  },
+  "resolution": { 
+    "message": "Risoluzione",
+    "description": "Etichetta per la statistica della risoluzione video"
+  },
+  "bitrate": { 
+    "message": "Bitrate",
+    "description": "Etichetta per la statistica del bitrate video"
+  },
+  "qualityControl": { 
+    "message": "Controllo qualità",
+    "description": "Intestazione per la sezione in cui gli utenti controllano la qualità del video"
+  },
+  "autoDefault": { 
+    "message": "Automatico (Predefinito)",
+    "description": "Etichetta del pulsante per passare alla qualità video automatica"
+  },
+  "forceMaxQuality": { 
+    "message": "Forza qualità massima",
+    "description": "Etichetta del pulsante per forzare la massima qualità video disponibile"
+  },
+  "prefers1080p": { 
+    "message": "Preferisce 1080p+",
+    "description": "Sotto-etichetta che indica che forzare la qualità massima preferisce 1080p o superiore"
+  },
+  "availableQualities": { 
+    "message": "Qualità disponibili",
+    "description": "Intestazione per l'elenco delle qualità video specifiche tra cui un utente può scegliere"
+  },
+  "settingsSaved": { 
+    "message": "Impostazioni salvate. Le modifiche potrebbero richiedere alcuni secondi...",
+    "description": "Messaggio di notifica mostrato quando l'utente modifica le impostazioni"
+  },
+  "updatingQuality": { 
+    "message": "Aggiornamento qualità... lo svuotamento del buffer potrebbe richiedere 10-20 secondi.",
+    "description": "Messaggio di notifica più lungo che spiega che gli aggiornamenti della qualità del video richiedono tempo"
+  },
+  "leaveReview": { 
+    "message": "Ti è utile? Lascia una recensione",
+    "description": "Richiesta all'utente di recensire l'estensione"
+  }
+}

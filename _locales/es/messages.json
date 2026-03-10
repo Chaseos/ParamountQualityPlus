@@ -1,0 +1,54 @@
+{
+  "appName": { 
+    "message": "Paramount Quality+",
+    "description": "El nombre de la extensión"
+  },
+  "appDesc": { 
+    "message": "Configura y administra la resolución de reproducción en Paramount+ para videos a pedido y transmisiones en vivo, con controles simples y comentarios claros.",
+    "description": "La descripción de la extensión mostrada en la tienda web y en la página de extensiones del navegador"
+  },
+  "notConnected": { 
+    "message": "No conectado",
+    "description": "Estado que indica que la extensión no está conectada a una transmisión de video"
+  },
+  "resolution": { 
+    "message": "Resolución",
+    "description": "Etiqueta para la estadística de resolución de video"
+  },
+  "bitrate": { 
+    "message": "Tasa de bits",
+    "description": "Etiqueta para la estadística de tasa de bits de video"
+  },
+  "qualityControl": { 
+    "message": "Control de calidad",
+    "description": "Encabezado de la sección donde los usuarios controlan la calidad del video"
+  },
+  "autoDefault": { 
+    "message": "Automático (Predeterminado)",
+    "description": "Etiqueta del botón para cambiar a la calidad de video automática"
+  },
+  "forceMaxQuality": { 
+    "message": "Forzar calidad máxima",
+    "description": "Etiqueta del botón para forzar la calidad de video más alta disponible"
+  },
+  "prefers1080p": { 
+    "message": "Prefiere 1080p+",
+    "description": "Subetiqueta que indica que forzar la calidad máxima prefiere 1080p o superior"
+  },
+  "availableQualities": { 
+    "message": "Calidades disponibles",
+    "description": "Encabezado para la lista de calidades de video específicas que un usuario puede elegir"
+  },
+  "settingsSaved": { 
+    "message": "Configuración guardada. Los cambios pueden tardar unos segundos...",
+    "description": "Mensaje de notificación mostrado cuando el usuario cambia la configuración"
+  },
+  "updatingQuality": { 
+    "message": "Actualizando la calidad... el búfer puede tardar de 10 a 20 segundos en vaciarse.",
+    "description": "Mensaje de notificación más largo que explica que las actualizaciones de calidad de video toman tiempo"
+  },
+  "leaveReview": { 
+    "message": "¿Te resulta útil? Deja una reseña",
+    "description": "Aviso pidiendo al usuario que revise la extensión"
+  }
+}
