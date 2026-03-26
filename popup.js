@@ -138,12 +138,19 @@ function updateSelectionUI() {
     }
 
     // Specific List Items
+    let isForcedIdInList = false;
     Array.from(qList.children).forEach(btn => {
         btn.classList.remove('active');
         if (!currentConfig.forceMax && currentConfig.forcedId && btn.dataset.id === currentConfig.forcedId) {
             btn.classList.add('active');
+            isForcedIdInList = true;
         }
     });
+
+    // Fallback to Auto if the forced ID is not in the list (but we have a list loaded)
+    if (!currentConfig.forceMax && currentConfig.forcedId && !isForcedIdInList && qList.children.length > 0) {
+        btnAuto.classList.add('active');
+    }
 }
 
 function startPolling() {
