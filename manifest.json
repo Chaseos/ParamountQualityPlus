@@ -47,7 +47,8 @@
         "injected/rewriter.js",
         "injected/state.js",
         "injected/url-analysis.js",
-        "injected/url-utils.js"
+        "injected/url-utils.js",
+        "injected/prefetch.js"
       ],
       "matches": [
         "*://*.paramountplus.com/*"

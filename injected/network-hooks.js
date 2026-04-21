@@ -1,6 +1,7 @@
 import { getConfig } from './state.js';
-import { isManifestUrl, isSegmentUrl } from './url-utils.js';
+import { isManifestUrl, isSegmentUrl, stripCMCD } from './url-utils.js';
 import { resolveNextBestRepresentation, retryRewriteUrl } from './rewriter.js';
+import { maybePrefetchSegments } from './prefetch.js';
 
 // Monkey-patch fetch/XMLHttpRequest to inspect and optionally rewrite network
 // requests. This lets the extension force specific quality tiers while still
@@ -40,6 +41,14 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
       url = resource.url;
     }
 
+    if (url) {
+      url = stripCMCD(url);
+      if (url !== (typeof resource === 'string' ? resource : resource.url)) {
+        if (typeof resource === 'string') args[0] = url;
+        else if (resource instanceof Request) args[0] = new Request(url, resource);
+      }
+    }
+
     let newUrl = url;
     let attemptsMade = false;
 
@@ -68,6 +77,7 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
 
       if (attemptsMade) {
         try {
+          if (isSegmentUrl(newUrl)) maybePrefetchSegments(newUrl, ORIGINAL_FETCH);
           const response = await fetchWithRetry(this, args, true, newUrl);
           if (response.ok) {
             // Parse manifest responses to update live stats (e.g., PQI_ACTIVE_QUALITY)
@@ -118,6 +128,7 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
 
       // For untouched requests, still mirror manifest responses to the parser so
       // available quality tiers stay in sync with the player session.
+      if (isSegmentUrl(url)) maybePrefetchSegments(url, ORIGINAL_FETCH);
       const response = await fetchWithRetry(this, args, true, url);
 
       if (isManifestUrl(url)) {
@@ -136,6 +147,7 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
     const isRetryable = url && (isSegmentUrl(url) || isManifestUrl(url));
     if (url && isSegmentUrl(url)) {
       analyzeUrl(url);
+      maybePrefetchSegments(url, ORIGINAL_FETCH);
     }
 
     const response = await fetchWithRetry(this, args, isRetryable, url);
@@ -151,11 +163,14 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
   };
 
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-    let finalUrl = url;
-    if (url && typeof url === 'string') {
-      if (isSegmentUrl(url) || isManifestUrl(url)) {
-        finalUrl = maybeRewriteUrl(url);
+    let finalUrl = stripCMCD(url);
+    if (finalUrl && typeof finalUrl === 'string') {
+      if (isSegmentUrl(finalUrl) || isManifestUrl(finalUrl)) {
+        finalUrl = maybeRewriteUrl(finalUrl);
         analyzeUrl(finalUrl);
+      }
+      if (isSegmentUrl(finalUrl)) {
+        maybePrefetchSegments(finalUrl, ORIGINAL_FETCH);
       }
       this._pqi_url = finalUrl;
     }

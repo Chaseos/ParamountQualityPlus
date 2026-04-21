@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import { clearPrefetchQueue } from '../injected/prefetch.js';
 
 let originalFetchMock;
 
@@ -16,6 +17,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
     originalFetchMock.mockClear();
+    clearPrefetchQueue();
     jest.useFakeTimers();
 });
 
@@ -26,20 +28,29 @@ afterEach(() => {
 describe('Fetch Retries for Segments', () => {
 
     test('Should not retry successful requests', async () => {
-        originalFetchMock.mockResolvedValueOnce({ ok: true, status: 200, clone: () => ({ text: async () => '' }) });
+        originalFetchMock.mockResolvedValue({ ok: true, status: 200, clone: () => ({ text: async () => '' }) });
         
         const responsePromise = window.fetch('https://host/video/seg_10.m4s');
         const response = await responsePromise;
 
-        expect(originalFetchMock).toHaveBeenCalledTimes(1);
+        // 1 main fetch + 5 prefetch = 6 calls
+        expect(originalFetchMock).toHaveBeenCalledTimes(6);
         expect(response.ok).toBe(true);
     });
 
     test('Should retry failed requests with backoff up to 3 times', async () => {
-        originalFetchMock
-            .mockResolvedValueOnce({ ok: false, status: 502 }) // Try 1 fails
-            .mockResolvedValueOnce({ ok: false, status: 503 }) // Try 2 fails
-            .mockResolvedValueOnce({ ok: true, status: 200, clone: () => ({ text: async () => '' }) }); // Try 3 succeeds
+        // First the prefetch calls will happen (3 of them), then the main fetch, 
+        // but we can just use mockImplementation to only fail the main URL
+        let attempt = 0;
+        originalFetchMock.mockImplementation((url) => {
+            if (url === 'https://host/video/seg_10.m4s') {
+                attempt++;
+                if (attempt === 1) return Promise.resolve({ ok: false, status: 502 });
+                if (attempt === 2) return Promise.resolve({ ok: false, status: 503 });
+                return Promise.resolve({ ok: true, status: 200, clone: () => ({ text: async () => '' }) });
+            }
+            return Promise.resolve({ ok: true, status: 200 }); // Pre-fetch calls succeed
+        });
 
         const fetchPromise = window.fetch('https://host/video/seg_10.m4s');
         
@@ -49,7 +60,8 @@ describe('Fetch Retries for Segments', () => {
 
         const response = await fetchPromise;
 
-        expect(originalFetchMock).toHaveBeenCalledTimes(3);
+        // 5 prefetch calls + 3 main fetch calls (2 fails, 1 success) = 8 calls
+        expect(originalFetchMock).toHaveBeenCalledTimes(8);
         expect(response.ok).toBe(true);
     });
 
@@ -64,7 +76,8 @@ describe('Fetch Retries for Segments', () => {
 
         const response = await fetchPromise;
 
-        expect(originalFetchMock).toHaveBeenCalledTimes(3);
+        // 5 prefetch calls + 3 main fetch calls = 8 calls
+        expect(originalFetchMock).toHaveBeenCalledTimes(8);
         expect(response.ok).toBe(false);
     });
 

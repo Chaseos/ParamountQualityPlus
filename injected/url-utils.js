@@ -16,3 +16,18 @@ export function extractResolutionFromPath(pathname) {
   const resMatch = pathname.match(RESOLUTION_REGEX);
   return resMatch ? resMatch[1] : null;
 }
+
+// Strips highly dynamic CMCD telemetry parameters from URLs to ensure
+// that browser caching (especially for prefetched segments) works properly.
+export function stripCMCD(urlStr) {
+  if (!urlStr || typeof urlStr !== 'string' || !urlStr.includes('CMCD=')) {
+    return urlStr;
+  }
+  try {
+    const u = new URL(urlStr, window.location.origin);
+    u.searchParams.delete('CMCD');
+    return u.toString();
+  } catch (e) {
+    return urlStr.replace(/([?&])CMCD=[^&]+(&|$)/, (m, p1, p2) => p1 === '?' && p2 ? '?' : (p2 ? '&' : '')).replace(/\?$/, '');
+  }
+}
