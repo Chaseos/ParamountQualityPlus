@@ -104,54 +104,50 @@ function setMode(forceMax, forcedId) {
 
 function initNetworkControlsUI() {
     const cbRetries = document.getElementById('cb-retries');
-    const sliderRetries = document.getElementById('slider-retries');
-    const valRetries = document.getElementById('val-retries');
+    const numRetries = document.getElementById('num-retries');
     
     const cbPrefetch = document.getElementById('cb-prefetch');
-    const sliderPrefetch = document.getElementById('slider-prefetch');
-    const valPrefetch = document.getElementById('val-prefetch');
+    const numPrefetch = document.getElementById('num-prefetch');
 
-    if (!cbRetries || !sliderRetries || !cbPrefetch || !sliderPrefetch) return;
+    if (!cbRetries || !numRetries || !cbPrefetch || !numPrefetch) return;
 
     // Set initial values
     cbRetries.checked = currentConfig.enableRetries;
-    sliderRetries.value = currentConfig.maxRetries;
-    sliderRetries.disabled = !currentConfig.enableRetries;
-    valRetries.textContent = currentConfig.maxRetries;
+    numRetries.value = currentConfig.maxRetries;
+    numRetries.disabled = !currentConfig.enableRetries;
 
     cbPrefetch.checked = currentConfig.enablePrefetch;
-    sliderPrefetch.value = currentConfig.prefetchCount;
-    sliderPrefetch.disabled = !currentConfig.enablePrefetch;
-    valPrefetch.textContent = currentConfig.prefetchCount;
+    numPrefetch.value = currentConfig.prefetchCount;
+    numPrefetch.disabled = !currentConfig.enablePrefetch;
 
     // Event Listeners
     cbRetries.addEventListener('change', (e) => {
         currentConfig.enableRetries = e.target.checked;
-        sliderRetries.disabled = !currentConfig.enableRetries;
+        numRetries.disabled = !currentConfig.enableRetries;
         saveNetworkConfig();
     });
 
-    sliderRetries.addEventListener('input', (e) => {
-        valRetries.textContent = e.target.value;
-    });
-
-    sliderRetries.addEventListener('change', (e) => {
-        currentConfig.maxRetries = parseInt(e.target.value, 10);
+    numRetries.addEventListener('change', (e) => {
+        let val = parseInt(e.target.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 10) val = 10;
+        e.target.value = val;
+        currentConfig.maxRetries = val;
         saveNetworkConfig();
     });
 
     cbPrefetch.addEventListener('change', (e) => {
         currentConfig.enablePrefetch = e.target.checked;
-        sliderPrefetch.disabled = !currentConfig.enablePrefetch;
+        numPrefetch.disabled = !currentConfig.enablePrefetch;
         saveNetworkConfig();
     });
 
-    sliderPrefetch.addEventListener('input', (e) => {
-        valPrefetch.textContent = e.target.value;
-    });
-
-    sliderPrefetch.addEventListener('change', (e) => {
-        currentConfig.prefetchCount = parseInt(e.target.value, 10);
+    numPrefetch.addEventListener('change', (e) => {
+        let val = parseInt(e.target.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 20) val = 20;
+        e.target.value = val;
+        currentConfig.prefetchCount = val;
         saveNetworkConfig();
     });
 }

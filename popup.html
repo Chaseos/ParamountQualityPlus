@@ -359,26 +359,34 @@
     <!-- Advanced Network -->
     <div class="section-title" style="margin-top: 24px;" data-i18n="advancedNetwork">Advanced Network</div>
     
-    <div style="background: var(--card-bg); border-radius: 8px; padding: 12px; border: 1px solid var(--border); margin-bottom: 8px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <label style="font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
-          <input type="checkbox" id="cb-retries" checked>
-          <span data-i18n="enableRetries">Enable Retries</span>
+    <div class="card" style="padding: 12px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 0;">
+      
+      <!-- Retries Row -->
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <label style="font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" id="cb-retries" checked style="accent-color: var(--accent); margin: 0;">
+          <span data-i18n="enableRetries">Network Retries</span>
         </label>
-        <span id="val-retries" style="font-size: 12px; color: var(--text-muted);">3</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+           <input type="number" id="num-retries" min="1" max="10" value="3" style="width: 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 4px; font-size: 12px; text-align: center;">
+           <span style="font-size: 11px; color: var(--text-muted); width: 24px;">max</span>
+        </div>
       </div>
-      <input type="range" id="slider-retries" min="1" max="10" value="3" style="width: 100%;">
-    </div>
 
-    <div style="background: var(--card-bg); border-radius: 8px; padding: 12px; border: 1px solid var(--border);">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <label style="font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
-          <input type="checkbox" id="cb-prefetch" checked>
-          <span data-i18n="enablePrefetch">Enable Prefetching</span>
+      <div style="height: 1px; background: var(--border); width: 100%;"></div>
+
+      <!-- Prefetch Row -->
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <label style="font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" id="cb-prefetch" checked style="accent-color: var(--accent); margin: 0;">
+          <span data-i18n="enablePrefetch">Prefetch Buffer</span>
         </label>
-        <span id="val-prefetch" style="font-size: 12px; color: var(--text-muted);">5</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+           <input type="number" id="num-prefetch" min="1" max="20" value="5" style="width: 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 4px; font-size: 12px; text-align: center;">
+           <span style="font-size: 11px; color: var(--text-muted); width: 24px;">segs</span>
+        </div>
       </div>
-      <input type="range" id="slider-prefetch" min="1" max="20" value="5" style="width: 100%;">
+
     </div>
 
 
