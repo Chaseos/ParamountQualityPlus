@@ -10,6 +10,25 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
   const ORIGINAL_XHR_OPEN = XMLHttpRequest.prototype.open;
   const ORIGINAL_XHR_SEND = XMLHttpRequest.prototype.send;
 
+  async function fetchWithRetry(thisArg, args, isRetryable, urlInfo) {
+    if (!isRetryable) return ORIGINAL_FETCH.apply(thisArg, args);
+
+    const maxRetries = 3;
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const response = await ORIGINAL_FETCH.apply(thisArg, args);
+        if (response.ok || i === maxRetries - 1) {
+          return response;
+        }
+        console.warn(`[PQI] Fetch failed (${response.status}), retrying ${i + 1}/${maxRetries}: ${urlInfo}`);
+      } catch (err) {
+        if (i === maxRetries - 1) throw err;
+        console.warn(`[PQI] Network error, retrying ${i + 1}/${maxRetries}: ${urlInfo}`, err);
+      }
+      await new Promise(r => setTimeout(r, 500 * Math.pow(2, i)));
+    }
+  }
+
   window.fetch = async function (...args) {
     let [resource] = args;
     const originalResource = resource;
@@ -49,7 +68,7 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
 
       if (attemptsMade) {
         try {
-          const response = await ORIGINAL_FETCH.apply(this, args);
+          const response = await fetchWithRetry(this, args, true, newUrl);
           if (response.ok) {
             // Parse manifest responses to update live stats (e.g., PQI_ACTIVE_QUALITY)
             if (isManifestUrl(newUrl)) {
@@ -71,7 +90,7 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
               if (typeof resource === 'string') args[0] = fallbackUrl;
               else if (resource instanceof Request) args[0] = new Request(fallbackUrl, resource);
 
-              const fbResponse = await ORIGINAL_FETCH.apply(this, args);
+              const fbResponse = await fetchWithRetry(this, args, true, fallbackUrl);
               if (fbResponse.ok) {
                 analyzeUrl(fallbackUrl);
                 return fbResponse;
@@ -84,20 +103,22 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
           args[0] = originalResource;
           if (typeof originalResource === 'string') analyzeUrl(originalResource);
           else if (originalResource instanceof Request) analyzeUrl(originalResource.url);
-          return ORIGINAL_FETCH.apply(this, args);
+          const origUrl = typeof originalResource === 'string' ? originalResource : originalResource.url;
+          return fetchWithRetry(this, args, true, origUrl);
 
         } catch (err) {
           console.warn('[PQI] Network error during rewrite, reverting.', err);
           args[0] = originalResource;
           if (typeof originalResource === 'string') analyzeUrl(originalResource);
           else if (originalResource instanceof Request) analyzeUrl(originalResource.url);
-          return ORIGINAL_FETCH.apply(this, args);
+          const origUrl = typeof originalResource === 'string' ? originalResource : originalResource.url;
+          return fetchWithRetry(this, args, true, origUrl);
         }
       }
 
       // For untouched requests, still mirror manifest responses to the parser so
       // available quality tiers stay in sync with the player session.
-      const response = await ORIGINAL_FETCH.apply(this, args);
+      const response = await fetchWithRetry(this, args, true, url);
 
       if (isManifestUrl(url)) {
         const clone = response.clone();
@@ -112,11 +133,12 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
     // Default path: If no forced quality is configured, or if the request
     // didn't match any criteria for rewriting, simply perform the request
     // and observe the response for manifests.
+    const isRetryable = url && (isSegmentUrl(url) || isManifestUrl(url));
     if (url && isSegmentUrl(url)) {
       analyzeUrl(url);
     }
 
-    const response = await ORIGINAL_FETCH.apply(this, args);
+    const response = await fetchWithRetry(this, args, isRetryable, url);
 
     if (isManifestUrl(url)) {
       const clone = response.clone();
