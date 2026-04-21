@@ -356,6 +356,31 @@
       </div>
     </div>
 
+    <!-- Advanced Network -->
+    <div class="section-title" style="margin-top: 24px;" data-i18n="advancedNetwork">Advanced Network</div>
+    
+    <div style="background: var(--card-bg); border-radius: 8px; padding: 12px; border: 1px solid var(--border); margin-bottom: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <label style="font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+          <input type="checkbox" id="cb-retries" checked>
+          <span data-i18n="enableRetries">Enable Retries</span>
+        </label>
+        <span id="val-retries" style="font-size: 12px; color: var(--text-muted);">3</span>
+      </div>
+      <input type="range" id="slider-retries" min="1" max="10" value="3" style="width: 100%;">
+    </div>
+
+    <div style="background: var(--card-bg); border-radius: 8px; padding: 12px; border: 1px solid var(--border);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <label style="font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+          <input type="checkbox" id="cb-prefetch" checked>
+          <span data-i18n="enablePrefetch">Enable Prefetching</span>
+        </label>
+        <span id="val-prefetch" style="font-size: 12px; color: var(--text-muted);">5</span>
+      </div>
+      <input type="range" id="slider-prefetch" min="1" max="20" value="5" style="width: 100%;">
+    </div>
+
 
     <!-- Toast Notification -->
     <div id="toast" class="toast" data-i18n="settingsSaved">

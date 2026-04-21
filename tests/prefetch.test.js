@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import { setConfig } from '../injected/state.js';
 import { maybePrefetchSegments, clearPrefetchQueue } from '../injected/prefetch.js';
 
 describe('Segment Prefetching', () => {
@@ -7,6 +8,7 @@ describe('Segment Prefetching', () => {
     beforeEach(() => {
         mockFetch = jest.fn(() => Promise.resolve({ ok: true }));
         clearPrefetchQueue();
+        setConfig({ enablePrefetch: true, prefetchCount: 5 });
     });
 
     test('should prefetch next 5 segments for standard m4s pattern', () => {

@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import { clearPrefetchQueue } from '../injected/prefetch.js';
+import { setConfig } from '../injected/state.js';
 
 let originalFetchMock;
 
@@ -7,6 +8,8 @@ beforeAll(async () => {
     // Setup a mock fetch before initNetworkHooks runs
     originalFetchMock = jest.fn();
     window.fetch = originalFetchMock;
+
+    setConfig({ enableRetries: true, maxRetries: 3, enablePrefetch: true, prefetchCount: 5 });
 
     // Provide a dummy matchMedia or other things if jsdom complains, but usually fetch is enough.
     

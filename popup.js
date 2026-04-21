@@ -2,7 +2,11 @@
 
 let currentConfig = {
     forceMax: false,
-    forcedId: null
+    forcedId: null,
+    enableRetries: true,
+    maxRetries: 3,
+    enablePrefetch: true,
+    prefetchCount: 5
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,10 +17,16 @@ async function init() {
     localizeUI();
     // 1. Load Config
     try {
-        const result = await chrome.storage.sync.get(['forceMax', 'forcedId', 'reviewClicked']);
+        const result = await chrome.storage.sync.get(['forceMax', 'forcedId', 'reviewClicked', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount']);
         currentConfig.forceMax = result.forceMax || false;
         currentConfig.forcedId = result.forcedId || null;
+        currentConfig.enableRetries = result.enableRetries !== false;
+        currentConfig.maxRetries = result.maxRetries !== undefined ? result.maxRetries : 3;
+        currentConfig.enablePrefetch = result.enablePrefetch !== false;
+        currentConfig.prefetchCount = result.prefetchCount !== undefined ? result.prefetchCount : 5;
+        
         updateSelectionUI();
+        initNetworkControlsUI();
 
         if (!result.reviewClicked && (result.forceMax || result.forcedId)) {
             const reviewCard = document.getElementById('review-card');
@@ -90,6 +100,66 @@ function setMode(forceMax, forcedId) {
 
     // Show feedback
     showToast(chrome.i18n.getMessage("updatingQuality") || "Updating quality... buffer may take 10-20 seconds to clear.");
+}
+
+function initNetworkControlsUI() {
+    const cbRetries = document.getElementById('cb-retries');
+    const sliderRetries = document.getElementById('slider-retries');
+    const valRetries = document.getElementById('val-retries');
+    
+    const cbPrefetch = document.getElementById('cb-prefetch');
+    const sliderPrefetch = document.getElementById('slider-prefetch');
+    const valPrefetch = document.getElementById('val-prefetch');
+
+    if (!cbRetries || !sliderRetries || !cbPrefetch || !sliderPrefetch) return;
+
+    // Set initial values
+    cbRetries.checked = currentConfig.enableRetries;
+    sliderRetries.value = currentConfig.maxRetries;
+    sliderRetries.disabled = !currentConfig.enableRetries;
+    valRetries.textContent = currentConfig.maxRetries;
+
+    cbPrefetch.checked = currentConfig.enablePrefetch;
+    sliderPrefetch.value = currentConfig.prefetchCount;
+    sliderPrefetch.disabled = !currentConfig.enablePrefetch;
+    valPrefetch.textContent = currentConfig.prefetchCount;
+
+    // Event Listeners
+    cbRetries.addEventListener('change', (e) => {
+        currentConfig.enableRetries = e.target.checked;
+        sliderRetries.disabled = !currentConfig.enableRetries;
+        saveNetworkConfig();
+    });
+
+    sliderRetries.addEventListener('input', (e) => {
+        valRetries.textContent = e.target.value;
+    });
+
+    sliderRetries.addEventListener('change', (e) => {
+        currentConfig.maxRetries = parseInt(e.target.value, 10);
+        saveNetworkConfig();
+    });
+
+    cbPrefetch.addEventListener('change', (e) => {
+        currentConfig.enablePrefetch = e.target.checked;
+        sliderPrefetch.disabled = !currentConfig.enablePrefetch;
+        saveNetworkConfig();
+    });
+
+    sliderPrefetch.addEventListener('input', (e) => {
+        valPrefetch.textContent = e.target.value;
+    });
+
+    sliderPrefetch.addEventListener('change', (e) => {
+        currentConfig.prefetchCount = parseInt(e.target.value, 10);
+        saveNetworkConfig();
+    });
+}
+
+function saveNetworkConfig() {
+    const { enableRetries, maxRetries, enablePrefetch, prefetchCount } = currentConfig;
+    chrome.storage.sync.set({ enableRetries, maxRetries, enablePrefetch, prefetchCount });
+    showToast(chrome.i18n.getMessage("settingsSaved") || "Settings saved. Changes may take a few seconds...");
 }
 
 function showToast(msg) {

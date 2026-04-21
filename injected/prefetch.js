@@ -1,13 +1,17 @@
+import { getConfig } from './state.js';
+
 const PREFETCH_CACHE_LIMIT = 200; // Keep the set from growing infinitely
 const prefetchQueue = new Set();
-const PREFETCH_COUNT = 5;
 
 // Find a number directly before the file extension. 
 // E.g., 'seg_10.m4s' or 'video_1_10.ts'
 const SEGMENT_NUMBER_REGEX = /^(.*?)(\d+)(\.(?:m4s|ts|mp4)(?:\?.*)?)$/i;
 
 export function maybePrefetchSegments(url, originalFetch) {
-  if (!url) return;
+  const config = getConfig();
+  if (!url || config.enablePrefetch === false) return;
+
+  const prefetchCount = config.prefetchCount ?? 5;
 
   const normalizedUrl = url.split('?')[0];
   // Add the current URL to the queue so we don't fetch it again
@@ -30,7 +34,7 @@ export function maybePrefetchSegments(url, originalFetch) {
 
   let prefetchedCount = 0;
 
-  for (let i = 1; i <= PREFETCH_COUNT; i++) {
+  for (let i = 1; i <= prefetchCount; i++) {
     const nextNum = currentNum + i;
     const nextNumStr = String(nextNum).padStart(numStr.length, '0');
     const nextUrl = `${prefix}${nextNumStr}${suffix}`;

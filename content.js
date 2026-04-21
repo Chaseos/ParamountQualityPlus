@@ -103,10 +103,14 @@ injectScript();
 
 // --- Config Sync ---
 function syncConfig() {
-    chrome.storage.sync.get(['forceMax', 'forcedId'], (res) => {
+    chrome.storage.sync.get(['forceMax', 'forcedId', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount'], (res) => {
         const config = {
             forceMax: !!res.forceMax,
-            forcedId: res.forcedId || null
+            forcedId: res.forcedId || null,
+            enableRetries: res.enableRetries !== false, // default true
+            maxRetries: res.maxRetries !== undefined ? res.maxRetries : 3,
+            enablePrefetch: res.enablePrefetch !== false, // default true
+            prefetchCount: res.prefetchCount !== undefined ? res.prefetchCount : 5
         };
 
         // Send to injected script
@@ -116,7 +120,7 @@ function syncConfig() {
 
 // Listen for storage changes
 chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync' && (changes.forceMax || changes.forcedId)) {
+    if (area === 'sync' && (changes.forceMax || changes.forcedId || changes.enableRetries || changes.maxRetries || changes.enablePrefetch || changes.prefetchCount)) {
 
         syncConfig();
     }

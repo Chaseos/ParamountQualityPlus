@@ -12,9 +12,12 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
   const ORIGINAL_XHR_SEND = XMLHttpRequest.prototype.send;
 
   async function fetchWithRetry(thisArg, args, isRetryable, urlInfo) {
-    if (!isRetryable) return ORIGINAL_FETCH.apply(thisArg, args);
+    const config = getConfig();
+    if (!isRetryable || config.enableRetries === false) {
+      return ORIGINAL_FETCH.apply(thisArg, args);
+    }
 
-    const maxRetries = 3;
+    const maxRetries = config.maxRetries ?? 3;
     for (let i = 0; i < maxRetries; i++) {
       try {
         const response = await ORIGINAL_FETCH.apply(thisArg, args);

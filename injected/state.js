@@ -2,7 +2,11 @@
 // the parsed list of available representations from the active manifest.
 let config = {
   forceMax: false,
-  forcedId: null
+  forcedId: null,
+  enableRetries: true,
+  maxRetries: 3,
+  enablePrefetch: true,
+  prefetchCount: 5
 };
 
 let availableRepresentations = [];
