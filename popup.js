@@ -105,25 +105,33 @@ function setMode(forceMax, forcedId) {
 function initNetworkControlsUI() {
     const cbRetries = document.getElementById('cb-retries');
     const numRetries = document.getElementById('num-retries');
+    const lblRetries = document.getElementById('label-retries');
     
     const cbPrefetch = document.getElementById('cb-prefetch');
     const numPrefetch = document.getElementById('num-prefetch');
+    const lblPrefetch = document.getElementById('label-prefetch');
 
-    if (!cbRetries || !numRetries || !cbPrefetch || !numPrefetch) return;
+    if (!cbRetries || !numRetries || !cbPrefetch || !numPrefetch || !lblRetries || !lblPrefetch) return;
 
     // Set initial values
     cbRetries.checked = currentConfig.enableRetries;
     numRetries.value = currentConfig.maxRetries;
     numRetries.disabled = !currentConfig.enableRetries;
+    lblRetries.style.color = currentConfig.enableRetries ? '' : 'var(--text-muted)';
+    numRetries.style.color = currentConfig.enableRetries ? 'var(--text-main)' : 'var(--text-muted)';
 
     cbPrefetch.checked = currentConfig.enablePrefetch;
     numPrefetch.value = currentConfig.prefetchCount;
     numPrefetch.disabled = !currentConfig.enablePrefetch;
+    lblPrefetch.style.color = currentConfig.enablePrefetch ? '' : 'var(--text-muted)';
+    numPrefetch.style.color = currentConfig.enablePrefetch ? 'var(--text-main)' : 'var(--text-muted)';
 
     // Event Listeners
     cbRetries.addEventListener('change', (e) => {
         currentConfig.enableRetries = e.target.checked;
         numRetries.disabled = !currentConfig.enableRetries;
+        lblRetries.style.color = currentConfig.enableRetries ? '' : 'var(--text-muted)';
+        numRetries.style.color = currentConfig.enableRetries ? 'var(--text-main)' : 'var(--text-muted)';
         saveNetworkConfig();
     });
 
@@ -139,6 +147,8 @@ function initNetworkControlsUI() {
     cbPrefetch.addEventListener('change', (e) => {
         currentConfig.enablePrefetch = e.target.checked;
         numPrefetch.disabled = !currentConfig.enablePrefetch;
+        lblPrefetch.style.color = currentConfig.enablePrefetch ? '' : 'var(--text-muted)';
+        numPrefetch.style.color = currentConfig.enablePrefetch ? 'var(--text-main)' : 'var(--text-muted)';
         saveNetworkConfig();
     });
 

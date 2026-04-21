@@ -162,7 +162,7 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
-      max-height: 180px;
+      max-height: 130px;
       overflow-y: auto;
       margin-top: 8px;
     }
@@ -236,9 +236,9 @@
     /* Toast Notification */
     .toast {
       position: fixed;
-      bottom: 20px;
+      top: 20px;
       left: 50%;
-      transform: translateX(-50%) translateY(20px);
+      transform: translateX(-50%) translateY(-20px);
       background-color: var(--card-bg);
       color: var(--text-main);
       padding: 10px 16px;
@@ -262,7 +262,7 @@
 
     .review-card {
       display: none;
-      margin-top: 24px;
+      margin-top: 16px;
       padding: 12px;
       background: rgba(59, 130, 246, 0.05);
       border-radius: 12px;
@@ -357,7 +357,7 @@
     </div>
 
     <!-- Advanced Network -->
-    <div class="section-title" style="margin-top: 24px;" data-i18n="advancedNetwork">Advanced Network</div>
+    <div class="section-title" style="margin-top: 16px;" data-i18n="advancedNetwork">Advanced Network</div>
     
     <div class="card" style="padding: 12px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 0;">
       
@@ -365,7 +365,7 @@
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <label style="font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer;">
           <input type="checkbox" id="cb-retries" checked style="accent-color: var(--accent); margin: 0;">
-          <span data-i18n="enableRetries">Network Retries</span>
+          <span data-i18n="enableRetries" id="label-retries">Network Retries</span>
         </label>
         <div style="display: flex; align-items: center; gap: 6px;">
            <input type="number" id="num-retries" min="1" max="10" value="3" style="width: 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 4px; font-size: 12px; text-align: center;">
@@ -379,7 +379,7 @@
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <label style="font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer;">
           <input type="checkbox" id="cb-prefetch" checked style="accent-color: var(--accent); margin: 0;">
-          <span data-i18n="enablePrefetch">Prefetch Buffer</span>
+          <span data-i18n="enablePrefetch" id="label-prefetch">Prefetch Buffer</span>
         </label>
         <div style="display: flex; align-items: center; gap: 6px;">
            <input type="number" id="num-prefetch" min="1" max="20" value="5" style="width: 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 4px; font-size: 12px; text-align: center;">
