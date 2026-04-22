@@ -106,10 +106,12 @@ function initNetworkControlsUI() {
     const cbRetries = document.getElementById('cb-retries');
     const numRetries = document.getElementById('num-retries');
     const lblRetries = document.getElementById('label-retries');
+    const descRetries = document.getElementById('desc-retries');
     
     const cbPrefetch = document.getElementById('cb-prefetch');
     const numPrefetch = document.getElementById('num-prefetch');
     const lblPrefetch = document.getElementById('label-prefetch');
+    const descPrefetch = document.getElementById('desc-prefetch');
 
     if (!cbRetries || !numRetries || !cbPrefetch || !numPrefetch || !lblRetries || !lblPrefetch) return;
 
@@ -119,19 +121,32 @@ function initNetworkControlsUI() {
     numRetries.disabled = !currentConfig.enableRetries;
     lblRetries.style.color = currentConfig.enableRetries ? '' : 'var(--text-muted)';
     numRetries.style.color = currentConfig.enableRetries ? 'var(--text-main)' : 'var(--text-muted)';
+    if(descRetries) descRetries.style.opacity = currentConfig.enableRetries ? '1' : '0.5';
 
     cbPrefetch.checked = currentConfig.enablePrefetch;
     numPrefetch.value = currentConfig.prefetchCount;
     numPrefetch.disabled = !currentConfig.enablePrefetch;
     lblPrefetch.style.color = currentConfig.enablePrefetch ? '' : 'var(--text-muted)';
     numPrefetch.style.color = currentConfig.enablePrefetch ? 'var(--text-main)' : 'var(--text-muted)';
+    if(descPrefetch) descPrefetch.style.opacity = currentConfig.enablePrefetch ? '1' : '0.5';
 
     // Event Listeners
+    const advancedToggle = document.getElementById('advanced-toggle');
+    const advancedContent = document.getElementById('advanced-content');
+    
+    if (advancedToggle && advancedContent) {
+        advancedToggle.addEventListener('click', () => {
+            advancedToggle.classList.toggle('expanded');
+            advancedContent.classList.toggle('expanded');
+        });
+    }
+
     cbRetries.addEventListener('change', (e) => {
         currentConfig.enableRetries = e.target.checked;
         numRetries.disabled = !currentConfig.enableRetries;
         lblRetries.style.color = currentConfig.enableRetries ? '' : 'var(--text-muted)';
         numRetries.style.color = currentConfig.enableRetries ? 'var(--text-main)' : 'var(--text-muted)';
+        if(descRetries) descRetries.style.opacity = currentConfig.enableRetries ? '1' : '0.5';
         saveNetworkConfig();
     });
 
@@ -149,6 +164,7 @@ function initNetworkControlsUI() {
         numPrefetch.disabled = !currentConfig.enablePrefetch;
         lblPrefetch.style.color = currentConfig.enablePrefetch ? '' : 'var(--text-muted)';
         numPrefetch.style.color = currentConfig.enablePrefetch ? 'var(--text-main)' : 'var(--text-muted)';
+        if(descPrefetch) descPrefetch.style.opacity = currentConfig.enablePrefetch ? '1' : '0.5';
         saveNetworkConfig();
     });
 

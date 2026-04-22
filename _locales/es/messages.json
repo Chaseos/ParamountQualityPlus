@@ -1,54 +1,74 @@
 {
-  "appName": { 
+  "appName": {
     "message": "Paramount Quality+",
     "description": "El nombre de la extensión"
   },
-  "appDesc": { 
+  "appDesc": {
     "message": "Configura y administra la resolución de reproducción en Paramount+ para videos a pedido y transmisiones en vivo, con controles simples y comentarios claros.",
     "description": "La descripción de la extensión mostrada en la tienda web y en la página de extensiones del navegador"
   },
-  "notConnected": { 
+  "notConnected": {
     "message": "No conectado",
     "description": "Estado que indica que la extensión no está conectada a una transmisión de video"
   },
-  "resolution": { 
+  "resolution": {
     "message": "Resolución",
     "description": "Etiqueta para la estadística de resolución de video"
   },
-  "bitrate": { 
+  "bitrate": {
     "message": "Tasa de bits",
     "description": "Etiqueta para la estadística de tasa de bits de video"
   },
-  "qualityControl": { 
+  "qualityControl": {
     "message": "Control de calidad",
     "description": "Encabezado de la sección donde los usuarios controlan la calidad del video"
   },
-  "autoDefault": { 
+  "autoDefault": {
     "message": "Automático (Predeterminado)",
     "description": "Etiqueta del botón para cambiar a la calidad de video automática"
   },
-  "forceMaxQuality": { 
+  "forceMaxQuality": {
     "message": "Forzar calidad máxima",
     "description": "Etiqueta del botón para forzar la calidad de video más alta disponible"
   },
-  "prefers1080p": { 
+  "prefers1080p": {
     "message": "Prefiere 1080p+",
     "description": "Subetiqueta que indica que forzar la calidad máxima prefiere 1080p o superior"
   },
-  "availableQualities": { 
+  "availableQualities": {
     "message": "Calidades disponibles",
     "description": "Encabezado para la lista de calidades de video específicas que un usuario puede elegir"
   },
-  "settingsSaved": { 
+  "settingsSaved": {
     "message": "Configuración guardada. Los cambios pueden tardar unos segundos...",
     "description": "Mensaje de notificación mostrado cuando el usuario cambia la configuración"
   },
-  "updatingQuality": { 
+  "updatingQuality": {
     "message": "Actualizando la calidad... el búfer puede tardar de 10 a 20 segundos en vaciarse.",
     "description": "Mensaje de notificación más largo que explica que las actualizaciones de calidad de video toman tiempo"
   },
-  "leaveReview": { 
+  "leaveReview": {
     "message": "¿Te resulta útil? Deja una reseña",
     "description": "Aviso pidiendo al usuario que revise la extensión"
+  },
+  "advanced": {
+    "message": "Avanzado",
+    "description": "Header for the advanced network settings section"
+  },
+  "enableRetries": {
+    "message": "Reintentos de Red",
+    "description": "Label for the network retries toggle"
+  },
+  "enablePrefetch": {
+    "message": "Búfer de Precarga",
+    "description": "Label for the prefetch buffer toggle"
+  },
+  "advancedRetriesDesc": {
+    "message": "Reintentar llamadas de red fallidas",
+    "description": "Description explaining what network retries do"
+  },
+  "advancedPrefetchDesc": {
+    "message": "Precargar segmentos para reducir almacenamiento en búfer",
+    "description": "Description explaining what the prefetch buffer does"
   }
 }

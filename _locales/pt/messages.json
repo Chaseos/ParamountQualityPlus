@@ -1,54 +1,74 @@
 {
-  "appName": { 
+  "appName": {
     "message": "Paramount Quality+",
     "description": "O nome da extensão"
   },
-  "appDesc": { 
+  "appDesc": {
     "message": "Defina e gerencie a resolução de reprodução no Paramount+ para vídeos sob demanda e transmissões ao vivo, com controles simples e feedback claro.",
     "description": "A descrição da extensão exibida na web store e na página de extensões do navegador"
   },
-  "notConnected": { 
+  "notConnected": {
     "message": "Não conectado",
     "description": "Status indicando que a extensão não está conectada a um stream de vídeo"
   },
-  "resolution": { 
+  "resolution": {
     "message": "Resolução",
     "description": "Rótulo para a estatística de resolução de vídeo"
   },
-  "bitrate": { 
+  "bitrate": {
     "message": "Taxa de bits",
     "description": "Rótulo para a estatística de taxa de bits de vídeo"
   },
-  "qualityControl": { 
+  "qualityControl": {
     "message": "Controle de qualidade",
     "description": "Cabeçalho da seção onde os usuários controlam a qualidade do vídeo"
   },
-  "autoDefault": { 
+  "autoDefault": {
     "message": "Automático (Padrão)",
     "description": "Rótulo do botão para mudar para a qualidade de vídeo automática"
   },
-  "forceMaxQuality": { 
+  "forceMaxQuality": {
     "message": "Forçar qualidade máxima",
     "description": "Rótulo do botão para forçar a maior qualidade de vídeo disponível"
   },
-  "prefers1080p": { 
+  "prefers1080p": {
     "message": "Prefere 1080p+",
     "description": "Sub-rótulo indicando que forçar a qualidade máxima prefere 1080p ou superior"
   },
-  "availableQualities": { 
+  "availableQualities": {
     "message": "Qualidades disponíveis",
     "description": "Cabeçalho para a lista de qualidades de vídeo específicas que um usuário pode escolher"
   },
-  "settingsSaved": { 
+  "settingsSaved": {
     "message": "Configurações salvas. As alterações podem levar alguns segundos...",
     "description": "Mensagem de notificação mostrada quando o usuário altera as configurações"
   },
-  "updatingQuality": { 
+  "updatingQuality": {
     "message": "Atualizando a qualidade... o buffer pode levar de 10 a 20 segundos para ser limpo.",
     "description": "Mensagem de notificação mais longa explicando que as atualizações de qualidade de vídeo levam tempo"
   },
-  "leaveReview": { 
+  "leaveReview": {
     "message": "Achou útil? Deixe uma avaliação",
     "description": "Aviso pedindo ao usuário para avaliar a extensão"
+  },
+  "advanced": {
+    "message": "Avançado",
+    "description": "Header for the advanced network settings section"
+  },
+  "enableRetries": {
+    "message": "Tentativas de Rede",
+    "description": "Label for the network retries toggle"
+  },
+  "enablePrefetch": {
+    "message": "Buffer de Pré-carregamento",
+    "description": "Label for the prefetch buffer toggle"
+  },
+  "advancedRetriesDesc": {
+    "message": "Tentar novamente chamadas de rede falhadas",
+    "description": "Description explaining what network retries do"
+  },
+  "advancedPrefetchDesc": {
+    "message": "Pré-carregar segmentos para reduzir buffer",
+    "description": "Description explaining what the prefetch buffer does"
   }
 }

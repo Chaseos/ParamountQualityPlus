@@ -1,54 +1,74 @@
 {
-  "appName": { 
+  "appName": {
     "message": "Paramount Quality+",
     "description": "The name of the extension"
   },
-  "appDesc": { 
+  "appDesc": {
     "message": "Set and manage playback resolution on Paramount+ for on-demand videos and live streams, with simple controls and clear feedback.",
     "description": "The description of the extension shown in the web store and browser extensions page"
   },
-  "notConnected": { 
+  "notConnected": {
     "message": "Not connected",
     "description": "Status indicating the extension is not connected to a video stream"
   },
-  "resolution": { 
+  "resolution": {
     "message": "Resolution",
     "description": "Label for the video resolution stat"
   },
-  "bitrate": { 
+  "bitrate": {
     "message": "Bitrate",
     "description": "Label for the video bitrate stat"
   },
-  "qualityControl": { 
+  "qualityControl": {
     "message": "Quality Control",
     "description": "Header for the section where users control the video quality"
   },
-  "autoDefault": { 
+  "autoDefault": {
     "message": "Auto (Default)",
     "description": "Button label to switch to automatic video quality"
   },
-  "forceMaxQuality": { 
+  "forceMaxQuality": {
     "message": "Force Max Quality",
     "description": "Button label to force the highest available video quality"
   },
-  "prefers1080p": { 
+  "prefers1080p": {
     "message": "Prefers 1080p+",
     "description": "Sub-label indicating that force max quality prefers 1080p or higher"
   },
-  "availableQualities": { 
+  "availableQualities": {
     "message": "Available Qualities",
     "description": "Header for the list of specific video qualities a user can choose from"
   },
-  "settingsSaved": { 
+  "settingsSaved": {
     "message": "Settings saved. Changes may take a few seconds...",
     "description": "Notification message shown when user changes settings"
   },
-  "updatingQuality": { 
+  "updatingQuality": {
     "message": "Updating quality... buffer may take 10-20 seconds to clear.",
     "description": "Longer notification message explaining that video quality updates take time"
   },
-  "leaveReview": { 
+  "leaveReview": {
     "message": "Find it useful? Leave a review",
     "description": "Prompt asking the user to review the extension"
+  },
+  "advanced": {
+    "message": "Advanced",
+    "description": "Header for the advanced network settings section"
+  },
+  "enableRetries": {
+    "message": "Network Retries",
+    "description": "Label for the network retries toggle"
+  },
+  "enablePrefetch": {
+    "message": "Prefetch Buffer",
+    "description": "Label for the prefetch buffer toggle"
+  },
+  "advancedRetriesDesc": {
+    "message": "Retry failed network calls",
+    "description": "Description explaining what network retries do"
+  },
+  "advancedPrefetchDesc": {
+    "message": "Preload segments to reduce buffering",
+    "description": "Description explaining what the prefetch buffer does"
   }
 }

@@ -298,6 +298,49 @@
       height: 14px;
       fill: #fbbf24;
     }
+    .advanced-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .advanced-header:hover .section-title {
+      color: var(--text-main);
+    }
+
+    .advanced-header .section-title {
+      margin-top: 0;
+      margin-bottom: 0;
+      transition: color 0.2s;
+    }
+
+    .chevron {
+      width: 14px;
+      height: 14px;
+      color: var(--text-muted);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .advanced-content {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .advanced-content.expanded {
+      max-height: 200px; /* arbitrary max height larger than content */
+      opacity: 1;
+      margin-bottom: 8px;
+    }
+
+    .advanced-header.expanded .chevron {
+      transform: rotate(180deg);
+    }
   </style>
 </head>
 
@@ -357,36 +400,49 @@
     </div>
 
     <!-- Advanced Network -->
-    <div class="section-title" style="margin-top: 16px;" data-i18n="advancedNetwork">Advanced Network</div>
+    <div class="advanced-header" id="advanced-toggle">
+      <div class="section-title" data-i18n="advanced">Advanced</div>
+      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </div>
     
-    <div class="card" style="padding: 12px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 0;">
-      
-      <!-- Retries Row -->
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <label style="font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer;">
-          <input type="checkbox" id="cb-retries" checked style="accent-color: var(--accent); margin: 0;">
-          <span data-i18n="enableRetries" id="label-retries">Network Retries</span>
-        </label>
-        <div style="display: flex; align-items: center; gap: 6px;">
-           <input type="number" id="num-retries" min="1" max="10" value="3" style="width: 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 4px; font-size: 12px; text-align: center;">
-           <span style="font-size: 11px; color: var(--text-muted); width: 24px;">max</span>
+    <div class="advanced-content" id="advanced-content">
+      <div class="card" style="padding: 12px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 0;">
+        
+        <!-- Retries Row -->
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1;">
+            <input type="checkbox" id="cb-retries" checked style="accent-color: var(--accent); margin: 0; flex-shrink: 0;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 13px; font-weight: 500;" data-i18n="enableRetries" id="label-retries">Network Retries</span>
+              <span style="font-size: 10px; color: var(--text-muted); line-height: 1.2; padding-right: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" data-i18n="advancedRetriesDesc" id="desc-retries">Retry failed network calls</span>
+            </div>
+          </label>
+          <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+             <input type="number" id="num-retries" min="1" max="10" value="3" style="width: 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 4px; font-size: 12px; text-align: center;">
+             <span style="font-size: 11px; color: var(--text-muted); width: 24px;">max</span>
+          </div>
         </div>
-      </div>
 
-      <div style="height: 1px; background: var(--border); width: 100%;"></div>
+        <div style="height: 1px; background: var(--border); width: 100%;"></div>
 
-      <!-- Prefetch Row -->
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <label style="font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer;">
-          <input type="checkbox" id="cb-prefetch" checked style="accent-color: var(--accent); margin: 0;">
-          <span data-i18n="enablePrefetch" id="label-prefetch">Prefetch Buffer</span>
-        </label>
-        <div style="display: flex; align-items: center; gap: 6px;">
-           <input type="number" id="num-prefetch" min="1" max="20" value="5" style="width: 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 4px; font-size: 12px; text-align: center;">
-           <span style="font-size: 11px; color: var(--text-muted); width: 24px;">segs</span>
+        <!-- Prefetch Row -->
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1;">
+            <input type="checkbox" id="cb-prefetch" checked style="accent-color: var(--accent); margin: 0; flex-shrink: 0;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 13px; font-weight: 500;" data-i18n="enablePrefetch" id="label-prefetch">Prefetch Buffer</span>
+              <span style="font-size: 10px; color: var(--text-muted); line-height: 1.2; padding-right: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" data-i18n="advancedPrefetchDesc" id="desc-prefetch">Preload segments to reduce buffering</span>
+            </div>
+          </label>
+          <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+             <input type="number" id="num-prefetch" min="1" max="20" value="5" style="width: 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 4px; font-size: 12px; text-align: center;">
+             <span style="font-size: 11px; color: var(--text-muted); width: 24px;">segs</span>
+          </div>
         </div>
-      </div>
 
+      </div>
     </div>
 
 
