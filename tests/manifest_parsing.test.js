@@ -270,4 +270,48 @@ describe('Manifest Parsing', () => {
         expect(reps.length).toBe(2);
         expect(reps[0].height).toBe(1080);
     });
+    test('Should support generic c-number and resolution markers for content', () => {
+        const manifest = `
+            <MPD>
+                <Period>
+                    <AdaptationSet contentType="video" mimeType="video/mp4">
+                        <Representation id="1080" bandwidth="5577000" width="1920" height="1080">
+                            <BaseURL>BIG_BROTHER_2701_2997DF_HD_2CH_1920x1080_R1_c23_1080p_3412599_5400/seg_$Number$.m4s</BaseURL>
+                        </Representation>
+                        <Representation id="ad" bandwidth="150000" width="360" height="200">
+                            <BaseURL>https://r1.googlevideo.com/videoplayback?source=dclk_video_ads</BaseURL>
+                        </Representation>
+                    </AdaptationSet>
+                </Period>
+            </MPD>
+        `;
+        parseManifest(manifest, 'c23_test.mpd');
+        const reps = getAvailableRepresentations();
+        expect(reps.length).toBe(1);
+        expect(reps[0].height).toBe(1080);
+        expect(reps[0].isContent).toBe(true);
+    });
+
+    test('Should not falsely flag shows with "dai" in the name as ads', () => {
+        const manifest = `
+            <MPD>
+                <Period>
+                    <AdaptationSet contentType="video" mimeType="video/mp4">
+                        <Representation id="content" bandwidth="5577000" width="1920" height="1080">
+                            <BaseURL>The_Daily_Show_1080p_1234/seg_$Number$.m4s</BaseURL>
+                        </Representation>
+                        <Representation id="ad" bandwidth="150000" width="360" height="200">
+                            <BaseURL>https://host/dai/1234/ad_seg.m4s</BaseURL>
+                        </Representation>
+                    </AdaptationSet>
+                </Period>
+            </MPD>
+        `;
+        parseManifest(manifest, 'daily_show.mpd');
+        const reps = getAvailableRepresentations();
+        expect(reps.length).toBe(1);
+        // The Daily Show should be prioritized over the /dai/ ad
+        expect(reps[0].height).toBe(1080);
+        expect(reps[0].isContent).toBe(true);
+    });
 });

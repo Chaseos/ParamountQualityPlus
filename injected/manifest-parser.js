@@ -246,7 +246,8 @@ export function parseDashManifest(xmlString, requestUrl) {
             finalHeight = parseInt(estimatedRes.replace('p', ''));
           }
 
-          const adStrings = ['google', 'dai', 'doubleclick', 'video_ads', 'googlevideo', 'dclk', '/ad/', '_ad_', 'ads/'];
+          // Require boundaries around 'dai' to prevent matching shows like "The Daily Show"
+          const adStrings = ['google', '/dai/', '_dai_', 'doubleclick', 'video_ads', 'googlevideo', 'dclk', '/ad/', '_ad_', 'ads/'];
           const lowerId = (rawId || '').toLowerCase();
           const lowerPath = (pathId || '').toLowerCase();
           const lowerBase = (baseUrl || '').toLowerCase();
@@ -256,7 +257,7 @@ export function parseDashManifest(xmlString, requestUrl) {
 
           const hasContentMarker = !!(pathId && (
             pathId.includes('PPUSA') ||
-            /feature|movie|show|uhd|8ch|apple|amazon|c26|c24|hvc1|avc1|cenc|dash|prod|ftr|vmaster|vtrack|eng|spa|fra|live|event|pplus|match|replay|efl|sport|league|en[-_]|es[-_]/i.test(pathId)
+            /feature|movie|show|uhd|hd|sdr|hdr|dolby|atmos|4k|1080|720|2ch|8ch|apple|amazon|c\d{2}|hvc1|avc1|cenc|dash|prod|ftr|vmaster|vtrack|eng|spa|fra|live|event|pplus|match|replay|efl|sport|league|en[-_]|es[-_]/i.test(pathId)
           ));
 
           const q = {

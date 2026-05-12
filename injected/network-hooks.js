@@ -84,7 +84,9 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
           const response = await fetchWithRetry(this, args, true, newUrl);
           if (response.ok) {
             // Parse manifest responses to update live stats (e.g., PQI_ACTIVE_QUALITY)
-            if (isManifestUrl(newUrl)) {
+            const contentType = response.headers?.get?.('content-type') || '';
+            const isManifestResponse = isManifestUrl(newUrl) || contentType.includes('dash+xml') || contentType.includes('mpegurl');
+            if (isManifestResponse) {
               const clone = response.clone();
               clone.text().then(text => {
                 parseManifest(text, newUrl);
@@ -134,7 +136,9 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
       if (isSegmentUrl(url)) maybePrefetchSegments(url, ORIGINAL_FETCH);
       const response = await fetchWithRetry(this, args, true, url);
 
-      if (isManifestUrl(url)) {
+      const contentType = response.headers?.get?.('content-type') || '';
+      const isManifestResponse = isManifestUrl(url) || contentType.includes('dash+xml') || contentType.includes('mpegurl');
+      if (isManifestResponse) {
         const clone = response.clone();
         clone.text().then(text => {
           parseManifest(text, url);
@@ -155,7 +159,9 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
 
     const response = await fetchWithRetry(this, args, isRetryable, url);
 
-    if (isManifestUrl(url)) {
+    const contentType = response.headers?.get?.('content-type') || '';
+    const isManifestResponse = isManifestUrl(url) || contentType.includes('dash+xml') || contentType.includes('mpegurl');
+    if (isManifestResponse) {
       const clone = response.clone();
       clone.text().then(text => {
         parseManifest(text, url);
@@ -181,11 +187,13 @@ export function initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest })
   };
 
   XMLHttpRequest.prototype.send = function (...args) {
-    if (this._pqi_url && isManifestUrl(this._pqi_url)) {
-      this.addEventListener('load', () => {
+    this.addEventListener('load', () => {
+      const contentType = typeof this.getResponseHeader === 'function' ? (this.getResponseHeader('content-type') || '') : '';
+      const isManifestResponse = (this._pqi_url && isManifestUrl(this._pqi_url)) || contentType.includes('dash+xml') || contentType.includes('mpegurl');
+      if (isManifestResponse) {
         parseManifest(this.responseText, this._pqi_url);
-      });
-    }
+      }
+    });
     return ORIGINAL_XHR_SEND.apply(this, args);
   };
 
