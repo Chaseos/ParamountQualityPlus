@@ -62,11 +62,14 @@ function determineStoreUrl() {
     const ua = navigator.userAgent;
     const isFirefox = ua.includes("Firefox");
     const isOpera = ua.includes("OPR/") || ua.includes("Opera");
+    const isEdge = ua.includes("Edg/");
 
     if (isFirefox) {
         return "https://addons.mozilla.org/en-US/firefox/addon/paramount-quality/reviews/";
     } else if (isOpera) {
         return "https://addons.opera.com/en/extensions/details/paramount-quality/#feedback-container";
+    } else if (isEdge) {
+        return "https://microsoftedge.microsoft.com/addons/detail/paramount-quality/cpaekgjghoegidknadojliokbcldohjb";
     } else {
         // Default to Chrome
         return "https://chromewebstore.google.com/detail/paramount-quality+/jdhjjddhdmhphkfgcfclekdngihnoann/reviews";
