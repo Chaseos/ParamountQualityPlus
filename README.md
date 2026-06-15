@@ -33,5 +33,5 @@ A Chrome extension that surfaces real-time streaming quality information on Para
   - Tests live in [`tests/`](./tests) alongside fixtures that mirror live DAI and VOD manifest shapes.
 
 ## Notes
-- Host permissions are limited to `*.paramountplus.com` and `*.paramount.tech` for quality inspection.
+- Host permissions are limited to `*.paramountplus.com` for quality inspection.
 - The extension respects both DASH (`.mpd`) and HLS (`.m3u8`) manifest formats.

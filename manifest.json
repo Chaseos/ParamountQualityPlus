@@ -9,8 +9,7 @@
     "storage"
   ],
   "host_permissions": [
-    "*://*.paramountplus.com/*",
-    "*://*.paramount.tech/*"
+    "*://*.paramountplus.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
