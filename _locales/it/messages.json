@@ -51,6 +51,14 @@
     "message": "Ti è utile? Lascia una recensione",
     "description": "Richiesta all'utente di recensire l'estensione"
   },
+  "supportMyWork": {
+    "message": "Sostieni il mio lavoro",
+    "description": "Titolo ed etichetta accessibile del link di supporto Ko-Fi"
+  },
+  "supportMyWorkCta": {
+    "message": "Sostieni il lavoro",
+    "description": "Etichetta visibile compatta del supporto Ko-Fi. Mantenerla abbastanza breve per l'intestazione del popup."
+  },
   "advanced": {
     "message": "Avanzate",
     "description": "Intestazione della sezione delle impostazioni di rete avanzate"

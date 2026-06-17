@@ -16,7 +16,7 @@
     }
 
     body {
-      width: 320px;
+      width: 340px;
       padding: 16px;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: var(--bg-color);
@@ -33,20 +33,124 @@
 
     .header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 6px;
+      justify-content: space-between;
       margin-bottom: 20px;
+      position: relative;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 5px;
+      flex: 1;
+      min-width: 0;
     }
 
     .logo-img {
-      width: 24px;
-      height: 24px;
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      font-size: 14px;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .brand-plus {
+      font-size: 10px;
+      vertical-align: top;
+      position: relative;
+      top: -2px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .kofi-link {
+      position: relative;
+      box-sizing: border-box;
+      width: fit-content;
+      max-width: 154px;
+      height: 30px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 5px;
+      padding: 0 8px;
+      color: var(--text-main);
+      cursor: pointer;
+      outline: none;
+      text-decoration: none;
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .kofi-link:hover,
+    .kofi-link:focus-visible {
+      background: rgba(255, 90, 22, 0.16);
+      border-color: #ff5a16;
+      box-shadow: 0 0 12px rgba(255, 90, 22, 0.22);
+      transform: translateY(-1px) rotate(-2deg);
+    }
+
+    .kofi-link:hover .kofi-icon,
+    .kofi-link:focus-visible .kofi-icon {
+      animation: kofi-pop 0.45s ease;
+    }
+
+    .kofi-icon {
+      width: 18px;
+      height: 18px;
+      display: block;
+      flex-shrink: 0;
+    }
+
+    .kofi-message {
+      color: var(--text-main);
+      font-size: 11px;
+      font-weight: 600;
+      flex: 1;
+      line-height: 1;
+      min-width: 0;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
+      text-overflow: ellipsis;
+      transform: translateX(4px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .kofi-link:hover .kofi-message,
+    .kofi-link:focus-visible .kofi-message {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    @keyframes kofi-pop {
+      0% {
+        transform: scale(1) rotate(0deg);
+      }
+
+      45% {
+        transform: scale(1.16) rotate(8deg);
+      }
+
+      100% {
+        transform: scale(1) rotate(0deg);
+      }
     }
 
     .status-dot {
@@ -55,6 +159,7 @@
       border-radius: 50%;
       background-color: var(--text-muted);
       transition: all 0.3s ease;
+      flex-shrink: 0;
     }
 
     .status-dot.active {
@@ -348,10 +453,16 @@
   <div class="header">
     <div class="brand">
       <img src="icon.png" class="logo-img">
-      <span style="font-weight: 700; font-size: 16px;">Paramount Quality<sup
-          style="font-size: 12px; vertical-align: top; position: relative; top: -2px;">+</sup></span>
+      <span class="brand-title">Paramount Quality<sup class="brand-plus">+</sup></span>
     </div>
-    <div class="status-dot" id="connection-dot" data-i18n-title="notConnected" title="Not connected"></div>
+    <div class="header-actions">
+      <a id="kofi-link" href="https://ko-fi.com/chaseos" target="_blank" rel="noopener noreferrer" class="kofi-link"
+        data-i18n-title="supportMyWork" data-i18n-aria-label="supportMyWork" title="Support my work" aria-label="Support my work">
+        <span class="kofi-message" data-i18n="supportMyWorkCta">Support my work</span>
+        <img src="kofi_symbol.svg" alt="" class="kofi-icon">
+      </a>
+      <div class="status-dot" id="connection-dot" data-i18n-title="notConnected" title="Not connected"></div>
+    </div>
   </div>
 
   <div class="card">

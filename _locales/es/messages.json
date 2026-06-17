@@ -51,6 +51,14 @@
     "message": "¿Te resulta útil? Deja una reseña",
     "description": "Aviso pidiendo al usuario que revise la extensión"
   },
+  "supportMyWork": {
+    "message": "Apoya mi trabajo",
+    "description": "Título y etiqueta accesible del enlace de apoyo de Ko-Fi"
+  },
+  "supportMyWorkCta": {
+    "message": "Apoya mi trabajo",
+    "description": "Etiqueta visible compacta de apoyo de Ko-Fi. Debe ser lo bastante corta para el encabezado del popup."
+  },
   "advanced": {
     "message": "Avanzado",
     "description": "Encabezado de la sección de configuración avanzada de red"

@@ -9,12 +9,17 @@ let currentConfig = {
     prefetchCount: 5
 };
 
+const KOFI_URL = 'https://ko-fi.com/chaseos';
+
 document.addEventListener('DOMContentLoaded', () => {
     init();
 });
 
 async function init() {
     localizeUI();
+    const kofiLink = document.getElementById('kofi-link');
+    if (kofiLink) kofiLink.href = KOFI_URL;
+
     // 1. Load Config
     try {
         const result = await chrome.storage.sync.get(['forceMax', 'forcedId', 'reviewClicked', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount']);
@@ -209,6 +214,10 @@ function localizeUI() {
     document.querySelectorAll('[data-i18n-title]').forEach(el => {
         const msg = chrome.i18n.getMessage(el.getAttribute('data-i18n-title'));
         if (msg) el.title = msg;
+    });
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+        const msg = chrome.i18n.getMessage(el.getAttribute('data-i18n-aria-label'));
+        if (msg) el.setAttribute('aria-label', msg);
     });
 }
 

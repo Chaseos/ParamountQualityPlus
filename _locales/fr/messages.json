@@ -51,6 +51,14 @@
     "message": "C'est utile ? Laissez un avis",
     "description": "Invite demandant à l'utilisateur d'évaluer l'extension"
   },
+  "supportMyWork": {
+    "message": "Soutenir mon travail",
+    "description": "Titre et libellé accessible du lien de soutien Ko-Fi"
+  },
+  "supportMyWorkCta": {
+    "message": "Me soutenir",
+    "description": "Libellé visible compact du soutien Ko-Fi. À garder assez court pour l'en-tête du popup."
+  },
   "advanced": {
     "message": "Avancé",
     "description": "En-tête de la section des paramètres réseau avancés"

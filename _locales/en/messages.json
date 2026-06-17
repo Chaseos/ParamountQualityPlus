@@ -51,6 +51,14 @@
     "message": "Find it useful? Leave a review",
     "description": "Prompt asking the user to review the extension"
   },
+  "supportMyWork": {
+    "message": "Support my work",
+    "description": "Ko-Fi support link title and accessible label"
+  },
+  "supportMyWorkCta": {
+    "message": "Support my work",
+    "description": "Compact visible Ko-Fi support label. Keep short enough for the popup header."
+  },
   "advanced": {
     "message": "Advanced",
     "description": "Header for the advanced network settings section"

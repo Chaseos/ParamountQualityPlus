@@ -51,6 +51,14 @@
     "message": "Nützlich? Hinterlassen Sie eine Bewertung",
     "description": "Aufforderung an den Benutzer, die Erweiterung zu bewerten"
   },
+  "supportMyWork": {
+    "message": "Meine Arbeit unterstützen",
+    "description": "Titel und barrierefreie Beschriftung des Ko-Fi-Unterstützungslinks"
+  },
+  "supportMyWorkCta": {
+    "message": "Unterstützen",
+    "description": "Kompakte sichtbare Ko-Fi-Unterstützungsbeschriftung. Kurz genug für die Popup-Kopfzeile halten."
+  },
   "advanced": {
     "message": "Erweitert",
     "description": "Überschrift für den Abschnitt mit erweiterten Netzwerkeinstellungen"
