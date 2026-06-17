@@ -24,7 +24,7 @@
     "description": "Intestazione per la sezione in cui gli utenti controllano la qualità del video"
   },
   "autoDefault": {
-    "message": "Automatico (Predefinito)",
+    "message": "Automatico (predefinito)",
     "description": "Etichetta del pulsante per passare alla qualità video automatica"
   },
   "forceMaxQuality": {
@@ -32,7 +32,7 @@
     "description": "Etichetta del pulsante per forzare la massima qualità video disponibile"
   },
   "prefers1080p": {
-    "message": "Preferisce 1080p+",
+    "message": "Dà priorità a 1080p+",
     "description": "Sotto-etichetta che indica che forzare la qualità massima preferisce 1080p o superiore"
   },
   "availableQualities": {
@@ -53,22 +53,22 @@
   },
   "advanced": {
     "message": "Avanzate",
-    "description": "Header for the advanced network settings section"
+    "description": "Intestazione della sezione delle impostazioni di rete avanzate"
   },
   "enableRetries": {
-    "message": "Tentativi di Rete",
-    "description": "Label for the network retries toggle"
+    "message": "Tentativi di rete",
+    "description": "Etichetta dell'interruttore per i tentativi di rete"
   },
   "enablePrefetch": {
-    "message": "Buffer di Precaricamento",
-    "description": "Label for the prefetch buffer toggle"
+    "message": "Buffer di precaricamento",
+    "description": "Etichetta dell'interruttore per il buffer di precaricamento"
   },
   "advancedRetriesDesc": {
     "message": "Riprova chiamate di rete non riuscite",
-    "description": "Description explaining what network retries do"
+    "description": "Descrizione di cosa fanno i tentativi di rete"
   },
   "advancedPrefetchDesc": {
     "message": "Precarica i segmenti per ridurre il buffering",
-    "description": "Description explaining what the prefetch buffer does"
+    "description": "Descrizione di cosa fa il buffer di precaricamento"
   }
 }

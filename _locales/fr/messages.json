@@ -4,7 +4,7 @@
     "description": "Le nom de l'extension"
   },
   "appDesc": {
-    "message": "Définissez et gérez la résolution de lecture sur Paramount+ pour les vidéos à la demande et les diffusions en direct, avec des commandes simples et des retours clairs.",
+    "message": "Définissez et gérez la résolution de lecture sur Paramount+ pour les vidéos à la demande et les diffusions en direct, avec des commandes simples et des indications claires.",
     "description": "La description de l'extension affichée dans la boutique web et la page des extensions du navigateur"
   },
   "notConnected": {
@@ -20,11 +20,11 @@
     "description": "Étiquette pour la statistique de débit vidéo"
   },
   "qualityControl": {
-    "message": "Contrôle de la qualité",
+    "message": "Contrôle qualité",
     "description": "En-tête de la section où les utilisateurs contrôlent la qualité vidéo"
   },
   "autoDefault": {
-    "message": "Auto (Par défaut)",
+    "message": "Auto (par défaut)",
     "description": "Étiquette du bouton pour passer à la qualité vidéo automatique"
   },
   "forceMaxQuality": {
@@ -32,7 +32,7 @@
     "description": "Étiquette du bouton pour forcer la qualité vidéo la plus élevée disponible"
   },
   "prefers1080p": {
-    "message": "Préfère 1080p+",
+    "message": "Privilégie le 1080p+",
     "description": "Sous-étiquette indiquant que forcer la qualité maximale préfère 1080p ou plus"
   },
   "availableQualities": {
@@ -53,22 +53,22 @@
   },
   "advanced": {
     "message": "Avancé",
-    "description": "Header for the advanced network settings section"
+    "description": "En-tête de la section des paramètres réseau avancés"
   },
   "enableRetries": {
-    "message": "Nouvelles Tentatives Réseau",
-    "description": "Label for the network retries toggle"
+    "message": "Relances réseau",
+    "description": "Libellé du bouton des relances réseau"
   },
   "enablePrefetch": {
-    "message": "Tampon de Préchargement",
-    "description": "Label for the prefetch buffer toggle"
+    "message": "Tampon de préchargement",
+    "description": "Libellé du bouton du tampon de préchargement"
   },
   "advancedRetriesDesc": {
     "message": "Réessayer les appels réseau échoués",
-    "description": "Description explaining what network retries do"
+    "description": "Description expliquant le rôle des relances réseau"
   },
   "advancedPrefetchDesc": {
     "message": "Précharger les segments pour réduire la mise en mémoire tampon",
-    "description": "Description explaining what the prefetch buffer does"
+    "description": "Description expliquant le rôle du tampon de préchargement"
   }
 }

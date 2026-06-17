@@ -4,7 +4,7 @@
     "description": "Der Name der Erweiterung"
   },
   "appDesc": {
-    "message": "Legen Sie die Wiedergabeauflösung auf Paramount+ für On-Demand-Videos und Live-Streams fest, mit einfachen Steuerelementen und klarem Feedback.",
+    "message": "Legen Sie die Wiedergabeauflösung auf Paramount+ für On-Demand-Videos und Livestreams fest und verwalten Sie sie mit einfachen Steuerelementen und klaren Rückmeldungen.",
     "description": "Die Beschreibung der Erweiterung, die im Web Store und auf der Browser-Erweiterungsseite angezeigt wird"
   },
   "notConnected": {
@@ -20,7 +20,7 @@
     "description": "Label für die Videobitratenstatistik"
   },
   "qualityControl": {
-    "message": "Qualitätskontrolle",
+    "message": "Videoqualität",
     "description": "Kopfzeile für den Bereich, in dem Benutzer die Videoqualität steuern"
   },
   "autoDefault": {
@@ -32,7 +32,7 @@
     "description": "Schaltflächenbezeichnung zum Erzwingen der höchsten verfügbaren Videoqualität"
   },
   "prefers1080p": {
-    "message": "Bevorzugt 1080p+",
+    "message": "Priorisiert 1080p+",
     "description": "Zusatzlabel, das anzeigt, dass die erzwungene maximale Qualität 1080p oder höher bevorzugt"
   },
   "availableQualities": {
@@ -53,22 +53,22 @@
   },
   "advanced": {
     "message": "Erweitert",
-    "description": "Header for the advanced network settings section"
+    "description": "Überschrift für den Abschnitt mit erweiterten Netzwerkeinstellungen"
   },
   "enableRetries": {
     "message": "Netzwerk-Wiederholungen",
-    "description": "Label for the network retries toggle"
+    "description": "Beschriftung für den Schalter für Netzwerk-Wiederholungen"
   },
   "enablePrefetch": {
-    "message": "Prefetch-Puffer",
-    "description": "Label for the prefetch buffer toggle"
+    "message": "Vorladepuffer",
+    "description": "Beschriftung für den Schalter für den Vorladepuffer"
   },
   "advancedRetriesDesc": {
     "message": "Fehlgeschlagene Netzwerkaufrufe wiederholen",
-    "description": "Description explaining what network retries do"
+    "description": "Beschreibung der Netzwerk-Wiederholungen"
   },
   "advancedPrefetchDesc": {
     "message": "Segmente vorladen, um Pufferung zu reduzieren",
-    "description": "Description explaining what the prefetch buffer does"
+    "description": "Beschreibung des Vorladepuffers"
   }
 }

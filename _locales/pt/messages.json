@@ -4,7 +4,7 @@
     "description": "O nome da extensão"
   },
   "appDesc": {
-    "message": "Defina e gerencie a resolução de reprodução no Paramount+ para vídeos sob demanda e transmissões ao vivo, com controles simples e feedback claro.",
+    "message": "Defina e gerencie a resolução de reprodução no Paramount+ para vídeos sob demanda e transmissões ao vivo, com controles simples e retorno claro.",
     "description": "A descrição da extensão exibida na web store e na página de extensões do navegador"
   },
   "notConnected": {
@@ -24,7 +24,7 @@
     "description": "Cabeçalho da seção onde os usuários controlam a qualidade do vídeo"
   },
   "autoDefault": {
-    "message": "Automático (Padrão)",
+    "message": "Automático (padrão)",
     "description": "Rótulo do botão para mudar para a qualidade de vídeo automática"
   },
   "forceMaxQuality": {
@@ -44,7 +44,7 @@
     "description": "Mensagem de notificação mostrada quando o usuário altera as configurações"
   },
   "updatingQuality": {
-    "message": "Atualizando a qualidade... o buffer pode levar de 10 a 20 segundos para ser limpo.",
+    "message": "Atualizando a qualidade... o buffer pode levar de 10 a 20 segundos para esvaziar.",
     "description": "Mensagem de notificação mais longa explicando que as atualizações de qualidade de vídeo levam tempo"
   },
   "leaveReview": {
@@ -53,22 +53,22 @@
   },
   "advanced": {
     "message": "Avançado",
-    "description": "Header for the advanced network settings section"
+    "description": "Cabeçalho da seção de configurações avançadas de rede"
   },
   "enableRetries": {
-    "message": "Tentativas de Rede",
-    "description": "Label for the network retries toggle"
+    "message": "Repetições de rede",
+    "description": "Rótulo do controle de repetições de rede"
   },
   "enablePrefetch": {
-    "message": "Buffer de Pré-carregamento",
-    "description": "Label for the prefetch buffer toggle"
+    "message": "Buffer de pré-carregamento",
+    "description": "Rótulo do controle do buffer de pré-carregamento"
   },
   "advancedRetriesDesc": {
-    "message": "Tentar novamente chamadas de rede falhadas",
-    "description": "Description explaining what network retries do"
+    "message": "Repetir chamadas de rede que falharem",
+    "description": "Descrição explicando o que as repetições de rede fazem"
   },
   "advancedPrefetchDesc": {
-    "message": "Pré-carregar segmentos para reduzir buffer",
-    "description": "Description explaining what the prefetch buffer does"
+    "message": "Pré-carregar segmentos para reduzir o buffering",
+    "description": "Descrição explicando o que o buffer de pré-carregamento faz"
   }
 }

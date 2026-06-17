@@ -4,7 +4,7 @@
     "description": "El nombre de la extensión"
   },
   "appDesc": {
-    "message": "Configura y administra la resolución de reproducción en Paramount+ para videos a pedido y transmisiones en vivo, con controles simples y comentarios claros.",
+    "message": "Configura y administra la resolución de reproducción en Paramount+ para videos a pedido y transmisiones en vivo, con controles simples e información clara.",
     "description": "La descripción de la extensión mostrada en la tienda web y en la página de extensiones del navegador"
   },
   "notConnected": {
@@ -24,7 +24,7 @@
     "description": "Encabezado de la sección donde los usuarios controlan la calidad del video"
   },
   "autoDefault": {
-    "message": "Automático (Predeterminado)",
+    "message": "Automático (predeterminado)",
     "description": "Etiqueta del botón para cambiar a la calidad de video automática"
   },
   "forceMaxQuality": {
@@ -32,7 +32,7 @@
     "description": "Etiqueta del botón para forzar la calidad de video más alta disponible"
   },
   "prefers1080p": {
-    "message": "Prefiere 1080p+",
+    "message": "Prioriza 1080p+",
     "description": "Subetiqueta que indica que forzar la calidad máxima prefiere 1080p o superior"
   },
   "availableQualities": {
@@ -53,22 +53,22 @@
   },
   "advanced": {
     "message": "Avanzado",
-    "description": "Header for the advanced network settings section"
+    "description": "Encabezado de la sección de configuración avanzada de red"
   },
   "enableRetries": {
-    "message": "Reintentos de Red",
-    "description": "Label for the network retries toggle"
+    "message": "Reintentos de red",
+    "description": "Etiqueta del control de reintentos de red"
   },
   "enablePrefetch": {
-    "message": "Búfer de Precarga",
-    "description": "Label for the prefetch buffer toggle"
+    "message": "Búfer de precarga",
+    "description": "Etiqueta del control de búfer de precarga"
   },
   "advancedRetriesDesc": {
     "message": "Reintentar llamadas de red fallidas",
-    "description": "Description explaining what network retries do"
+    "description": "Descripción que explica qué hacen los reintentos de red"
   },
   "advancedPrefetchDesc": {
-    "message": "Precargar segmentos para reducir almacenamiento en búfer",
-    "description": "Description explaining what the prefetch buffer does"
+    "message": "Precargar segmentos para reducir el buffering",
+    "description": "Descripción que explica qué hace el búfer de precarga"
   }
 }
