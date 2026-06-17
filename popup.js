@@ -10,6 +10,17 @@ let currentConfig = {
 };
 
 const KOFI_URL = 'https://ko-fi.com/chaseos';
+const REVIEW_STORE_URLS = Object.freeze({
+    chrome: "https://chromewebstore.google.com/detail/paramount-quality+/jdhjjddhdmhphkfgcfclekdngihnoann/reviews",
+    edge: "https://microsoftedge.microsoft.com/addons/detail/paramount-quality/cpaekgjghoegidknadojliokbcldohjb",
+    firefox: "https://addons.mozilla.org/en-US/firefox/addon/paramount-quality/reviews/",
+    opera: "https://addons.opera.com/en/extensions/details/paramount-quality/#feedback-container"
+});
+const REVIEW_STORE_EXTENSION_IDS = Object.freeze({
+    chrome: "jdhjjddhdmhphkfgcfclekdngihnoann",
+    edge: "cpaekgjghoegidknadojliokbcldohjb",
+    firefox: "@paramount-quality-plus"
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     init();
@@ -64,21 +75,43 @@ async function init() {
 }
 
 function determineStoreUrl() {
-    const ua = navigator.userAgent;
-    const isFirefox = ua.includes("Firefox");
-    const isOpera = ua.includes("OPR/") || ua.includes("Opera");
-    const isEdge = ua.includes("Edg/");
+    return REVIEW_STORE_URLS[detectReviewStore()];
+}
 
-    if (isFirefox) {
-        return "https://addons.mozilla.org/en-US/firefox/addon/paramount-quality/reviews/";
-    } else if (isOpera) {
-        return "https://addons.opera.com/en/extensions/details/paramount-quality/#feedback-container";
-    } else if (isEdge) {
-        return "https://microsoftedge.microsoft.com/addons/detail/paramount-quality/cpaekgjghoegidknadojliokbcldohjb";
-    } else {
-        // Default to Chrome
-        return "https://chromewebstore.google.com/detail/paramount-quality+/jdhjjddhdmhphkfgcfclekdngihnoann/reviews";
+function getReviewRoutingEnvironment() {
+    const runtime = typeof chrome !== 'undefined' ? chrome.runtime : null;
+    const userAgentData = navigator.userAgentData || {};
+
+    return {
+        extensionId: runtime && runtime.id ? runtime.id : "",
+        extensionUrl: runtime && runtime.getURL ? runtime.getURL("") : "",
+        userAgent: navigator.userAgent || "",
+        userAgentBrands: Array.isArray(userAgentData.brands) ? userAgentData.brands : []
+    };
+}
+
+function detectReviewStore(env = getReviewRoutingEnvironment()) {
+    const extensionId = env.extensionId || "";
+    const extensionUrl = env.extensionUrl || "";
+    const ua = env.userAgent || "";
+    const brandText = (env.userAgentBrands || [])
+        .map(brand => brand && brand.brand)
+        .filter(Boolean)
+        .join(" ");
+
+    if (extensionId === REVIEW_STORE_EXTENSION_IDS.firefox || extensionUrl.startsWith("moz-extension://") || ua.includes("Firefox")) {
+        return "firefox";
     }
+
+    if (extensionId === REVIEW_STORE_EXTENSION_IDS.edge || /\bMicrosoft Edge\b/.test(brandText) || /Edg(A|iOS)?\//.test(ua)) {
+        return "edge";
+    }
+
+    if (/\bOpera\b/.test(brandText) || ua.includes("OPR/") || ua.includes("Opera")) {
+        return "opera";
+    }
+
+    return "chrome";
 }
 
 function setMode(forceMax, forcedId) {
