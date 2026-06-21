@@ -22,12 +22,33 @@ const SIMPLE_VIDEO_SPEED_CONTROLLER_STORE_URLS = Object.freeze({
     firefox: "https://addons.mozilla.org/en-US/firefox/addon/simple-video-speed-controller/",
     opera: "https://addons.opera.com/en/extensions/details/simple-video-speed-controller/"
 });
+const YOUTUBE_UI_CLEANER_STORE_URLS = Object.freeze({
+    chrome: "https://chromewebstore.google.com/detail/youtube-ui-cleaner/blnbifjnjgpgfigcpkhcfkiiepokhkdf",
+    edge: "https://microsoftedge.microsoft.com/addons/detail/youtube-ui-cleaner/dmfgeiiikimggajkkdefmngleooclhci",
+    firefox: "https://addons.mozilla.org/en-US/firefox/addon/youtube-ui-cleaner/",
+    opera: "https://addons.opera.com/en/extensions/details/youtube-ui-cleaner/"
+});
 const REVIEW_STORE_EXTENSION_IDS = Object.freeze({
     chrome: "jdhjjddhdmhphkfgcfclekdngihnoann",
     edge: "cpaekgjghoegidknadojliokbcldohjb",
     firefox: "@paramount-quality-plus"
 });
-let hasShownSimpleVideoSpeedControllerAd = false;
+const PROMOTED_EXTENSION_ADS = Object.freeze([
+    {
+        id: "simpleVideoSpeedController",
+        cardId: "simple-video-speed-controller-ad-card",
+        linkId: "simple-video-speed-controller-ad-link",
+        storageKey: "simpleVideoSpeedControllerAdShown",
+        urls: SIMPLE_VIDEO_SPEED_CONTROLLER_STORE_URLS
+    },
+    {
+        id: "youtubeUiCleaner",
+        cardId: "youtube-ui-cleaner-ad-card",
+        linkId: "youtube-ui-cleaner-ad-link",
+        storageKey: "youtubeUiCleanerAdShown",
+        urls: YOUTUBE_UI_CLEANER_STORE_URLS
+    }
+]);
 
 document.addEventListener('DOMContentLoaded', () => {
     init();
@@ -40,14 +61,13 @@ async function init() {
 
     // 1. Load Config
     try {
-        const result = await chrome.storage.sync.get(['forceMax', 'forcedId', 'reviewClicked', 'simpleVideoSpeedControllerAdShown', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount']);
+        const result = await chrome.storage.sync.get(['forceMax', 'forcedId', 'reviewClicked', 'simpleVideoSpeedControllerAdShown', 'youtubeUiCleanerAdShown', 'lastPromotedExtensionAd', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount']);
         currentConfig.forceMax = result.forceMax || false;
         currentConfig.forcedId = result.forcedId || null;
         currentConfig.enableRetries = result.enableRetries !== false;
         currentConfig.maxRetries = result.maxRetries !== undefined ? result.maxRetries : 3;
         currentConfig.enablePrefetch = result.enablePrefetch !== false;
         currentConfig.prefetchCount = result.prefetchCount !== undefined ? result.prefetchCount : 5;
-        hasShownSimpleVideoSpeedControllerAd = Boolean(result.simpleVideoSpeedControllerAdShown);
         
         updateSelectionUI();
         initNetworkControlsUI();
@@ -55,8 +75,8 @@ async function init() {
         if (!result.reviewClicked && (result.forceMax || result.forcedId)) {
             const reviewCard = document.getElementById('review-card');
             if (reviewCard) reviewCard.style.display = 'block';
-        } else if (shouldShowSimpleVideoSpeedControllerAd(result)) {
-            showSimpleVideoSpeedControllerAd();
+        } else {
+            showNextPromotedExtensionAd(result);
         }
     } catch (e) {
         console.error('Error loading config', e);
@@ -79,20 +99,11 @@ async function init() {
             chrome.storage.sync.set({ reviewClicked: true });
             const reviewCard = document.getElementById('review-card');
             if (reviewCard) reviewCard.style.display = 'none';
-            showSimpleVideoSpeedControllerAd();
+            showNextPromotedExtensionAd({ reviewClicked: true });
         });
     }
 
-    const simpleVideoSpeedControllerAdLink = document.getElementById('simple-video-speed-controller-ad-link');
-    if (simpleVideoSpeedControllerAdLink) {
-        simpleVideoSpeedControllerAdLink.href = determineSimpleVideoSpeedControllerStoreUrl();
-        simpleVideoSpeedControllerAdLink.addEventListener('click', () => {
-            hasShownSimpleVideoSpeedControllerAd = true;
-            chrome.storage.sync.set({ simpleVideoSpeedControllerAdShown: true });
-            const simpleVideoSpeedControllerAdCard = document.getElementById('simple-video-speed-controller-ad-card');
-            if (simpleVideoSpeedControllerAdCard) simpleVideoSpeedControllerAdCard.style.display = 'none';
-        });
-    }
+    bindPromotedExtensionAds();
 
     // 4. Start Polling
     startPolling();
@@ -106,15 +117,61 @@ function determineSimpleVideoSpeedControllerStoreUrl() {
     return SIMPLE_VIDEO_SPEED_CONTROLLER_STORE_URLS[detectReviewStore()];
 }
 
-function shouldShowSimpleVideoSpeedControllerAd(storageState) {
-    return Boolean(storageState.reviewClicked) && !storageState.simpleVideoSpeedControllerAdShown;
+function determineYouTubeUiCleanerStoreUrl() {
+    return YOUTUBE_UI_CLEANER_STORE_URLS[detectReviewStore()];
 }
 
-function showSimpleVideoSpeedControllerAd() {
-    if (hasShownSimpleVideoSpeedControllerAd) return;
+function bindPromotedExtensionAds() {
+    PROMOTED_EXTENSION_ADS.forEach(ad => {
+        const link = document.getElementById(ad.linkId);
+        if (!link) return;
 
-    const simpleVideoSpeedControllerAdCard = document.getElementById('simple-video-speed-controller-ad-card');
-    if (simpleVideoSpeedControllerAdCard) simpleVideoSpeedControllerAdCard.style.display = 'block';
+        link.href = determinePromotedExtensionStoreUrl(ad);
+        link.addEventListener('click', () => {
+            chrome.storage.sync.set({ [ad.storageKey]: true });
+            hidePromotedExtensionAds();
+        });
+    });
+}
+
+function determinePromotedExtensionStoreUrl(ad) {
+    return ad.urls[detectReviewStore()];
+}
+
+function shouldShowPromotedExtensionAd(storageState, ad) {
+    return Boolean(storageState.reviewClicked) && !storageState[ad.storageKey];
+}
+
+function choosePromotedExtensionAd(storageState) {
+    if (!storageState.reviewClicked) return null;
+
+    const eligibleAds = PROMOTED_EXTENSION_ADS.filter(ad => shouldShowPromotedExtensionAd(storageState, ad));
+    if (eligibleAds.length === 0) return null;
+    if (eligibleAds.length === 1) return eligibleAds[0];
+
+    return eligibleAds.find(ad => ad.id !== storageState.lastPromotedExtensionAd) || eligibleAds[0];
+}
+
+function showNextPromotedExtensionAd(storageState) {
+    const ad = choosePromotedExtensionAd(storageState);
+    if (!ad) {
+        hidePromotedExtensionAds();
+        return;
+    }
+
+    hidePromotedExtensionAds();
+
+    const card = document.getElementById(ad.cardId);
+    if (card) card.style.display = 'block';
+
+    chrome.storage.sync.set({ lastPromotedExtensionAd: ad.id });
+}
+
+function hidePromotedExtensionAds() {
+    PROMOTED_EXTENSION_ADS.forEach(ad => {
+        const card = document.getElementById(ad.cardId);
+        if (card) card.style.display = 'none';
+    });
 }
 
 function getReviewRoutingEnvironment() {

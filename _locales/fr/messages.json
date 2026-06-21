@@ -59,6 +59,14 @@
     "message": "Essayez Simple Video Speed Controller.",
     "description": "Deuxième ligne d'une invite faisant la promotion de l'extension Simple Video Speed Controller du développeur"
   },
+  "youtubeUiCleanerAdLineOne": {
+    "message": "Masquer les spoilers et résultats sur YouTube ?",
+    "description": "Première ligne d'une invite faisant la promotion de l'extension YouTube UI Cleaner du développeur"
+  },
+  "youtubeUiCleanerAdLineTwo": {
+    "message": "Essayez les filtres personnalisés de YouTube UI Cleaner.",
+    "description": "Deuxième ligne d'une invite faisant la promotion de l'extension YouTube UI Cleaner du développeur"
+  },
   "supportMyWork": {
     "message": "Soutenir mon travail",
     "description": "Titre et libellé accessible du lien de soutien Ko-Fi"

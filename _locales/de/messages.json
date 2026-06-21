@@ -59,6 +59,14 @@
     "message": "Probieren Sie Simple Video Speed Controller aus.",
     "description": "Zweite Zeile einer Aufforderung, die Simple Video Speed Controller-Erweiterung des Entwicklers zu bewerben"
   },
+  "youtubeUiCleanerAdLineOne": {
+    "message": "YouTube-Spoiler und Spielergebnisse ausblenden?",
+    "description": "Erste Zeile einer Aufforderung, die YouTube UI Cleaner-Erweiterung des Entwicklers zu bewerben"
+  },
+  "youtubeUiCleanerAdLineTwo": {
+    "message": "Probieren Sie die Filter von YouTube UI Cleaner aus.",
+    "description": "Zweite Zeile einer Aufforderung, die YouTube UI Cleaner-Erweiterung des Entwicklers zu bewerben"
+  },
   "supportMyWork": {
     "message": "Meine Arbeit unterstützen",
     "description": "Titel und barrierefreie Beschriftung des Ko-Fi-Unterstützungslinks"
