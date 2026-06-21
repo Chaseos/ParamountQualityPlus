@@ -78,5 +78,25 @@
   "advancedPrefetchDesc": {
     "message": "Précharger les segments pour réduire la mise en mémoire tampon",
     "description": "Description expliquant le rôle du tampon de préchargement"
+  },
+  "locationNoticeTitle": {
+    "message": "Options de qualité indisponibles",
+    "description": "Titre d'un avertissement affiché lorsque Paramount+ peut masquer les options de qualité parce que l'autorisation de localisation est refusée"
+  },
+  "locationNoticeBody": {
+    "message": "Paramount+ peut masquer les options de résolution pour certains titres ou événements en direct lorsque la localisation du site est bloquée. Demandez l'accès ici, puis actualisez la lecture.",
+    "description": "Avertissement affiché lorsque les options de qualité sont indisponibles et que l'autorisation de localisation est refusée"
+  },
+  "requestLocationAccess": {
+    "message": "Demander l'accès à la localisation",
+    "description": "Libellé du bouton qui demande à Paramount+ d'afficher l'invite d'autorisation de localisation du navigateur"
+  },
+  "locationAccessGranted": {
+    "message": "Localisation autorisée. Actualisez la lecture si les options de qualité n'apparaissent pas.",
+    "description": "Notification affichée lorsque l'utilisateur autorise l'accès à la localisation"
+  },
+  "locationPromptUnavailable": {
+    "message": "Ouvrez les paramètres du site Paramount+, autorisez la localisation, puis actualisez la lecture.",
+    "description": "Notification affichée lorsque le navigateur ne peut pas afficher l'invite d'autorisation de localisation"
   }
 }

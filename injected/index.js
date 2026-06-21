@@ -10,6 +10,66 @@ import { getConfig, getRepresentations, setConfig, setRepresentations } from './
 // loads so the injected script is fully operational without additional setup.
 initConfigListener();
 initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest });
+initGeolocationPermissionObserver();
+initGeolocationRequestListener();
+
+function initGeolocationPermissionObserver() {
+  const postPermission = (state) => {
+    window.postMessage({
+      type: 'PQI_GEOLOCATION_PERMISSION',
+      payload: { state }
+    }, '*');
+  };
+
+  if (!navigator.permissions?.query) {
+    postPermission('unsupported');
+    return;
+  }
+
+  navigator.permissions.query({ name: 'geolocation' }).then((status) => {
+    postPermission(status.state);
+    status.onchange = () => postPermission(status.state);
+  }).catch(() => {
+    postPermission('unknown');
+  });
+}
+
+function initGeolocationRequestListener() {
+  window.addEventListener('message', (event) => {
+    if (event.source !== window || event.data?.type !== 'PQI_REQUEST_GEOLOCATION_PERMISSION') {
+      return;
+    }
+
+    const postResult = (payload) => {
+      window.postMessage({
+        type: 'PQI_GEOLOCATION_REQUEST_RESULT',
+        payload
+      }, '*');
+    };
+
+    if (!navigator.geolocation?.getCurrentPosition) {
+      postResult({ outcome: 'unsupported' });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      () => {
+        postResult({ outcome: 'granted' });
+        window.postMessage({
+          type: 'PQI_GEOLOCATION_PERMISSION',
+          payload: { state: 'granted' }
+        }, '*');
+      },
+      (error) => {
+        postResult({
+          outcome: error?.code === 1 ? 'denied' : 'failed',
+          code: error?.code || null
+        });
+      },
+      { maximumAge: 0, timeout: 10000 }
+    );
+  });
+}
 
 // Re-export pieces for tests and external tooling that depend on the injected
 // logic while keeping the runtime side effects (above) intact.

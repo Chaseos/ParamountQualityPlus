@@ -78,5 +78,25 @@
   "advancedPrefetchDesc": {
     "message": "Preload segments to reduce buffering",
     "description": "Description explaining what the prefetch buffer does"
+  },
+  "locationNoticeTitle": {
+    "message": "Quality options unavailable",
+    "description": "Title for a warning shown when Paramount+ may be hiding quality options because location permission is denied"
+  },
+  "locationNoticeBody": {
+    "message": "Paramount+ may hide resolution options for some titles or live events when site location is blocked. Request access here, then refresh playback.",
+    "description": "Warning shown when quality options are unavailable and location permission is denied"
+  },
+  "requestLocationAccess": {
+    "message": "Request location access",
+    "description": "Button label that asks Paramount+ to show the browser's location permission prompt"
+  },
+  "locationAccessGranted": {
+    "message": "Location allowed. Refresh playback if quality options do not appear.",
+    "description": "Toast shown after the user grants location access"
+  },
+  "locationPromptUnavailable": {
+    "message": "Open Paramount+ site settings and allow location, then refresh playback.",
+    "description": "Toast shown when the browser cannot show the location permission prompt"
   }
 }

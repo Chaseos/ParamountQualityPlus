@@ -78,5 +78,25 @@
   "advancedPrefetchDesc": {
     "message": "Pré-carregar segmentos para reduzir o buffering",
     "description": "Descrição explicando o que o buffer de pré-carregamento faz"
+  },
+  "locationNoticeTitle": {
+    "message": "Opções de qualidade indisponíveis",
+    "description": "Título de um aviso mostrado quando o Paramount+ pode ocultar opções de qualidade porque a permissão de localização foi negada"
+  },
+  "locationNoticeBody": {
+    "message": "O Paramount+ pode ocultar opções de resolução em alguns títulos ou eventos ao vivo quando a localização do site está bloqueada. Solicite o acesso aqui e atualize a reprodução.",
+    "description": "Aviso mostrado quando as opções de qualidade estão indisponíveis e a permissão de localização foi negada"
+  },
+  "requestLocationAccess": {
+    "message": "Solicitar acesso à localização",
+    "description": "Rótulo do botão que pede ao Paramount+ para mostrar o aviso de permissão de localização do navegador"
+  },
+  "locationAccessGranted": {
+    "message": "Localização permitida. Atualize a reprodução se as opções de qualidade não aparecerem.",
+    "description": "Notificação mostrada depois que o usuário permite o acesso à localização"
+  },
+  "locationPromptUnavailable": {
+    "message": "Abra as configurações do site Paramount+, permita a localização e atualize a reprodução.",
+    "description": "Notificação mostrada quando o navegador não consegue mostrar o aviso de permissão de localização"
   }
 }

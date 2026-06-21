@@ -58,6 +58,8 @@ async function init() {
 
     if (btnAuto) btnAuto.addEventListener('click', () => setMode(false, null));
     if (btnMax) btnMax.addEventListener('click', () => setMode(true, null));
+    const requestLocationBtn = document.getElementById('request-location-btn');
+    if (requestLocationBtn) requestLocationBtn.addEventListener('click', requestLocationAccess);
 
     // 3. Bind Review Link
     const reviewLink = document.getElementById('review-link');
@@ -225,6 +227,25 @@ function saveNetworkConfig() {
     showToast(chrome.i18n.getMessage("settingsSaved") || "Settings saved. Changes may take a few seconds...");
 }
 
+function requestLocationAccess() {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (!tabs[0]) return;
+
+        chrome.tabs.sendMessage(tabs[0].id, { type: 'REQUEST_GEOLOCATION_PERMISSION' }, (response) => {
+            if (chrome.runtime.lastError || !response) {
+                showToast(chrome.i18n.getMessage("locationPromptUnavailable") || "Open Paramount+ site settings and allow location, then refresh playback.");
+                return;
+            }
+
+            if (response.outcome === 'granted') {
+                showToast(chrome.i18n.getMessage("locationAccessGranted") || "Location allowed. Refresh playback if quality options do not appear.");
+            } else {
+                showToast(chrome.i18n.getMessage("locationPromptUnavailable") || "Open Paramount+ site settings and allow location, then refresh playback.");
+            }
+        });
+    });
+}
+
 function showToast(msg) {
     const toast = document.getElementById('toast');
     if (!toast) return;
@@ -335,6 +356,28 @@ function updateStats(data) {
         const mbps = (data.bitrate / 1000).toFixed(1);
         brEl.textContent = `${mbps} Mbps`;
     }
+
+    updateGeolocationNotice(data);
+}
+
+function updateGeolocationNotice(data) {
+    const notice = document.getElementById('geo-notice');
+    if (!notice) return;
+
+    notice.classList.toggle('visible', shouldShowGeolocationNotice(data));
+}
+
+function shouldShowGeolocationNotice(data, now = Date.now()) {
+    const hasQualityOptions = Boolean(data.manifestQualities && data.manifestQualities.length > 0);
+    const hasWaitedForStream = now - (data.initializedAt || now) > 8000;
+    const locationMayBeBlocked = data.geolocationPermission === 'denied' ||
+        data.geolocationPermission === 'prompt' ||
+        data.geolocationPermission === 'unknown';
+
+    return data.playbackDetected &&
+        !hasQualityOptions &&
+        hasWaitedForStream &&
+        locationMayBeBlocked;
 }
 
 function renderQualityList(qualities) {

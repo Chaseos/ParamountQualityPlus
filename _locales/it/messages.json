@@ -78,5 +78,25 @@
   "advancedPrefetchDesc": {
     "message": "Precarica i segmenti per ridurre il buffering",
     "description": "Descrizione di cosa fa il buffer di precaricamento"
+  },
+  "locationNoticeTitle": {
+    "message": "Opzioni qualità non disponibili",
+    "description": "Titolo di un avviso mostrato quando Paramount+ potrebbe nascondere le opzioni di qualità perché l'autorizzazione alla posizione è negata"
+  },
+  "locationNoticeBody": {
+    "message": "Paramount+ potrebbe nascondere le opzioni di risoluzione per alcuni titoli o eventi live quando la posizione del sito è bloccata. Richiedi l'accesso qui, quindi aggiorna la riproduzione.",
+    "description": "Avviso mostrato quando le opzioni di qualità non sono disponibili e l'autorizzazione alla posizione è negata"
+  },
+  "requestLocationAccess": {
+    "message": "Richiedi accesso alla posizione",
+    "description": "Etichetta del pulsante che chiede a Paramount+ di mostrare la richiesta di autorizzazione alla posizione del browser"
+  },
+  "locationAccessGranted": {
+    "message": "Posizione consentita. Aggiorna la riproduzione se le opzioni di qualità non appaiono.",
+    "description": "Notifica mostrata dopo che l'utente concede l'accesso alla posizione"
+  },
+  "locationPromptUnavailable": {
+    "message": "Apri le impostazioni del sito Paramount+, consenti la posizione e aggiorna la riproduzione.",
+    "description": "Notifica mostrata quando il browser non può mostrare la richiesta di autorizzazione alla posizione"
   }
 }

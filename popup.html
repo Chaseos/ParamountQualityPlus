@@ -310,6 +310,51 @@
       font-weight: 600;
     }
 
+    .notice {
+      display: none;
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 10px;
+      color: var(--text-main);
+      font-size: 12px;
+      line-height: 1.4;
+      margin-bottom: 16px;
+      padding: 10px 12px;
+    }
+
+    .notice.visible {
+      display: block;
+    }
+
+    .notice-title {
+      color: #fbbf24;
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+    }
+
+    .notice-action {
+      background: rgba(245, 158, 11, 0.16);
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      border-radius: 7px;
+      color: var(--text-main);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 9px;
+      padding: 7px 9px;
+      transition: background 0.2s ease, border-color 0.2s ease;
+      width: 100%;
+    }
+
+    .notice-action:hover {
+      background: rgba(245, 158, 11, 0.24);
+      border-color: #fbbf24;
+    }
+
     @keyframes pulse {
       0% {
         transform: scale(0.95);
@@ -476,6 +521,12 @@
         <span class="stat-value" id="bitrate-val">--</span>
       </div>
     </div>
+  </div>
+
+  <div id="geo-notice" class="notice">
+    <span class="notice-title" data-i18n="locationNoticeTitle">Quality options unavailable</span>
+    <span data-i18n="locationNoticeBody">Paramount+ may hide resolution options for some titles or live events when site location is blocked. Request access here, then refresh playback.</span>
+    <button type="button" id="request-location-btn" class="notice-action" data-i18n="requestLocationAccess">Request location access</button>
   </div>
 
   <div class="controls">

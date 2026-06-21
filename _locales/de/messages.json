@@ -78,5 +78,25 @@
   "advancedPrefetchDesc": {
     "message": "Segmente vorladen, um Pufferung zu reduzieren",
     "description": "Beschreibung des Vorladepuffers"
+  },
+  "locationNoticeTitle": {
+    "message": "Qualitätsoptionen nicht verfügbar",
+    "description": "Titel einer Warnung, die angezeigt wird, wenn Paramount+ Qualitätsoptionen ausblenden kann, weil die Standortberechtigung verweigert wurde"
+  },
+  "locationNoticeBody": {
+    "message": "Paramount+ kann Auflösungsoptionen für einige Titel oder Live-Events ausblenden, wenn der Standortzugriff der Website blockiert ist. Fordern Sie den Zugriff hier an und aktualisieren Sie dann die Wiedergabe.",
+    "description": "Warnung, die angezeigt wird, wenn Qualitätsoptionen nicht verfügbar sind und die Standortberechtigung verweigert wurde"
+  },
+  "requestLocationAccess": {
+    "message": "Standortzugriff anfordern",
+    "description": "Beschriftung der Schaltfläche, mit der Paramount+ die Standortberechtigungsabfrage des Browsers anzeigen soll"
+  },
+  "locationAccessGranted": {
+    "message": "Standort erlaubt. Aktualisieren Sie die Wiedergabe, wenn keine Qualitätsoptionen erscheinen.",
+    "description": "Toast, der angezeigt wird, nachdem der Benutzer Standortzugriff erlaubt hat"
+  },
+  "locationPromptUnavailable": {
+    "message": "Öffnen Sie die Website-Einstellungen von Paramount+, erlauben Sie Standortzugriff und aktualisieren Sie die Wiedergabe.",
+    "description": "Toast, der angezeigt wird, wenn der Browser die Standortberechtigungsabfrage nicht anzeigen kann"
   }
 }

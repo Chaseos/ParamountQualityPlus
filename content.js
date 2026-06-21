@@ -7,8 +7,19 @@ let streamState = {
     maxBitrate: null, // kbps
     timestamp: null,
     isEstimated: false, // true if resolution is estimated from bitrate
-    hasActiveStream: false // true if we're receiving segment data
+    hasActiveStream: false, // true if we're receiving segment data
+    geolocationPermission: 'unknown',
+    playbackDetected: false,
+    initializedAt: Date.now()
 };
+
+function detectPlaybackContext() {
+    const player = document.querySelector('video, [class*="player"], [id*="player"], [data-testid*="player"]');
+    const path = window.location.pathname.toLowerCase();
+    const playbackPath = /\/(video|live|live-tv)\b/.test(path) || /\/sports\/.*\b(live|watch|stream)\b/.test(path);
+
+    return Boolean(player || playbackPath);
+}
 
 // --- Injection Logic ---
 function injectScript() {
@@ -86,6 +97,8 @@ window.addEventListener('message', (event) => {
             if (bitrate) streamState.bitrate = bitrate;
             streamState.isEstimated = false; // Known from playlist URL match
             streamState.timestamp = Date.now();
+        } else if (event.data.type === 'PQI_GEOLOCATION_PERMISSION') {
+            streamState.geolocationPermission = event.data.payload?.state || 'unknown';
         }
     }
 });
@@ -93,7 +106,34 @@ window.addEventListener('message', (event) => {
 // Listen for Popup requests
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'GET_STREAM_STATE') {
+        streamState.playbackDetected = detectPlaybackContext();
         sendResponse(streamState);
+    } else if (request.type === 'REQUEST_GEOLOCATION_PERMISSION') {
+        let didRespond = false;
+        let timeoutId = null;
+
+        const respondOnce = (payload) => {
+            if (didRespond) return;
+            didRespond = true;
+            if (timeoutId) clearTimeout(timeoutId);
+            window.removeEventListener('message', handleResult);
+            sendResponse(payload);
+        };
+
+        const handleResult = (event) => {
+            if (event.source !== window || event.data?.type !== 'PQI_GEOLOCATION_REQUEST_RESULT') {
+                return;
+            }
+
+            respondOnce(event.data.payload || { outcome: 'unknown' });
+        };
+
+        window.addEventListener('message', handleResult);
+        window.postMessage({ type: 'PQI_REQUEST_GEOLOCATION_PERMISSION' }, '*');
+
+        timeoutId = setTimeout(() => respondOnce({ outcome: 'timeout' }), 12000);
+
+        return true;
     }
 });
 
