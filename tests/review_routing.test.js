@@ -75,3 +75,39 @@ describe('Review routing', () => {
         expect(context.determineStoreUrl()).toBe('https://addons.opera.com/en/extensions/details/paramount-quality/#feedback-container');
     });
 });
+
+describe('Simple Video Speed Controller promotion', () => {
+    test('routes promoted extension links to the Chrome Web Store listing by default', () => {
+        const context = loadPopupContext({
+            userAgent: 'Mozilla/5.0 Chrome/126.0.0.0 Safari/537.36'
+        });
+
+        expect(context.determineSimpleVideoSpeedControllerStoreUrl()).toBe('https://chromewebstore.google.com/detail/simple-video-speed-contro/kcjfpmjkbkhgojilpihplkedadndnked');
+    });
+
+    test('routes promoted extension links to the Firefox listing for Firefox users', () => {
+        const context = loadPopupContext({
+            extensionUrl: 'moz-extension://75d8bb6c-2e0f-4f70-84df-4ac8e8b82d10/',
+            userAgent: 'Mozilla/5.0'
+        });
+
+        expect(context.determineSimpleVideoSpeedControllerStoreUrl()).toBe('https://addons.mozilla.org/en-US/firefox/addon/simple-video-speed-controller/');
+    });
+
+    test('shows the promoted extension only after review was clicked and before its own dismissal flag is set', () => {
+        const context = loadPopupContext();
+
+        expect(context.shouldShowSimpleVideoSpeedControllerAd({
+            reviewClicked: false,
+            simpleVideoSpeedControllerAdShown: false
+        })).toBe(false);
+        expect(context.shouldShowSimpleVideoSpeedControllerAd({
+            reviewClicked: true,
+            simpleVideoSpeedControllerAdShown: false
+        })).toBe(true);
+        expect(context.shouldShowSimpleVideoSpeedControllerAd({
+            reviewClicked: true,
+            simpleVideoSpeedControllerAdShown: true
+        })).toBe(false);
+    });
+});

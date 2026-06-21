@@ -51,6 +51,14 @@
     "message": "Nützlich? Hinterlassen Sie eine Bewertung",
     "description": "Aufforderung an den Benutzer, die Erweiterung zu bewerten"
   },
+  "simpleVideoSpeedControllerAdLineOne": {
+    "message": "Möchten Sie die Videogeschwindigkeit steuern?",
+    "description": "Erste Zeile einer Aufforderung, die Simple Video Speed Controller-Erweiterung des Entwicklers zu bewerben"
+  },
+  "simpleVideoSpeedControllerAdLineTwo": {
+    "message": "Probieren Sie Simple Video Speed Controller aus.",
+    "description": "Zweite Zeile einer Aufforderung, die Simple Video Speed Controller-Erweiterung des Entwicklers zu bewerben"
+  },
   "supportMyWork": {
     "message": "Meine Arbeit unterstützen",
     "description": "Titel und barrierefreie Beschriftung des Ko-Fi-Unterstützungslinks"

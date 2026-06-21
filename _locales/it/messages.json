@@ -51,6 +51,14 @@
     "message": "Ti è utile? Lascia una recensione",
     "description": "Richiesta all'utente di recensire l'estensione"
   },
+  "simpleVideoSpeedControllerAdLineOne": {
+    "message": "Vuoi controllare la velocità?",
+    "description": "Prima riga di una richiesta che promuove l'estensione Simple Video Speed Controller dello sviluppatore"
+  },
+  "simpleVideoSpeedControllerAdLineTwo": {
+    "message": "Prova Simple Video Speed Controller.",
+    "description": "Seconda riga di una richiesta che promuove l'estensione Simple Video Speed Controller dello sviluppatore"
+  },
   "supportMyWork": {
     "message": "Sostieni il mio lavoro",
     "description": "Titolo ed etichetta accessibile del link di supporto Ko-Fi"

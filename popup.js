@@ -16,11 +16,18 @@ const REVIEW_STORE_URLS = Object.freeze({
     firefox: "https://addons.mozilla.org/en-US/firefox/addon/paramount-quality/reviews/",
     opera: "https://addons.opera.com/en/extensions/details/paramount-quality/#feedback-container"
 });
+const SIMPLE_VIDEO_SPEED_CONTROLLER_STORE_URLS = Object.freeze({
+    chrome: "https://chromewebstore.google.com/detail/simple-video-speed-contro/kcjfpmjkbkhgojilpihplkedadndnked",
+    edge: "https://microsoftedge.microsoft.com/addons/detail/simple-video-speed-contro/mnmagmdfgdjhbfkdnonnhkfnbnjpehja",
+    firefox: "https://addons.mozilla.org/en-US/firefox/addon/simple-video-speed-controller/",
+    opera: "https://addons.opera.com/en/extensions/details/simple-video-speed-controller/"
+});
 const REVIEW_STORE_EXTENSION_IDS = Object.freeze({
     chrome: "jdhjjddhdmhphkfgcfclekdngihnoann",
     edge: "cpaekgjghoegidknadojliokbcldohjb",
     firefox: "@paramount-quality-plus"
 });
+let hasShownSimpleVideoSpeedControllerAd = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     init();
@@ -33,13 +40,14 @@ async function init() {
 
     // 1. Load Config
     try {
-        const result = await chrome.storage.sync.get(['forceMax', 'forcedId', 'reviewClicked', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount']);
+        const result = await chrome.storage.sync.get(['forceMax', 'forcedId', 'reviewClicked', 'simpleVideoSpeedControllerAdShown', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount']);
         currentConfig.forceMax = result.forceMax || false;
         currentConfig.forcedId = result.forcedId || null;
         currentConfig.enableRetries = result.enableRetries !== false;
         currentConfig.maxRetries = result.maxRetries !== undefined ? result.maxRetries : 3;
         currentConfig.enablePrefetch = result.enablePrefetch !== false;
         currentConfig.prefetchCount = result.prefetchCount !== undefined ? result.prefetchCount : 5;
+        hasShownSimpleVideoSpeedControllerAd = Boolean(result.simpleVideoSpeedControllerAdShown);
         
         updateSelectionUI();
         initNetworkControlsUI();
@@ -47,6 +55,8 @@ async function init() {
         if (!result.reviewClicked && (result.forceMax || result.forcedId)) {
             const reviewCard = document.getElementById('review-card');
             if (reviewCard) reviewCard.style.display = 'block';
+        } else if (shouldShowSimpleVideoSpeedControllerAd(result)) {
+            showSimpleVideoSpeedControllerAd();
         }
     } catch (e) {
         console.error('Error loading config', e);
@@ -69,6 +79,18 @@ async function init() {
             chrome.storage.sync.set({ reviewClicked: true });
             const reviewCard = document.getElementById('review-card');
             if (reviewCard) reviewCard.style.display = 'none';
+            showSimpleVideoSpeedControllerAd();
+        });
+    }
+
+    const simpleVideoSpeedControllerAdLink = document.getElementById('simple-video-speed-controller-ad-link');
+    if (simpleVideoSpeedControllerAdLink) {
+        simpleVideoSpeedControllerAdLink.href = determineSimpleVideoSpeedControllerStoreUrl();
+        simpleVideoSpeedControllerAdLink.addEventListener('click', () => {
+            hasShownSimpleVideoSpeedControllerAd = true;
+            chrome.storage.sync.set({ simpleVideoSpeedControllerAdShown: true });
+            const simpleVideoSpeedControllerAdCard = document.getElementById('simple-video-speed-controller-ad-card');
+            if (simpleVideoSpeedControllerAdCard) simpleVideoSpeedControllerAdCard.style.display = 'none';
         });
     }
 
@@ -78,6 +100,21 @@ async function init() {
 
 function determineStoreUrl() {
     return REVIEW_STORE_URLS[detectReviewStore()];
+}
+
+function determineSimpleVideoSpeedControllerStoreUrl() {
+    return SIMPLE_VIDEO_SPEED_CONTROLLER_STORE_URLS[detectReviewStore()];
+}
+
+function shouldShowSimpleVideoSpeedControllerAd(storageState) {
+    return Boolean(storageState.reviewClicked) && !storageState.simpleVideoSpeedControllerAdShown;
+}
+
+function showSimpleVideoSpeedControllerAd() {
+    if (hasShownSimpleVideoSpeedControllerAd) return;
+
+    const simpleVideoSpeedControllerAdCard = document.getElementById('simple-video-speed-controller-ad-card');
+    if (simpleVideoSpeedControllerAdCard) simpleVideoSpeedControllerAdCard.style.display = 'block';
 }
 
 function getReviewRoutingEnvironment() {

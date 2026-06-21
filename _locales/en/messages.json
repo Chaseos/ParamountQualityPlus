@@ -51,6 +51,14 @@
     "message": "Find it useful? Leave a review",
     "description": "Prompt asking the user to review the extension"
   },
+  "simpleVideoSpeedControllerAdLineOne": {
+    "message": "Need speed controls?",
+    "description": "First line of a prompt advertising the developer's Simple Video Speed Controller extension"
+  },
+  "simpleVideoSpeedControllerAdLineTwo": {
+    "message": "Try Simple Video Speed Controller.",
+    "description": "Second line of a prompt advertising the developer's Simple Video Speed Controller extension"
+  },
   "supportMyWork": {
     "message": "Support my work",
     "description": "Ko-Fi support link title and accessible label"

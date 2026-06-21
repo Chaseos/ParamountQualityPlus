@@ -51,6 +51,14 @@
     "message": "C'est utile ? Laissez un avis",
     "description": "Invite demandant à l'utilisateur d'évaluer l'extension"
   },
+  "simpleVideoSpeedControllerAdLineOne": {
+    "message": "Besoin de contrôler la vitesse ?",
+    "description": "Première ligne d'une invite faisant la promotion de l'extension Simple Video Speed Controller du développeur"
+  },
+  "simpleVideoSpeedControllerAdLineTwo": {
+    "message": "Essayez Simple Video Speed Controller.",
+    "description": "Deuxième ligne d'une invite faisant la promotion de l'extension Simple Video Speed Controller du développeur"
+  },
   "supportMyWork": {
     "message": "Soutenir mon travail",
     "description": "Titre et libellé accessible du lien de soutien Ko-Fi"

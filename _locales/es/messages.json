@@ -51,6 +51,14 @@
     "message": "¿Te resulta útil? Deja una reseña",
     "description": "Aviso pidiendo al usuario que revise la extensión"
   },
+  "simpleVideoSpeedControllerAdLineOne": {
+    "message": "¿Necesitas controlar la velocidad?",
+    "description": "Primera línea de un aviso que promociona la extensión Simple Video Speed Controller del desarrollador"
+  },
+  "simpleVideoSpeedControllerAdLineTwo": {
+    "message": "Prueba Simple Video Speed Controller.",
+    "description": "Segunda línea de un aviso que promociona la extensión Simple Video Speed Controller del desarrollador"
+  },
   "supportMyWork": {
     "message": "Apoya mi trabajo",
     "description": "Título y etiqueta accesible del enlace de apoyo de Ko-Fi"

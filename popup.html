@@ -410,7 +410,8 @@
       opacity: 1;
     }
 
-    .review-card {
+    .review-card,
+    .extension-ad-card {
       display: none;
       margin-top: 16px;
       padding: 12px;
@@ -421,13 +422,24 @@
       transition: all 0.2s ease;
     }
 
-    .review-card:hover {
+    .review-card:hover,
+    .extension-ad-card:hover {
       background: rgba(59, 130, 246, 0.1);
       border-color: var(--accent);
       transform: translateY(-1px);
     }
 
-    .review-link {
+    .extension-ad-card {
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .extension-ad-card:hover {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: var(--success);
+    }
+
+    .review-link,
+    .extension-ad-link {
       color: var(--text-muted);
       text-decoration: none;
       font-size: 12px;
@@ -438,7 +450,8 @@
       font-weight: 500;
     }
 
-    .review-link:hover {
+    .review-link:hover,
+    .extension-ad-link:hover {
       color: var(--text-main);
     }
 
@@ -446,8 +459,39 @@
       color: #fbbf24;
       width: 14px;
       height: 14px;
+      flex-shrink: 0;
       fill: #fbbf24;
     }
+
+    .extension-ad-icon {
+      border-radius: 3px;
+      display: block;
+      height: 18px;
+      width: 18px;
+      flex-shrink: 0;
+    }
+
+    .extension-ad-copy {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 1px;
+      line-height: 1.2;
+      min-width: 0;
+      text-align: center;
+    }
+
+    .extension-ad-copy span {
+      display: block;
+    }
+
+    .prompt-external-icon {
+      width: 14px;
+      height: 14px;
+      opacity: 0.6;
+      flex-shrink: 0;
+    }
+
     .advanced-header {
       display: flex;
       justify-content: space-between;
@@ -619,7 +663,22 @@
           <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
         </svg>
         <span data-i18n="leaveReview">Find it useful? Leave a review</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; opacity: 0.6;">
+        <svg class="prompt-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      </a>
+    </div>
+
+    <div id="simple-video-speed-controller-ad-card" class="extension-ad-card">
+      <a id="simple-video-speed-controller-ad-link" href="https://chromewebstore.google.com/detail/simple-video-speed-contro/kcjfpmjkbkhgojilpihplkedadndnked" target="_blank" rel="noopener noreferrer" class="extension-ad-link">
+        <img src="simple-video-speed-controller-icon.png" alt="" class="extension-ad-icon">
+        <span class="extension-ad-copy">
+          <span data-i18n="simpleVideoSpeedControllerAdLineOne">Need speed controls?</span>
+          <span data-i18n="simpleVideoSpeedControllerAdLineTwo">Try Simple Video Speed Controller.</span>
+        </span>
+        <svg class="prompt-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
           <polyline points="15 3 21 3 21 9"></polyline>
           <line x1="10" y1="14" x2="21" y2="3"></line>
