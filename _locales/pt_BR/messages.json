@@ -4,12 +4,12 @@
     "description": "O nome da extensão"
   },
   "appDesc": {
-    "message": "Defina e gerencie a resolução de reprodução no Paramount+ para vídeos sob demanda e transmissões ao vivo, com controles simples e retorno claro.",
+    "message": "Defina e gerencie a resolução de reprodução no Paramount+ para vídeos sob demanda e transmissões ao vivo, com controles simples e feedback claro.",
     "description": "A descrição da extensão exibida na web store e na página de extensões do navegador"
   },
   "notConnected": {
     "message": "Não conectado",
-    "description": "Status indicando que a extensão não está conectada a um stream de vídeo"
+    "description": "Status indicando que a extensão não está conectada a uma transmissão de vídeo"
   },
   "resolution": {
     "message": "Resolução",
@@ -92,7 +92,7 @@
     "description": "Descrição explicando o que as repetições de rede fazem"
   },
   "advancedPrefetchDesc": {
-    "message": "Pré-carregar segmentos para reduzir o buffering",
+    "message": "Pré-carregar segmentos para reduzir pausas no carregamento",
     "description": "Descrição explicando o que o buffer de pré-carregamento faz"
   },
   "locationNoticeTitle": {
@@ -100,7 +100,7 @@
     "description": "Título de um aviso mostrado quando o Paramount+ pode ocultar opções de qualidade porque a permissão de localização foi negada"
   },
   "locationNoticeBody": {
-    "message": "O Paramount+ pode ocultar opções de resolução em alguns títulos ou eventos ao vivo quando a localização do site está bloqueada. Solicite o acesso aqui e atualize a reprodução.",
+    "message": "O Paramount+ pode ocultar opções de resolução em alguns títulos ou eventos ao vivo quando a localização do site está bloqueada. Solicite o acesso aqui e recarregue a reprodução.",
     "description": "Aviso mostrado quando as opções de qualidade estão indisponíveis e a permissão de localização foi negada"
   },
   "requestLocationAccess": {
@@ -108,11 +108,11 @@
     "description": "Rótulo do botão que pede ao Paramount+ para mostrar o aviso de permissão de localização do navegador"
   },
   "locationAccessGranted": {
-    "message": "Localização permitida. Atualize a reprodução se as opções de qualidade não aparecerem.",
+    "message": "Localização permitida. Recarregue a reprodução se as opções de qualidade não aparecerem.",
     "description": "Notificação mostrada depois que o usuário permite o acesso à localização"
   },
   "locationPromptUnavailable": {
-    "message": "Abra as configurações do site Paramount+, permita a localização e atualize a reprodução.",
+    "message": "Abra as configurações do site Paramount+, permita a localização e recarregue a reprodução.",
     "description": "Notificação mostrada quando o navegador não consegue mostrar o aviso de permissão de localização"
   }
 }
