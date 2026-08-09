@@ -1,6 +1,7 @@
 import { estimateResolutionFromBitrate } from './constants.js';
 import { extractResolutionFromPath, isSegmentUrl } from './url-utils.js';
 import { getRepresentations } from './state.js';
+import { classifyMediaRequest } from './stream-model.js';
 
 
 // Inspect requested media segment URLs, infer their resolution/bitrate, and
@@ -9,16 +10,12 @@ export function analyzeUrl(url) {
   try {
     if (!isSegmentUrl(url)) return;
 
-    const urlObj = new URL(url, window.location.origin);
+    const request = classifyMediaRequest(url);
+    if (!request.url || request.excluded) return;
+    const urlObj = request.url;
     const pathname = urlObj.pathname;
 
     const cmcdParam = urlObj.searchParams.get('CMCD');
-    if (cmcdParam && (cmcdParam.includes('ot=a') || cmcdParam.includes('ot%3Da'))) {
-      return;
-    }
-    if (pathname.includes('_aac_') || pathname.includes('/audio/') || pathname.includes('_audio_')) {
-      return;
-    }
 
     const availableRepresentations = getRepresentations();
     const resolutionMatch = extractResolutionFromPath(pathname);
@@ -45,12 +42,8 @@ export function analyzeUrl(url) {
     let maxBitrate = null;
 
     if (cmcdParam) {
-      const pairs = cmcdParam.split(',');
-      pairs.forEach(pair => {
-        const [key, value] = pair.split('=');
-        if (key === 'br') bitrate = parseInt(value, 10);
-        if (key === 'tb') maxBitrate = parseInt(value, 10);
-      });
+      bitrate = parseInt(request.cmcd.br, 10) || null;
+      maxBitrate = parseInt(request.cmcd.tb, 10) || null;
     }
 
     // Detect manifest_video pattern for stats mapping

@@ -4,6 +4,7 @@ import { parseManifest, parseDashManifest, parseHlsManifest } from './manifest-p
 import {
   getInferredMaxCandidate,
   maybeRewriteUrl,
+  planRequest,
   recordInferredFallbackResult,
   resetInferredFallbackState,
   retryRewriteUrl,
@@ -12,12 +13,12 @@ import {
 } from './rewriter.js';
 import { initNetworkHooks } from './network-hooks.js';
 import { estimateResolutionFromBitrate } from './constants.js';
-import { getConfig, getRepresentations, setConfig, setRepresentations } from './state.js';
+import { getConfig, getRepresentations, getStreamSession, setConfig, setRepresentations } from './state.js';
 
 // Wire together config handling and network interception as soon as the module
 // loads so the injected script is fully operational without additional setup.
 initConfigListener();
-initNetworkHooks({ analyzeUrl, maybeRewriteUrl, parseManifest });
+initNetworkHooks({ analyzeUrl, parseManifest });
 initGeolocationPermissionObserver();
 initGeolocationRequestListener();
 
@@ -89,6 +90,7 @@ export {
   getInferredMaxCandidate,
   getRepresentations as getAvailableRepresentations,
   maybeRewriteUrl,
+  planRequest,
   parseDashManifest,
   parseHlsManifest,
   parseManifest,
@@ -98,5 +100,6 @@ export {
   resolveTargetRepresentation,
   retryRewriteUrl,
   setConfig,
+  getStreamSession,
   setRepresentations as setAvailableRepresentations
 };

@@ -4,6 +4,7 @@
   "description": "",
   "main": "content.js",
   "scripts": {
+    "build": "node scripts/build.mjs",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "keywords": [],

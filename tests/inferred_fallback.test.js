@@ -13,6 +13,7 @@ const CLASSIC_TV_PLAIN_TIER_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_v
 const PARAMOUNT_PLAIN_TIER_URL = 'https://vod.pplus.paramount.tech/intl_vms/title/asset_cenc_precon_dash/NICKELODEON_SPONGEBOBSQUAREPANTSHD_001_V1_917732_2100/seg_4.m4s?CMCD=br%3D2729%2Cot%3Dv%2Ctb%3D5698';
 const NICKELODEON_HD_SEGMENT_URL = 'https://vod.pplus.paramount.tech/intl_vms/title/asset_cenc_precon_dash/NICKELODEON_SPONGEBOBSQUAREPANTS_307_HD_c24_540p_3480060_2000/seg_4.m4s?CMCD=br%3D1961%2Cot%3Dv%2Ctb%3D5387';
 const NUMERIC_PREFIX_SEGMENT_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/title/asset_cenc_precon_dash/3478685_c24_540p_118423_2000/seg_4.m4s?CMCD=br%3D2011%2Cot%3Dv%2Ctb%3D5585';
+const SURVIVOR_SEGMENT_URL = 'https://vod.pplus.paramount.tech/intl_vms/2026/02/25/V2Qj7a_IhC8VoKNNQ9WxqGjbwF7GrBZg/3820173_cenc_precon_dash/PPUSA_SURVIVOR_5008_V1_c24_540p_3820071_2000/seg_5.m4s?CMCD=br%3D2054%2Cot%3Dv%2Ctb%3D5678';
 const LEGACY_CBS_VOD_HOST = 'vod-gcs-cedexis.cbsaavideo.com';
 
 describe('Inferred Paramount VOD fallback', () => {
@@ -63,6 +64,11 @@ describe('Inferred Paramount VOD fallback', () => {
     resetInferredFallbackState();
     expect(getInferredMaxCandidate(NUMERIC_PREFIX_SEGMENT_URL).url)
       .toContain('3478685_c20_1080p_118423_5400');
+  });
+
+  test('uses the verified c23 ladder for Survivor VOD', () => {
+    expect(getInferredMaxCandidate(SURVIVOR_SEGMENT_URL).url)
+      .toContain('PPUSA_SURVIVOR_5008_V1_c23_1080p_3820071_5400/seg_5.m4s');
   });
 
   test('reuses a validated stream and suppresses a rejected stream', () => {

@@ -78,4 +78,16 @@ describe('URL Rewriting', () => {
         const result = maybeRewriteUrl(input);
         expect(result).toBe(input);
     });
+
+    test('rewrites the captured Big Brother live DASH representation ID', () => {
+        setAvailableRepresentations([
+            { id: 's0-7', rawId: '7', height: 1080, bandwidth: 8000000 },
+            { id: 's0-4', rawId: '4', height: 540, bandwidth: 1800000 }
+        ]);
+        setConfig({ forceMax: true, forcedId: null });
+
+        const input = 'https://airspace-cdn.cbsivideo.com/out/v1/live/manifest_video_4_0_465410.mp4?CMCD=br%3D1800%2Cot%3Dv%2Ctb%3D8000';
+        expect(maybeRewriteUrl(input))
+            .toContain('manifest_video_7_0_465410.mp4');
+    });
 });

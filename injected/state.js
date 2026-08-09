@@ -10,6 +10,11 @@ let config = {
 };
 
 let availableRepresentations = [];
+let streamSession = {
+  key: null,
+  family: null,
+  manifestUrl: null
+};
 
 export function getConfig() {
   return config;
@@ -23,21 +28,24 @@ export function getRepresentations() {
   return availableRepresentations;
 }
 
-export function setRepresentations(reps) {
-  const hasHls = reps.some(r => r.hlsTier !== undefined);
-  const existingHls = availableRepresentations.some(r => r.hlsTier !== undefined);
-
-  // If we have existing HLS tiers (main content) and the new manifest is DASH
-  // (which on Paramount+ is often an Ad or supplementary), we MERGE them 
-  // instead of overwriting, to ensure our forcedId for HLS still works.
-  if (existingHls && !hasHls && reps.length < 10) {
-    console.log('[PQI_DEBUG] Preserving HLS tiers; appending new DASH reps.');
-    availableRepresentations = [...availableRepresentations.filter(r => r.hlsTier !== undefined), ...reps];
-  } else {
-    availableRepresentations = reps;
+export function setRepresentations(reps, context = {}) {
+  availableRepresentations = reps;
+  if (reps.length === 0) {
+    streamSession = { key: null, family: null, manifestUrl: null };
+    return;
   }
+  streamSession = {
+    key: context.streamKey ?? reps[0]?.streamKey ?? streamSession.key,
+    family: context.family ?? reps[0]?.family ?? streamSession.family,
+    manifestUrl: context.manifestUrl ?? streamSession.manifestUrl
+  };
 }
 
 export function clearRepresentations() {
   availableRepresentations = [];
+  streamSession = { key: null, family: null, manifestUrl: null };
+}
+
+export function getStreamSession() {
+  return streamSession;
 }

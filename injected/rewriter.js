@@ -1,425 +1,291 @@
-import { getConfig, getRepresentations } from './state.js';
 import { estimateResolutionFromBitrate } from './constants.js';
+import { getConfig, getRepresentations } from './state.js';
+import {
+  classifyMediaRequest,
+  deriveStreamKey,
+  mergeRuntimeTelemetry,
+  selectRepresentation
+} from './stream-model.js';
 
 const PARAMOUNT_VOD_REP_PATTERN = /\/([^/?]+)_c(\d{2})_(\d{3,4})p_([^/?]+)_(\d{3,5})\/(seg_\d+\.m4s|init\.m4v)(?=\?|$)/i;
 const LEGACY_CBS_PLAIN_TIER_PATTERN = /\/([^/?]+)_(\d{5,})_(\d{3,5})\/(seg_\d+\.m4s|init\.m4v)(?=\?|$)/i;
-const DEFAULT_INFERRED_MAX_CODEC_TIER = '20';
 const LEGACY_CBS_VOD_HOST = 'vod-gcs-cedexis.cbsaavideo.com';
-const LEGACY_CBS_INFERRED_MAX_CODEC_TIER = '23';
-const LEGACY_CBS_PLAIN_MAX_URL_TIER = '4500';
+const PARAMOUNT_VOD_HOSTS = new Set([LEGACY_CBS_VOD_HOST, 'vod.pplus.paramount.tech']);
 const LEGACY_CBS_PLAIN_SOURCE_TIERS = new Set(['110', '375', '750', '1500', '2100', '3000']);
-const PARAMOUNT_VOD_HOSTS = new Set([
-  LEGACY_CBS_VOD_HOST,
-  'vod.pplus.paramount.tech'
-]);
 const INFERRED_MAX_HEIGHT = 1080;
-const INFERRED_MAX_URL_TIER = '5400';
 
-let inferredFallbackState = {
-  streamKey: null,
-  status: 'untested'
-};
-
-function parseCmcd(urlObj) {
-  const raw = urlObj.searchParams.get('CMCD');
-  if (!raw) return {};
-
-  const values = {};
-  for (const pair of raw.split(',')) {
-    const separator = pair.indexOf('=');
-    if (separator === -1) {
-      values[pair] = true;
-    } else {
-      values[pair.slice(0, separator)] = pair.slice(separator + 1).replace(/^"|"$/g, '');
-    }
+const INFERENCE_PROFILES = [
+  {
+    id: 'legacy-named-c23',
+    matches: ({ url, contentPrefix }) => url.hostname === LEGACY_CBS_VOD_HOST && !/^\d+$/.test(contentPrefix),
+    codecTier: '23',
+    urlTier: '5400'
+  },
+  {
+    id: 'hd-c23',
+    matches: ({ contentPrefix }) => /(?:^|_)HD(?:_|$)/i.test(contentPrefix),
+    codecTier: '23',
+    urlTier: '5400'
+  },
+  {
+    id: 'survivor-c23',
+    matches: ({ contentPrefix }) => /(?:^|_)SURVIVOR(?:_|$)/i.test(contentPrefix),
+    codecTier: '23',
+    urlTier: '5400'
+  },
+  {
+    id: 'modern-c20',
+    matches: () => true,
+    codecTier: '20',
+    urlTier: '5400'
   }
-  return values;
+];
+
+let inferredFallbackState = { streamKey: null, status: 'untested' };
+const rejectedAuthoritativePlans = new Set();
+
+function passThrough(url, reason = 'unsupported') {
+  return { action: 'pass-through', url, originalUrl: url, source: null, reason };
 }
 
-function isExcludedFromInference(urlObj, cmcd) {
-  const lower = urlObj.toString().toLowerCase();
-  return cmcd.ot !== 'v' ||
-    lower.includes('_aac_') ||
-    lower.includes('/audio/') ||
-    lower.includes('_audio_') ||
-    lower.includes('googlevideo') ||
-    lower.includes('doubleclick') ||
-    lower.includes('/dai/') ||
-    lower.includes('/ads/') ||
-    lower.includes('/measurements/') ||
-    lower.includes('/thumb') ||
-    lower.includes('.vtt') ||
-    lower.includes('.jpg');
-}
+function buildPlan(originalUrl, targetUrl, targetRep, strategy, source = 'manifest') {
+  if (!targetUrl || targetUrl === originalUrl) return passThrough(originalUrl, 'already-target');
 
-function getInferredMaxCodecTier(urlObj, contentPrefix) {
-  const isLegacyNamedAsset = urlObj.hostname.toLowerCase() === LEGACY_CBS_VOD_HOST &&
-    !/^\d+$/.test(contentPrefix);
-  const isHdPipeline = /(?:^|_)HD(?:_|$)/i.test(contentPrefix);
-  return isLegacyNamedAsset || isHdPipeline
-    ? LEGACY_CBS_INFERRED_MAX_CODEC_TIER
-    : DEFAULT_INFERRED_MAX_CODEC_TIER;
+  const streamKey = targetRep?.streamKey || deriveStreamKey(originalUrl, targetRep?.family);
+  const rejectionKey = `${streamKey || 'unknown'}|${strategy}|${targetRep?.id || targetUrl}`;
+  if (rejectedAuthoritativePlans.has(rejectionKey)) return passThrough(originalUrl, 'rejected');
+
+  return {
+    action: 'authoritative-rewrite',
+    url: targetUrl,
+    originalUrl,
+    target: targetRep,
+    streamKey,
+    strategy,
+    rejectionKey,
+    source
+  };
 }
 
 function getInferredRepresentationPlan(urlObj) {
-  const isVerifiedParamountVod = PARAMOUNT_VOD_HOSTS.has(urlObj.hostname.toLowerCase()) &&
-    urlObj.pathname.toLowerCase().includes('_cenc_precon_dash/');
-  if (!isVerifiedParamountVod) return null;
+  if (!PARAMOUNT_VOD_HOSTS.has(urlObj.hostname.toLowerCase()) ||
+      !urlObj.pathname.toLowerCase().includes('_cenc_precon_dash/')) return null;
 
   const paramountMatch = urlObj.pathname.match(PARAMOUNT_VOD_REP_PATTERN);
   if (paramountMatch) {
     const [, contentPrefix, , currentHeightRaw, assetId, , segmentName] = paramountMatch;
-    const maxCodecTier = getInferredMaxCodecTier(urlObj, contentPrefix);
+    const profile = INFERENCE_PROFILES.find(item => item.matches({ url: urlObj, contentPrefix }));
     return {
       match: paramountMatch,
+      profileId: profile.id,
       contentPrefix,
       assetId,
       segmentName,
       alreadyMax: parseInt(currentHeightRaw, 10) >= INFERRED_MAX_HEIGHT,
-      targetDirectory: `${contentPrefix}_c${maxCodecTier}_${INFERRED_MAX_HEIGHT}p_${assetId}_${INFERRED_MAX_URL_TIER}`
+      targetDirectory: `${contentPrefix}_c${profile.codecTier}_${INFERRED_MAX_HEIGHT}p_${assetId}_${profile.urlTier}`
     };
   }
 
   const legacyMatch = urlObj.pathname.match(LEGACY_CBS_PLAIN_TIER_PATTERN);
   if (!legacyMatch) return null;
-
   const [, contentPrefix, assetId, currentTier, segmentName] = legacyMatch;
   if (!LEGACY_CBS_PLAIN_SOURCE_TIERS.has(currentTier)) return null;
 
   return {
     match: legacyMatch,
+    profileId: 'plain-4500',
     contentPrefix,
     assetId,
     segmentName,
     alreadyMax: false,
-    targetDirectory: `${contentPrefix}_${assetId}_${LEGACY_CBS_PLAIN_MAX_URL_TIER}`
+    targetDirectory: `${contentPrefix}_${assetId}_4500`
   };
 }
 
-// Build a single conservative max-quality candidate for the Paramount VOD
-// directory shape observed when a manifest has not populated representations.
-// The candidate must still be validated by the network hook before it is reused.
 export function getInferredMaxCandidate(url) {
   const config = getConfig();
   if (!config.forceMax || config.forcedId || getRepresentations().length > 0) return null;
 
-  let urlObj;
-  try {
-    urlObj = new URL(url, window.location.origin);
-  } catch {
-    return null;
-  }
+  const request = classifyMediaRequest(url);
+  if (!request.url || request.excluded || request.cmcd.ot !== 'v') return null;
 
-  const cmcd = parseCmcd(urlObj);
-  if (isExcludedFromInference(urlObj, cmcd)) return null;
-
-  const representationPlan = getInferredRepresentationPlan(urlObj);
+  const representationPlan = getInferredRepresentationPlan(request.url);
   if (!representationPlan) return null;
 
-  const { match, contentPrefix, assetId, segmentName, alreadyMax, targetDirectory } = representationPlan;
-  const topBitrate = parseInt(cmcd.tb, 10);
-  if (!topBitrate || alreadyMax) return null;
+  const topBitrate = parseInt(request.cmcd.tb, 10);
+  if (!topBitrate || representationPlan.alreadyMax ||
+      parseInt(estimateResolutionFromBitrate(topBitrate), 10) < INFERRED_MAX_HEIGHT) return null;
 
-  const estimatedMax = parseInt(estimateResolutionFromBitrate(topBitrate), 10);
-  if (estimatedMax < INFERRED_MAX_HEIGHT) return null;
-
-  const matchStart = match.index;
+  const { match, contentPrefix, assetId, segmentName, targetDirectory, profileId } = representationPlan;
   const representationDirectory = match[0].slice(1, match[0].lastIndexOf(`/${segmentName}`));
-  const streamPrefix = urlObj.pathname.slice(0, matchStart);
-  const streamKey = `${urlObj.origin}${streamPrefix}/${contentPrefix}_${assetId}`;
+  const streamPrefix = request.url.pathname.slice(0, match.index);
+  const streamKey = `${request.url.origin}${streamPrefix}/${contentPrefix}_${assetId}`;
 
   if (inferredFallbackState.streamKey !== streamKey) {
     inferredFallbackState = { streamKey, status: 'untested' };
   }
   if (inferredFallbackState.status === 'rejected') return null;
 
-  urlObj.pathname = urlObj.pathname.replace(`/${representationDirectory}/`, `/${targetDirectory}/`);
-
+  request.url.pathname = request.url.pathname.replace(`/${representationDirectory}/`, `/${targetDirectory}/`);
   return {
-    url: urlObj.toString(),
+    action: 'inferred-probe',
+    url: request.url.toString(),
+    originalUrl: url,
     streamKey,
+    strategy: `paramount-vod:${profileId}`,
     needsValidation: inferredFallbackState.status !== 'validated',
     source: 'inferred'
   };
 }
 
 export function recordInferredFallbackResult(streamKey, succeeded) {
-  if (inferredFallbackState.streamKey !== streamKey) return;
-  inferredFallbackState.status = succeeded ? 'validated' : 'rejected';
+  if (inferredFallbackState.streamKey === streamKey) {
+    inferredFallbackState.status = succeeded ? 'validated' : 'rejected';
+  }
+}
+
+export function recordAuthoritativeRewriteResult(plan, succeeded) {
+  if (!plan?.rejectionKey) return;
+  if (succeeded) rejectedAuthoritativePlans.delete(plan.rejectionKey);
+  else rejectedAuthoritativePlans.add(plan.rejectionKey);
 }
 
 export function resetInferredFallbackState() {
   inferredFallbackState = { streamKey: null, status: 'untested' };
+  rejectedAuthoritativePlans.clear();
 }
 
-// Pick the representation the user requested (forcedId) or the highest tier
-// when forceMax is enabled. Returns null if nothing is selected or known.
-function resolveTargetRepresentation() {
-  const config = getConfig();
-  const availableRepresentations = getRepresentations();
+function rewriteDaiPlaylist(url, targetRep) {
+  const targetUrl = targetRep.request?.variantUrl || targetRep.variantUrl;
+  if (!targetUrl || !classifyMediaRequest(url).isDaiPlaylist) return null;
+  return mergeRuntimeTelemetry(targetUrl, url);
+}
 
-  if (availableRepresentations.length === 0) return null;
+function rewriteTieredHls(url, targetRep) {
+  const targetTier = targetRep.request?.hlsTier || targetRep.hlsTier;
+  if (!targetTier) return null;
 
-  if (config.forcedId) {
-    return availableRepresentations.find(r => r.id === config.forcedId) || null;
+  const complex = url.match(/manifest_video_(\d+)_(\d+)_([a-zA-Z0-9]+)\.(mp4|ts|m4s)/);
+  if (complex) {
+    return url.replace(complex[0], `manifest_video_${targetTier}_${complex[2]}_${complex[3]}.${complex[4]}`);
   }
 
-  if (config.forceMax) {
-    return availableRepresentations[0];
+  const simple = url.match(/manifest_(\d+)_(\d+)\.(ts|mp4|m4s|m3u8)/);
+  if (simple) {
+    return url.replace(simple[0], `manifest_${targetTier}_${simple[2]}.${simple[3]}`);
   }
 
+  const targetVariant = targetRep.request?.variantUrl || targetRep.variantUrl;
+  if (targetVariant && /\.m3u8(?:$|\?)/i.test(url)) {
+    return mergeRuntimeTelemetry(targetVariant, url);
+  }
   return null;
 }
 
-// Attempt a second pass rewrite using the DASH SegmentTemplate syntax so the
-// extension can swap in a different representation ID/bandwidth while
-// preserving the segment number from the original URL.
+function materializeTemplate(template, targetRep, segmentNumber) {
+  if (!template) return null;
+  return template
+    .replace(/\$Number(?:%0\d+d)?\$/g, segmentNumber)
+    .replace(/\$RepresentationID\$/g, targetRep.rawId || targetRep.request?.rawId || targetRep.id)
+    .replace(/\$Bandwidth\$/g, targetRep.bandwidth || targetRep.dashTier || targetRep.request?.dashTier || '');
+}
+
 export function retryRewriteUrl(url, targetRep) {
-  const availableRepresentations = getRepresentations();
-  if (!targetRep || !targetRep.template) return url;
+  const representations = getRepresentations();
+  const targetTemplate = targetRep?.request?.template || targetRep?.template;
+  if (!targetRep || !targetTemplate) return url;
 
-  for (const [index, rep] of availableRepresentations.entries()) {
-    if (!rep.template) continue;
+  const [urlPath, query] = url.split('?');
+  for (const rep of representations) {
+    const template = rep.request?.template || rep.template;
+    if (!template) continue;
 
-    let pattern = rep.template.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    pattern = pattern.replace(/\\\$Number\\\$/g, '(\\d+)');
-    pattern = pattern.replace(/\\\$RepresentationID\\\$/g, '[^/]+');
-    pattern = pattern.replace(/\\\$Bandwidth\\\$/g, '\\d+');
+    let pattern = template.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    pattern = pattern
+      .replace(/\\\$Number(?:%0\d+d)?\\\$/g, '(\\d+)')
+      .replace(/\\\$RepresentationID\\\$/g, '[^/]+')
+      .replace(/\\\$Bandwidth\\\$/g, '\\d+');
+    const match = urlPath.match(new RegExp(`${pattern}$`));
+    if (!match) continue;
 
-    const regex = new RegExp(pattern + '$');
-
-    const parts = url.split('?');
-    const urlPath = parts[0];
-
-    const match = urlPath.match(regex);
-    if (match) {
-      const simpleMatch = url.match(/seg_(\d+)\./) || url.match(/segment_(\d+)_/);
-      const segmentNum = simpleMatch ? simpleMatch[1] : match[1];
-
-      if (rep.id === targetRep.id) {
-        return url;
-      }
-
-      const matchIndex = match.index;
-      const urlPrefix = urlPath.substring(0, matchIndex);
-
-      let newSuffix = targetRep.template;
-      newSuffix = newSuffix.replace('$Number$', segmentNum);
-      newSuffix = newSuffix.replace('$RepresentationID$', targetRep.id);
-
-      if (targetRep.dashTier) {
-        newSuffix = newSuffix.replace('$Bandwidth$', targetRep.dashTier);
-      } else if (targetRep.bandwidth) {
-        newSuffix = newSuffix.replace('$Bandwidth$', targetRep.bandwidth);
-      }
-
-      return urlPrefix + newSuffix + (parts[1] ? '?' + parts[1] : '');
-    }
+    const segmentNumber = match[1] || urlPath.match(/(?:seg_|segment_)(\d+)/)?.[1];
+    const suffix = materializeTemplate(targetTemplate, targetRep, segmentNumber);
+    return urlPath.slice(0, match.index) + suffix + (query ? `?${query}` : '');
   }
-
   return url;
 }
 
-// Apply quality overrides to an incoming media segment URL when configured to
-// force a specific representation or highest available tier.
+function rewriteDash(url, targetRep) {
+  const templated = retryRewriteUrl(url, targetRep);
+  if (templated !== url) return templated;
+
+  const targetRawId = targetRep.request?.rawId || targetRep.rawId;
+  const liveId = url.match(/manifest_video_(\d+)_/);
+  if (liveId && targetRawId && /^\d+$/.test(targetRawId)) {
+    return url.replace(`manifest_video_${liveId[1]}_`, `manifest_video_${targetRawId}_`);
+  }
+
+  const targetPath = targetRep.request?.pathId || targetRep.pathId;
+  const currentDirectory = url.match(/\/([^/?]+)\/(?:seg_\d+\.m4s|init\.m4v)(?:\?|$)/i)?.[1];
+  if (targetPath && currentDirectory && targetPath !== currentDirectory) {
+    return url.replace(`/${currentDirectory}/`, `/${targetPath}/`);
+  }
+
+  const resolution = url.match(/_(\d{3,4})p_/i);
+  const targetTier = targetRep.request?.dashTier || targetRep.dashTier;
+  if (resolution && targetRep.height) {
+    let rewritten = url.replace(`_${resolution[1]}p_`, `_${targetRep.height}p_`);
+    const tier = rewritten.match(/_(\d{3,5})\/(?:seg_|init)/i);
+    if (tier && targetTier) rewritten = rewritten.replace(`_${tier[1]}/`, `_${targetTier}/`);
+    return rewritten;
+  }
+
+  const tier = url.match(/_(\d{3,5})\/(seg_\d+\.m4s)/i);
+  return tier && targetTier ? url.replace(`_${tier[1]}/${tier[2]}`, `_${targetTier}/${tier[2]}`) : null;
+}
+
+export function planRequest(url, options = {}) {
+  const config = options.config || getConfig();
+  const representations = options.representations || getRepresentations();
+  if (!url || (!config.forceMax && !config.forcedId)) return passThrough(url, 'disabled');
+
+  const request = classifyMediaRequest(url);
+  if (request.excluded || request.kind === 'unknown') return passThrough(url, 'excluded');
+
+  const targetRep = selectRepresentation(representations, config);
+  if (!targetRep) {
+    if (options.allowInference !== false && request.kind === 'segment') {
+      return getInferredMaxCandidate(url) || passThrough(url, 'no-representation');
+    }
+    return passThrough(url, 'no-representation');
+  }
+
+  const family = targetRep.family || targetRep.request?.family ||
+    (targetRep.daiId ? 'google-dai-hls' : targetRep.hlsTier ? 'tiered-hls' : 'dash');
+  let targetUrl = null;
+  let strategy = family;
+
+  if (family === 'google-dai-hls') targetUrl = rewriteDaiPlaylist(url, targetRep);
+  else if (family === 'tiered-hls' || family === 'hls') targetUrl = rewriteTieredHls(url, targetRep);
+  else if (family === 'dash') targetUrl = rewriteDash(url, targetRep);
+
+  return targetUrl
+    ? buildPlan(url, targetUrl, targetRep, strategy)
+    : passThrough(url, 'unrecognized-family-request');
+}
+
 export function maybeRewriteUrl(url) {
-  const availableRepresentations = getRepresentations();
-  const config = getConfig();
-
-  if (availableRepresentations.length === 0) return url;
-
-  const adStrings = ['google', 'dai', 'doubleclick', 'video_ads', 'googlevideo', 'dclk', '/ad/', '_ad_', 'ads/'];
-  const lowerUrl = url.toLowerCase();
-  const isAd = adStrings.some(s => lowerUrl.includes(s));
-
-  // Google DAI variant playlists (/variant/....m3u8) are the target of our quality switching
-  // for live streams, so do NOT skip them even though they match 'google/dai'.
-  const isDaiPlaylist = lowerUrl.includes('/variant/') && lowerUrl.includes('.m3u8');
-
-  if (isAd && !isDaiPlaylist) {
-    return url;
-  }
-
-  // --- Google DAI Live Stream Logic ---
-  // We rewrite the Playlist URL itself, not the segments.
-
-  if (config.forceMax || config.forcedId) {
-    let targetRep = null;
-    if (config.forcedId) {
-      targetRep = availableRepresentations.find(r => r.id === config.forcedId);
-    } else if (config.forceMax) {
-      targetRep = availableRepresentations.find(r => r.height >= 1080) || availableRepresentations[0];
-    }
-
-    if (targetRep && targetRep.daiId) {
-      // Check if this is a Variant Playlist URL (contains /variant/{ID}/)
-      const idMatch = url.match(/\/variant\/([a-f0-9]{32})\//);
-      if (idMatch) {
-        const currentId = idMatch[1];
-        if (currentId !== targetRep.daiId) {
-          return url.replace(currentId, targetRep.daiId);
-        }
-      }
-    }
-  }
-  // --- End DAI Logic ---
-
-  // Allow 'init' or other alphanumeric strings in the 3rd group
-  const hlsMatch = url.match(/manifest_video_(\d+)_(\d+)_([a-zA-Z0-9]+)\.(mp4|ts|m4s)/);
-  const hlsMatchSimple = url.match(/manifest_(\d+)_(\d+)\.(ts|mp4|m4s)/);
-
-  if (hlsMatch || hlsMatchSimple) {
-    const match = hlsMatch || hlsMatchSimple;
-    const isComplex = !!hlsMatch;
-    const currentTier = match[1];
-    const part2 = match[2];
-    const part3 = isComplex ? match[3] : null;
-    const ext = isComplex ? match[4] : match[3];
-
-    if (config.forceMax || config.forcedId) {
-      let targetTier = null;
-
-      if (config.forcedId) {
-        const targetRep = availableRepresentations.find(r => r.id === config.forcedId);
-        if (targetRep) {
-          if (targetRep.hlsTier) {
-            targetTier = targetRep.hlsTier;
-          } else if (targetRep.rawId && targetRep.rawId.length <= 2) {
-            // Hybrid logic: Use numeric rawId as tier if it's a short string (1, 2, 8 etc)
-            targetTier = targetRep.rawId;
-          } else {
-            // Cross-format fallback: try to find an HLS tier or rawId with the same height
-            const matchRep = availableRepresentations.find(r => r.height === targetRep.height && (r.hlsTier || (r.rawId && r.rawId.length <= 2)));
-            if (matchRep) {
-              targetTier = matchRep.hlsTier || matchRep.rawId;
-            }
-          }
-        }
-      } else if (config.forceMax) {
-        // Find best tier from any representation that has one
-        const bestWithTier = availableRepresentations.find(r => r.hlsTier || (r.rawId && r.rawId.length <= 2));
-        if (bestWithTier) targetTier = bestWithTier.hlsTier || bestWithTier.rawId;
-      }
-
-      if (targetTier && targetTier !== currentTier) {
-        let newUrl;
-        if (isComplex) {
-          newUrl = url.replace(
-            `manifest_video_${currentTier}_${part2}_${part3}.${ext}`,
-            `manifest_video_${targetTier}_${part2}_${part3}.${ext}`
-          );
-        } else {
-          newUrl = url.replace(
-            `manifest_${currentTier}_${part2}.${ext}`,
-            `manifest_${targetTier}_${part2}.${ext}`
-          );
-        }
-        return newUrl;
-      }
-    }
-
-    return url;
-  }
-
-  if (url.includes('_aac_') || url.includes('/audio/') || url.includes('_audio_')) {
-    return url;
-  }
-
-  if (config.forceMax || config.forcedId) {
-    let targetRep = null;
-    if (config.forcedId) {
-      targetRep = availableRepresentations.find(r => r.id === config.forcedId);
-      if (!targetRep) {
-        console.warn(`[PQI] ForcedID "${config.forcedId}" NOT FOUND.`);
-        return url;
-      }
-    } else {
-      targetRep = availableRepresentations[0];
-    }
-
-    if (!targetRep) return url;
-
-    if (targetRep.template) {
-      const rewritten = retryRewriteUrl(url, targetRep);
-      if (rewritten !== url) {
-        return rewritten;
-      }
-    }
-
-    const resMatch = url.match(/_(\d{3,4}p)_/);
-    if (resMatch) {
-      const currentRes = resMatch[1];
-      const targetRes = targetRep.height + 'p';
-
-      if (currentRes !== targetRes) {
-        let newUrl = url.replace(`_${currentRes}_`, `_${targetRes}_`);
-
-        // --- DASH Strategy 1: Path Swap (Robust segment replacement) ---
-        if (targetRep.pathId || targetRep.dashTier) {
-          const currentIdSegmentMatch = url.match(/\/([^\/?]+)(?=\/[^\/]*?seg_)/i);
-          if (currentIdSegmentMatch) {
-            const currentIdSegment = currentIdSegmentMatch[1];
-            const targetIdSegment = targetRep.pathId || targetRep.id;
-
-            // Only swap if the target is a complex string (to avoid mangling or numeric IDs)
-            if (targetIdSegment && targetIdSegment.includes('_') && !targetIdSegment.includes('$') && currentIdSegment !== targetIdSegment) {
-              return url.replace(`/${currentIdSegment}/`, `/${targetIdSegment}/`);
-            }
-          }
-        }
-
-        // --- DASH Strategy 2: Targeted Bitrate Replacement (Fallback) ---
-        if (targetRep.dashTier) {
-          const bitrateMatch = url.match(/_(\d{3,5})\/seg_/);
-          if (bitrateMatch) {
-            const currentBitrate = bitrateMatch[1];
-            if (currentBitrate !== targetRep.dashTier) {
-              newUrl = newUrl.replace(`_${currentBitrate}/seg_`, `_${targetRep.dashTier}/seg_`);
-            }
-          }
-        }
-        return newUrl;
-      }
-    }
-
-    const dashBitrateMatch = url.match(/_(\d{3,5})\/seg_(\d+)\.m4s/);
-    if (dashBitrateMatch) {
-      const currentBitrate = dashBitrateMatch[1];
-      const segmentNum = dashBitrateMatch[2];
-
-      if (targetRep.dashTier) {
-        const targetBitrate = targetRep.dashTier;
-        if (targetBitrate !== currentBitrate) {
-          return url.replace(`_${currentBitrate}/seg_${segmentNum}.m4s`, `_${targetBitrate}/seg_${segmentNum}.m4s`);
-        }
-      }
-    }
-
-    return url;
-  }
-
-  if (config.forcedId) {
-    const targetRep = availableRepresentations.find(r => r.id === config.forcedId);
-    if (targetRep) {
-      return retryRewriteUrl(url, targetRep);
-    }
-  }
-
-  if (config.forceMax) {
-    const bestRep = availableRepresentations.find(r => r.height >= 1080) || availableRepresentations[0];
-    return retryRewriteUrl(url, bestRep);
-  }
-
-  return url;
+  const plan = planRequest(url, { allowInference: false });
+  return plan.action === 'authoritative-rewrite' ? plan.url : url;
 }
 
-// When a rewrite fails, this picks the next best option below the current max
-// so the fallback still prioritizes high quality without being too aggressive.
+export function resolveTargetRepresentation() {
+  return selectRepresentation(getRepresentations(), getConfig());
+}
+
 export function resolveNextBestRepresentation() {
-  const availableRepresentations = getRepresentations();
-  const maxRep = availableRepresentations.find(r => r.height >= 1080) || availableRepresentations[0];
-  const currentIndex = availableRepresentations.indexOf(maxRep);
-  return availableRepresentations[currentIndex + 1];
+  const representations = getRepresentations();
+  const target = resolveTargetRepresentation();
+  const index = representations.indexOf(target);
+  return index >= 0 ? representations[index + 1] : null;
 }
-
-export { resolveTargetRepresentation };

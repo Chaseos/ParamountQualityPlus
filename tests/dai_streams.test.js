@@ -42,7 +42,7 @@ https://dai.google.com/linear/hls/pa/event/EID/stream/SID/variant/51dee42484fe2a
         expect(high.id).toBe('hls_1');
 
         const originalUrl = 'https://dai.google.com/linear/hls/pa/event/EID/stream/SID/variant/0219929b8f4989b82a0b9a8f58f7352a/bandwidth/635781.m3u8';
-        const expectedUrl = 'https://dai.google.com/linear/hls/pa/event/EID/stream/SID/variant/51dee42484fe2a2135500e11874015a5/bandwidth/635781.m3u8';
+        const expectedUrl = 'https://dai.google.com/linear/hls/pa/event/EID/stream/SID/variant/51dee42484fe2a2135500e11874015a5/bandwidth/8940798.m3u8';
 
         const rewrote = maybeRewriteUrl(originalUrl);
         expect(rewrote).toBe(expectedUrl);
@@ -57,10 +57,30 @@ https://dai.google.com/linear/hls/pa/event/EID/stream/SID/variant/51dee42484fe2a
         const originalVariantUrl = 'https://dai.google.com/linear/hls/pa/event/EID/stream/SID/variant/0219929b8f4989b82a0b9a8f58f7352a/bandwidth/635781.m3u8';
 
         // Expected Rewrite: High Quality ID (51dee42484fe2a2135500e11874015a5)
-        const expectedRewrittenUrl = 'https://dai.google.com/linear/hls/pa/event/EID/stream/SID/variant/51dee42484fe2a2135500e11874015a5/bandwidth/635781.m3u8';
+        const expectedRewrittenUrl = 'https://dai.google.com/linear/hls/pa/event/EID/stream/SID/variant/51dee42484fe2a2135500e11874015a5/bandwidth/8940798.m3u8';
 
         const rewrote = maybeRewriteUrl(originalVariantUrl);
         expect(rewrote).toBe(expectedRewrittenUrl);
+    });
+
+    test('preserves CMCD while replacing the complete DAI variant tuple', () => {
+        parseHlsManifest(masterManifest);
+        setConfig({ forceMax: true, forcedId: null });
+
+        const rewritten = maybeRewriteUrl(
+            'https://dai.google.com/linear/hls/pa/event/EID/stream/SID/variant/0219929b8f4989b82a0b9a8f58f7352a/bandwidth/635781.m3u8?CMCD=br%3D635%2Cot%3Dv%2Ctb%3D8941'
+        );
+
+        expect(rewritten).toContain('/variant/51dee42484fe2a2135500e11874015a5/bandwidth/8940798.m3u8');
+        expect(rewritten).toContain('CMCD=br%3D635%2Cot%3Dv%2Ctb%3D8941');
+    });
+
+    test('does not rewrite Google DAI media segments', () => {
+        parseHlsManifest(masterManifest);
+        setConfig({ forceMax: true, forcedId: null });
+
+        const segment = 'https://dai.google.com/linear/hls/pa/event/EID/stream/SID/variant/0219929b8f4989b82a0b9a8f58f7352a/manifest_8_100.ts';
+        expect(maybeRewriteUrl(segment)).toBe(segment);
     });
 
     test('infers active quality from variant playlist request', () => {

@@ -174,6 +174,27 @@ describe('Manifest Parsing', () => {
         expect(reps[0]).toEqual(expect.objectContaining({ dashTier: '5400', isContent: true }));
     });
 
+    test('selects the highest representation from the captured Big Brother live DASH ladder', () => {
+        parseManifest(`
+          <MPD><Period>
+            <AdaptationSet mimeType="video/mp4">
+              <SegmentTemplate media="manifest_video_$RepresentationID$_0_$Number$.mp4?m=1783441869" />
+              <Representation id="4" width="960" height="540" bandwidth="1800000"></Representation>
+              <Representation id="5" width="1280" height="720" bandwidth="3499968"></Representation>
+              <Representation id="6" width="1920" height="1080" bandwidth="5800000"></Representation>
+              <Representation id="7" width="1920" height="1080" bandwidth="8000000"></Representation>
+            </AdaptationSet>
+          </Period></MPD>
+        `, 'https://airspace-cdn.cbsivideo.com/out/v1/live/manifest.mpd');
+
+        expect(getAvailableRepresentations()[0]).toEqual(expect.objectContaining({
+            rawId: '7',
+            height: 1080,
+            dashTier: '8000',
+            source: 'manifest'
+        }));
+    });
+
     test('Should prioritize Movie content over Ads (Path Collision)', () => {
         const manifest = `
             <MPD>

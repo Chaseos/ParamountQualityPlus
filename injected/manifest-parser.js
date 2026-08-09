@@ -1,5 +1,12 @@
 import { estimateResolutionFromBitrate } from './constants.js';
 import { setRepresentations, getRepresentations } from './state.js';
+import {
+  deriveStreamKey,
+  getDeliveryFamily,
+  isAdReference,
+  normalizeRepresentations,
+  resolveVariantUrl
+} from './stream-model.js';
 
 // Parse HLS or DASH manifests, normalize the discovered representations, and
 // broadcast them to the extension UI via postMessage for display/selection.
@@ -43,13 +50,14 @@ export function parseHlsManifest(content, requestUrl) {
           }
         }
 
-        if (height || bandwidth) {
+          if (height || bandwidth) {
           if (!height && bandwidth) {
             const estimatedRes = estimateResolutionFromBitrate(bandwidth / 1000);
             height = parseInt(estimatedRes);
             resolution = estimatedRes;
           }
 
+          variantUrl = resolveVariantUrl(variantUrl, requestUrl);
           let hlsTier = null;
           let daiId = null;
           if (variantUrl) {
@@ -65,6 +73,7 @@ export function parseHlsManifest(content, requestUrl) {
             }
           }
 
+          const family = getDeliveryFamily({ variantUrl, hlsTier });
           qualities.push({
             id: `hls_${variantIndex}`,
             bandwidth,
@@ -75,6 +84,8 @@ export function parseHlsManifest(content, requestUrl) {
             variantUrl,
             hlsTier,
             daiId,
+            family,
+            streamKey: deriveStreamKey(requestUrl || variantUrl, family),
             isHls: true,
             source: 'manifest'
           });
@@ -128,12 +139,19 @@ export function parseHlsManifest(content, requestUrl) {
         byHeight.set(q.height, q);
       }
     }
-    let unique = Array.from(byHeight.values());
+    let unique = normalizeRepresentations(Array.from(byHeight.values()), {
+      manifestUrl: requestUrl,
+      streamKey: deriveStreamKey(requestUrl, 'hls')
+    });
 
     unique.sort((a, b) => (b.height || 0) - (a.height || 0));
 
     if (unique.length > 0) {
-      setRepresentations(unique);
+      setRepresentations(unique, {
+        streamKey: unique[0].streamKey,
+        family: unique[0].family,
+        manifestUrl: requestUrl
+      });
       window.postMessage({
         type: 'PQI_MANIFEST_DATA',
         payload: unique
@@ -247,14 +265,12 @@ export function parseDashManifest(xmlString, requestUrl) {
             finalHeight = parseInt(estimatedRes.replace('p', ''));
           }
 
-          // Require boundaries around 'dai' to prevent matching shows like "The Daily Show"
-          const adStrings = ['google', '/dai/', '_dai_', 'doubleclick', 'video_ads', 'googlevideo', 'dclk', '/ad/', '_ad_', 'ads/'];
           const lowerId = (rawId || '').toLowerCase();
           const lowerPath = (pathId || '').toLowerCase();
           const lowerBase = (baseUrl || '').toLowerCase();
           const lowerTempl = (finalTemplate || '').toLowerCase();
 
-          const isAd = adStrings.some(s => lowerBase.includes(s) || lowerId.includes(s) || lowerPath.includes(s) || lowerTempl.includes(s));
+          const isAd = [lowerBase, lowerId, lowerPath, lowerTempl].some(isAdReference);
 
           const hasContentMarker = !!(pathId && (
             pathId.includes('PPUSA') ||
@@ -272,6 +288,8 @@ export function parseDashManifest(xmlString, requestUrl) {
             height: finalHeight,
             bandwidth: parseInt(bw),
             isContent: hasContentMarker && !isAd,
+            family: 'dash',
+            streamKey: deriveStreamKey(requestUrl, 'dash'),
             source: 'manifest'
           };
 
@@ -302,10 +320,17 @@ export function parseDashManifest(xmlString, requestUrl) {
       unique = unique.filter(q => q.isContent);
     }
 
-    unique.sort((a, b) => b.height - a.height);
+    unique = normalizeRepresentations(unique, {
+      manifestUrl: requestUrl,
+      streamKey: deriveStreamKey(requestUrl, 'dash')
+    });
 
     if (unique.length > 0) {
-      setRepresentations(unique);
+      setRepresentations(unique, {
+        streamKey: unique[0].streamKey,
+        family: 'dash',
+        manifestUrl: requestUrl
+      });
       const displayQualities = unique.map(q => {
         if (q.dashTier) {
           const src = q.template || q.baseUrl || '';
