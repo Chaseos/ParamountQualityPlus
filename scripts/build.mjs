@@ -37,6 +37,35 @@ const sourceManifest = JSON.parse(
   await readFile(path.join(projectRoot, 'manifest.json'), 'utf8')
 );
 
+const declaredWebResources = new Set(
+  sourceManifest.web_accessible_resources?.flatMap(entry => entry.resources || []) || []
+);
+
+async function collectLocalModuleGraph(relativeModulePath, visited = new Set()) {
+  const normalizedPath = relativeModulePath.split(path.sep).join('/');
+  if (visited.has(normalizedPath)) return visited;
+  visited.add(normalizedPath);
+
+  const source = await readFile(path.join(projectRoot, normalizedPath), 'utf8');
+  const importPattern = /(?:from\s+|import\s*)['"](\.[^'"]+)['"]/g;
+  let match;
+  while ((match = importPattern.exec(source)) !== null) {
+    const dependency = path.posix.normalize(path.posix.join(path.posix.dirname(normalizedPath), match[1]));
+    await collectLocalModuleGraph(dependency, visited);
+  }
+  return visited;
+}
+
+const injectedModuleGraph = await collectLocalModuleGraph('injected/index.js');
+const undeclaredInjectedModules = [...injectedModuleGraph]
+  .filter(modulePath => !declaredWebResources.has(modulePath));
+
+if (undeclaredInjectedModules.length > 0) {
+  throw new Error(
+    `Injected modules missing from web_accessible_resources: ${undeclaredInjectedModules.join(', ')}`
+  );
+}
+
 if (!sourceManifest.browser_specific_settings?.gecko) {
   throw new Error('manifest.json must contain the Firefox browser_specific_settings.gecko configuration.');
 }
