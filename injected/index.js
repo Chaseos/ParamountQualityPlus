@@ -1,7 +1,15 @@
 import { initConfigListener } from './config.js';
 import { analyzeUrl, resetAnalysisState } from './url-analysis.js';
 import { parseManifest, parseDashManifest, parseHlsManifest } from './manifest-parser.js';
-import { maybeRewriteUrl, retryRewriteUrl, resolveNextBestRepresentation, resolveTargetRepresentation } from './rewriter.js';
+import {
+  getInferredMaxCandidate,
+  maybeRewriteUrl,
+  recordInferredFallbackResult,
+  resetInferredFallbackState,
+  retryRewriteUrl,
+  resolveNextBestRepresentation,
+  resolveTargetRepresentation
+} from './rewriter.js';
 import { initNetworkHooks } from './network-hooks.js';
 import { estimateResolutionFromBitrate } from './constants.js';
 import { getConfig, getRepresentations, setConfig, setRepresentations } from './state.js';
@@ -78,11 +86,14 @@ export {
   resetAnalysisState,
   estimateResolutionFromBitrate,
   getConfig,
+  getInferredMaxCandidate,
   getRepresentations as getAvailableRepresentations,
   maybeRewriteUrl,
   parseDashManifest,
   parseHlsManifest,
   parseManifest,
+  recordInferredFallbackResult,
+  resetInferredFallbackState,
   resolveNextBestRepresentation,
   resolveTargetRepresentation,
   retryRewriteUrl,

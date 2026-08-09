@@ -7,6 +7,7 @@ let streamState = {
     maxBitrate: null, // kbps
     timestamp: null,
     isEstimated: false, // true if resolution is estimated from bitrate
+    qualitySource: null, // manifest or inferred
     hasActiveStream: false, // true if we're receiving segment data
     geolocationPermission: 'unknown',
     playbackDetected: false,
@@ -40,7 +41,7 @@ window.addEventListener('message', (event) => {
         return;
     }
 
-    let { resolution, bitrate, maxBitrate, timestamp, isEstimated } = event.data.payload;
+    let { resolution, bitrate, maxBitrate, timestamp, isEstimated, source } = event.data.payload;
 
     // Mark that we have an active stream
     streamState.hasActiveStream = true;
@@ -84,18 +85,21 @@ window.addEventListener('message', (event) => {
     // Always update bitrate to show current segment rate
     if (bitrate) streamState.bitrate = bitrate;
     if (maxBitrate) streamState.maxBitrate = maxBitrate;
+    if (source) streamState.qualitySource = source;
 });
 
 window.addEventListener('message', (event) => {
     if (event.source === window && event.data) {
         if (event.data.type === 'PQI_MANIFEST_DATA') {
             streamState.manifestQualities = event.data.payload;
+            streamState.qualitySource = 'manifest';
         } else if (event.data.type === 'PQI_ACTIVE_QUALITY') {
             // Update live stats from DAI variant playlist match
             const { resolution, bitrate, daiId } = event.data.payload;
             if (resolution) streamState.resolution = resolution;
             if (bitrate) streamState.bitrate = bitrate;
             streamState.isEstimated = false; // Known from playlist URL match
+            streamState.qualitySource = 'manifest';
             streamState.timestamp = Date.now();
         } else if (event.data.type === 'PQI_GEOLOCATION_PERMISSION') {
             streamState.geolocationPermission = event.data.payload?.state || 'unknown';

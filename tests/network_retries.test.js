@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { clearPrefetchQueue } from '../injected/prefetch.js';
-import { setConfig } from '../injected/state.js';
+import { getRepresentations, setConfig, setRepresentations } from '../injected/state.js';
 
 let originalFetchMock;
 
@@ -21,6 +21,8 @@ beforeAll(async () => {
 beforeEach(() => {
     originalFetchMock.mockClear();
     clearPrefetchQueue();
+    setRepresentations([]);
+    setConfig({ enableRetries: true, maxRetries: 3, enablePrefetch: true, prefetchCount: 5 });
     jest.useFakeTimers();
 });
 
@@ -92,6 +94,76 @@ describe('Fetch Retries for Segments', () => {
         // Should only be called once, no retries
         expect(originalFetchMock).toHaveBeenCalledTimes(1);
         expect(response.ok).toBe(false);
+    });
+
+    test('preserves CMCD on the player request while normalizing prefetches', async () => {
+        const url = 'https://host/video/seg_10.m4s?CMCD=br%3D1802%2Cot%3Dv%2Ctb%3D5812';
+        originalFetchMock.mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'video/mp4' } });
+
+        await window.fetch(url);
+
+        expect(originalFetchMock.mock.calls.some(([resource]) => resource === url)).toBe(true);
+        expect(originalFetchMock.mock.calls.filter(([resource]) => resource.includes('seg_10.m4s'))[0][0]).toBe(url);
+    });
+
+    test('parses a manifest before resolving it to the player', async () => {
+        let releaseManifest;
+        const manifestText = new Promise(resolve => { releaseManifest = resolve; });
+        const response = {
+            ok: true,
+            status: 200,
+            headers: { get: () => 'application/dash+xml' },
+            clone: () => ({ text: () => manifestText })
+        };
+        originalFetchMock.mockResolvedValue(response);
+
+        let playerReceivedManifest = false;
+        const fetchPromise = window.fetch('https://host/manifest.mpd').then(result => {
+            playerReceivedManifest = true;
+            return result;
+        });
+        await Promise.resolve();
+        expect(playerReceivedManifest).toBe(false);
+
+        releaseManifest(`
+            <MPD><Period><AdaptationSet contentType="video">
+              <Representation id="5" width="1920" height="1080" bandwidth="5812183">
+                <SegmentTemplate media="PPUSA_MOVIE_c20_1080p_asset_5400/seg_$Number$.m4s" />
+              </Representation>
+            </AdaptationSet></Period></MPD>
+        `);
+
+        await fetchPromise;
+        expect(getRepresentations()).toEqual([
+            expect.objectContaining({ height: 1080, dashTier: '5400', source: 'manifest' })
+        ]);
+    });
+
+    test('fails open when a manifest body cannot be inspected', async () => {
+        const response = {
+            ok: true,
+            status: 200,
+            headers: { get: () => 'application/dash+xml' },
+            clone: () => ({ text: () => Promise.reject(new Error('unreadable')) })
+        };
+        originalFetchMock.mockResolvedValue(response);
+
+        await expect(window.fetch('https://host/manifest.mpd')).resolves.toBe(response);
+    });
+
+    test('clears stale representations when a new VOD content id starts', async () => {
+        setRepresentations([{ id: 'old-title', height: 1080, hlsTier: '5', source: 'manifest' }]);
+        const response = {
+            ok: true,
+            status: 200,
+            headers: { get: () => 'application/dash+xml' },
+            clone: () => ({ text: async () => '' })
+        };
+        originalFetchMock.mockResolvedValue(response);
+
+        await window.fetch('https://pubads.g.doubleclick.net/ondemand/dash/content/1/vid/NEW_TITLE/CHS/streams/1/manifest.mpd');
+
+        expect(getRepresentations()).toEqual([]);
     });
 
 });

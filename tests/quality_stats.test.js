@@ -39,6 +39,7 @@ describe('Quality Stats & Bitrate Reporting', () => {
         expect(payload.bitrate).toBe(3000); // Uses dashTier
         expect(payload.resolution).toBe('720p');
         expect(payload.isEstimated).toBe(false);
+        expect(payload.source).toBe('manifest');
     });
 
     test('Should prioritize Manifest Resolution over Bitrate Estimation', () => {
@@ -67,5 +68,6 @@ describe('Quality Stats & Bitrate Reporting', () => {
         expect(payload.bitrate).toBe(4500);
         expect(payload.resolution).toBe('1080p');
         expect(payload.isEstimated).toBe(true);
+        expect(payload.source).toBe('inferred');
     });
 });

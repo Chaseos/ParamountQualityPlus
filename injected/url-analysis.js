@@ -25,6 +25,7 @@ export function analyzeUrl(url) {
     let resolution = resolutionMatch;
     let isEstimated = false;
     let exactBandwidth = null;
+    let source = 'inferred';
 
     if (resolution && availableRepresentations.length > 0) {
       const numericRes = parseInt(resolution);
@@ -36,6 +37,7 @@ export function analyzeUrl(url) {
           exactBandwidth = match.bandwidth;
         }
         isEstimated = false;
+        source = 'manifest';
       }
     }
 
@@ -64,6 +66,7 @@ export function analyzeUrl(url) {
           resolution = match.height + 'p';
           isEstimated = false;
           exactBandwidth = match.bandwidth;
+          source = 'manifest';
         } else {
           resolution = estimateResolutionFromBitrate(requestedTier);
           isEstimated = true;
@@ -78,6 +81,7 @@ export function analyzeUrl(url) {
           resolution = match.height + 'p';
           exactBandwidth = match.bandwidth;
           isEstimated = false;
+          source = 'manifest';
         }
       }
 
@@ -88,6 +92,7 @@ export function analyzeUrl(url) {
           resolution = match.height + 'p';
           exactBandwidth = match.bandwidth;
           isEstimated = false;
+          source = 'manifest';
         }
       }
     }
@@ -112,6 +117,7 @@ export function analyzeUrl(url) {
           isEstimated,
           bitrate: finalBitrate,
           maxBitrate,
+          source,
           timestamp: Date.now()
         }
       }, '*');
@@ -125,4 +131,3 @@ export function analyzeUrl(url) {
 export function resetAnalysisState() {
   // Logic removed
 }
-

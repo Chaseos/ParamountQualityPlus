@@ -1,4 +1,156 @@
 import { getConfig, getRepresentations } from './state.js';
+import { estimateResolutionFromBitrate } from './constants.js';
+
+const PARAMOUNT_VOD_REP_PATTERN = /\/([^/?]+)_c(\d{2})_(\d{3,4})p_([^/?]+)_(\d{3,5})\/(seg_\d+\.m4s|init\.m4v)(?=\?|$)/i;
+const LEGACY_CBS_PLAIN_TIER_PATTERN = /\/([^/?]+)_(\d{5,})_(\d{3,5})\/(seg_\d+\.m4s|init\.m4v)(?=\?|$)/i;
+const DEFAULT_INFERRED_MAX_CODEC_TIER = '20';
+const LEGACY_CBS_VOD_HOST = 'vod-gcs-cedexis.cbsaavideo.com';
+const LEGACY_CBS_INFERRED_MAX_CODEC_TIER = '23';
+const LEGACY_CBS_PLAIN_MAX_URL_TIER = '4500';
+const LEGACY_CBS_PLAIN_SOURCE_TIERS = new Set(['110', '375', '750', '1500', '2100', '3000']);
+const PARAMOUNT_VOD_HOSTS = new Set([
+  LEGACY_CBS_VOD_HOST,
+  'vod.pplus.paramount.tech'
+]);
+const INFERRED_MAX_HEIGHT = 1080;
+const INFERRED_MAX_URL_TIER = '5400';
+
+let inferredFallbackState = {
+  streamKey: null,
+  status: 'untested'
+};
+
+function parseCmcd(urlObj) {
+  const raw = urlObj.searchParams.get('CMCD');
+  if (!raw) return {};
+
+  const values = {};
+  for (const pair of raw.split(',')) {
+    const separator = pair.indexOf('=');
+    if (separator === -1) {
+      values[pair] = true;
+    } else {
+      values[pair.slice(0, separator)] = pair.slice(separator + 1).replace(/^"|"$/g, '');
+    }
+  }
+  return values;
+}
+
+function isExcludedFromInference(urlObj, cmcd) {
+  const lower = urlObj.toString().toLowerCase();
+  return cmcd.ot !== 'v' ||
+    lower.includes('_aac_') ||
+    lower.includes('/audio/') ||
+    lower.includes('_audio_') ||
+    lower.includes('googlevideo') ||
+    lower.includes('doubleclick') ||
+    lower.includes('/dai/') ||
+    lower.includes('/ads/') ||
+    lower.includes('/measurements/') ||
+    lower.includes('/thumb') ||
+    lower.includes('.vtt') ||
+    lower.includes('.jpg');
+}
+
+function getInferredMaxCodecTier(urlObj, contentPrefix) {
+  const isLegacyNamedAsset = urlObj.hostname.toLowerCase() === LEGACY_CBS_VOD_HOST &&
+    !/^\d+$/.test(contentPrefix);
+  const isHdPipeline = /(?:^|_)HD(?:_|$)/i.test(contentPrefix);
+  return isLegacyNamedAsset || isHdPipeline
+    ? LEGACY_CBS_INFERRED_MAX_CODEC_TIER
+    : DEFAULT_INFERRED_MAX_CODEC_TIER;
+}
+
+function getInferredRepresentationPlan(urlObj) {
+  const isVerifiedParamountVod = PARAMOUNT_VOD_HOSTS.has(urlObj.hostname.toLowerCase()) &&
+    urlObj.pathname.toLowerCase().includes('_cenc_precon_dash/');
+  if (!isVerifiedParamountVod) return null;
+
+  const paramountMatch = urlObj.pathname.match(PARAMOUNT_VOD_REP_PATTERN);
+  if (paramountMatch) {
+    const [, contentPrefix, , currentHeightRaw, assetId, , segmentName] = paramountMatch;
+    const maxCodecTier = getInferredMaxCodecTier(urlObj, contentPrefix);
+    return {
+      match: paramountMatch,
+      contentPrefix,
+      assetId,
+      segmentName,
+      alreadyMax: parseInt(currentHeightRaw, 10) >= INFERRED_MAX_HEIGHT,
+      targetDirectory: `${contentPrefix}_c${maxCodecTier}_${INFERRED_MAX_HEIGHT}p_${assetId}_${INFERRED_MAX_URL_TIER}`
+    };
+  }
+
+  const legacyMatch = urlObj.pathname.match(LEGACY_CBS_PLAIN_TIER_PATTERN);
+  if (!legacyMatch) return null;
+
+  const [, contentPrefix, assetId, currentTier, segmentName] = legacyMatch;
+  if (!LEGACY_CBS_PLAIN_SOURCE_TIERS.has(currentTier)) return null;
+
+  return {
+    match: legacyMatch,
+    contentPrefix,
+    assetId,
+    segmentName,
+    alreadyMax: false,
+    targetDirectory: `${contentPrefix}_${assetId}_${LEGACY_CBS_PLAIN_MAX_URL_TIER}`
+  };
+}
+
+// Build a single conservative max-quality candidate for the Paramount VOD
+// directory shape observed when a manifest has not populated representations.
+// The candidate must still be validated by the network hook before it is reused.
+export function getInferredMaxCandidate(url) {
+  const config = getConfig();
+  if (!config.forceMax || config.forcedId || getRepresentations().length > 0) return null;
+
+  let urlObj;
+  try {
+    urlObj = new URL(url, window.location.origin);
+  } catch {
+    return null;
+  }
+
+  const cmcd = parseCmcd(urlObj);
+  if (isExcludedFromInference(urlObj, cmcd)) return null;
+
+  const representationPlan = getInferredRepresentationPlan(urlObj);
+  if (!representationPlan) return null;
+
+  const { match, contentPrefix, assetId, segmentName, alreadyMax, targetDirectory } = representationPlan;
+  const topBitrate = parseInt(cmcd.tb, 10);
+  if (!topBitrate || alreadyMax) return null;
+
+  const estimatedMax = parseInt(estimateResolutionFromBitrate(topBitrate), 10);
+  if (estimatedMax < INFERRED_MAX_HEIGHT) return null;
+
+  const matchStart = match.index;
+  const representationDirectory = match[0].slice(1, match[0].lastIndexOf(`/${segmentName}`));
+  const streamPrefix = urlObj.pathname.slice(0, matchStart);
+  const streamKey = `${urlObj.origin}${streamPrefix}/${contentPrefix}_${assetId}`;
+
+  if (inferredFallbackState.streamKey !== streamKey) {
+    inferredFallbackState = { streamKey, status: 'untested' };
+  }
+  if (inferredFallbackState.status === 'rejected') return null;
+
+  urlObj.pathname = urlObj.pathname.replace(`/${representationDirectory}/`, `/${targetDirectory}/`);
+
+  return {
+    url: urlObj.toString(),
+    streamKey,
+    needsValidation: inferredFallbackState.status !== 'validated',
+    source: 'inferred'
+  };
+}
+
+export function recordInferredFallbackResult(streamKey, succeeded) {
+  if (inferredFallbackState.streamKey !== streamKey) return;
+  inferredFallbackState.status = succeeded ? 'validated' : 'rejected';
+}
+
+export function resetInferredFallbackState() {
+  inferredFallbackState = { streamKey: null, status: 'untested' };
+}
 
 // Pick the representation the user requested (forcedId) or the highest tier
 // when forceMax is enabled. Returns null if nothing is selected or known.

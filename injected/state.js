@@ -37,3 +37,7 @@ export function setRepresentations(reps) {
     availableRepresentations = reps;
   }
 }
+
+export function clearRepresentations() {
+  availableRepresentations = [];
+}

@@ -75,7 +75,8 @@ export function parseHlsManifest(content, requestUrl) {
             variantUrl,
             hlsTier,
             daiId,
-            isHls: true
+            isHls: true,
+            source: 'manifest'
           });
           variantIndex++;
         }
@@ -270,7 +271,8 @@ export function parseDashManifest(xmlString, requestUrl) {
             width: w ? parseInt(w) : 0,
             height: finalHeight,
             bandwidth: parseInt(bw),
-            isContent: hasContentMarker && !isAd
+            isContent: hasContentMarker && !isAd,
+            source: 'manifest'
           };
 
           qualities.push(q);

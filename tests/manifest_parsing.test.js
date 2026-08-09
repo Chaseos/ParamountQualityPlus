@@ -141,6 +141,39 @@ describe('Manifest Parsing', () => {
         expect(reps[0].height).toBe(234);
     });
 
+    test('selects the six-tier Paramount content ladder over a preceding ad period', () => {
+        const contentReps = [
+            [234, 145361, 'c28', '130'],
+            [360, 474615, 'c26', '450'],
+            [432, 1024338, 'c24', '1000'],
+            [540, 1716061, 'c24', '2000'],
+            [720, 3797217, 'c20', '3600'],
+            [1080, 5812183, 'c20', '5400']
+        ].map(([height, bandwidth, codecTier, urlTier], index) => `
+            <Representation id="${index}" width="1920" height="${height}" bandwidth="${bandwidth}">
+              <SegmentTemplate media="PPUSA_MOVIE_UHD_V1_${codecTier}_${height}p_4309720_${urlTier}/seg_$Number$.m4s" />
+            </Representation>
+        `).join('');
+
+        parseManifest(`
+          <MPD>
+            <Period>
+              <AdaptationSet contentType="video">
+                <Representation id="ad" width="1280" height="720" bandwidth="3834000">
+                  <SegmentTemplate media="$Number$.mp4?orig=https://googlevideo.com/videoplayback?source=dclk_video_ads" />
+                </Representation>
+              </AdaptationSet>
+              <AdaptationSet contentType="video">${contentReps}</AdaptationSet>
+            </Period>
+          </MPD>
+        `, 'https://pubads.g.doubleclick.net/manifest.mpd');
+
+        const reps = getAvailableRepresentations();
+        expect(reps.map(rep => rep.height)).toEqual([1080, 720, 540, 432, 360, 234]);
+        expect(reps.every(rep => rep.source === 'manifest')).toBe(true);
+        expect(reps[0]).toEqual(expect.objectContaining({ dashTier: '5400', isContent: true }));
+    });
+
     test('Should prioritize Movie content over Ads (Path Collision)', () => {
         const manifest = `
             <MPD>
