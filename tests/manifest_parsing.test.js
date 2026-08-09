@@ -174,6 +174,40 @@ describe('Manifest Parsing', () => {
         expect(reps[0]).toEqual(expect.objectContaining({ dashTier: '5400', isContent: true }));
     });
 
+    test('does not interpret a numeric production ID as every representation bitrate', () => {
+        const titlePrefix = 'WOLF_OF_WALL_STREET_THE_36001_001_FTR_VMASTER_c24';
+        const contentReps = [
+            [234, 145361],
+            [432, 1024338],
+            [540, 1716061],
+            [720, 3797217],
+            [1080, 5812183]
+        ].map(([height, bandwidth]) => `
+            <Representation
+              id="${titlePrefix}_${height}p_3054956"
+              width="1920"
+              height="${height}"
+              bandwidth="${bandwidth}"></Representation>
+        `).join('');
+
+        parseManifest(`
+          <MPD><Period><AdaptationSet contentType="video">
+            <SegmentTemplate media="$RepresentationID$_$Bandwidth$/seg_$Number$.m4s" />
+            ${contentReps}
+          </AdaptationSet></Period></MPD>
+        `, 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/wolf/manifest.mpd');
+
+        const reps = getAvailableRepresentations();
+        expect(reps.map(rep => rep.dashTier)).toEqual(['5812', '3797', '1716', '1024', '145']);
+        expect(reps.every(rep => rep.dashTier !== '36001')).toBe(true);
+
+        const manifestMessage = window.postMessage.mock.calls
+            .map(call => call[0])
+            .find(message => message.type === 'PQI_MANIFEST_DATA');
+        expect(manifestMessage.payload.map(rep => rep.bandwidth))
+            .toEqual([5812183, 3797217, 1716061, 1024338, 145361]);
+    });
+
     test('selects the highest representation from the captured Big Brother live DASH ladder', () => {
         parseManifest(`
           <MPD><Period>

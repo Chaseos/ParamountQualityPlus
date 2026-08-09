@@ -14,15 +14,18 @@ const response = (ok, status) => ({
 });
 
 let originalFetch;
+let analyzeUrl;
 
 beforeAll(() => {
   originalFetch = jest.fn();
+  analyzeUrl = jest.fn();
   window.fetch = originalFetch;
-  initNetworkHooks({ analyzeUrl: jest.fn(), parseManifest: jest.fn() });
+  initNetworkHooks({ analyzeUrl, parseManifest: jest.fn() });
 });
 
 beforeEach(() => {
   originalFetch.mockReset();
+  analyzeUrl.mockReset();
   resetInferredFallbackState();
   setConfig({ forceMax: true, forcedId: null, enableRetries: false, enablePrefetch: false });
   setRepresentations([
@@ -57,6 +60,7 @@ describe('Authoritative rewrite network fallback', () => {
     expect(requested).toContain('/variant/51dee42484fe2a2135500e11874015a5/bandwidth/8940798.m3u8');
     expect(requested).toContain('token=signed');
     expect(requested).toContain('CMCD=br%3D635%2Cot%3Dv%2Ctb%3D8941');
+    expect(analyzeUrl.mock.calls.map(call => call[0])).toEqual([LOW, expect.stringContaining('/bandwidth/8940798.m3u8')]);
   });
 
   test('falls back immediately and suppresses the rejected DAI plan for the stream', async () => {
@@ -71,5 +75,6 @@ describe('Authoritative rewrite network fallback', () => {
     expect(originalFetch.mock.calls[0][0]).toContain('/bandwidth/8940798.m3u8');
     expect(originalFetch.mock.calls[1][0]).toBe(LOW);
     expect(originalFetch.mock.calls[2][0]).toBe(LOW);
+    expect(analyzeUrl.mock.calls.every(call => call[0] === LOW)).toBe(true);
   });
 });

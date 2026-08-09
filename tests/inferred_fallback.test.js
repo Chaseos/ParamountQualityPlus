@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, test } from '@jest/globals';
 import {
   getInferredMaxCandidate,
+  planRequest,
+  recordAuthoritativeRewriteResult,
   recordInferredFallbackResult,
   resetInferredFallbackState
 } from '../injected/rewriter.js';
@@ -105,5 +107,28 @@ describe('Inferred Paramount VOD fallback', () => {
   test('manifest representations remain authoritative', () => {
     setRepresentations([{ id: '1080p', height: 1080, source: 'manifest' }]);
     expect(getInferredMaxCandidate(SEGMENT_URL)).toBeNull();
+  });
+
+  test('uses verified inference after an unusable authoritative descriptor is rejected', () => {
+    setRepresentations([{
+      id: 'broken-1080',
+      height: 1080,
+      bandwidth: 5812183,
+      dashTier: '36001',
+      family: 'dash',
+      source: 'manifest'
+    }]);
+
+    const badPlan = planRequest(SEGMENT_URL);
+    expect(badPlan.action).toBe('authoritative-rewrite');
+    expect(badPlan.url).toContain('_36001/seg_56.m4s');
+
+    recordAuthoritativeRewriteResult(badPlan, false);
+    const fallbackPlan = planRequest(SEGMENT_URL);
+    expect(fallbackPlan).toEqual(expect.objectContaining({
+      action: 'inferred-probe',
+      source: 'inferred'
+    }));
+    expect(fallbackPlan.url).toContain('_c20_1080p_4309720_5400/seg_56.m4s');
   });
 });

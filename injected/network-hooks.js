@@ -166,9 +166,9 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
         if (rewritePlan.action !== 'pass-through') {
           newUrl = rewritePlan.url;
           replaceResource(args, resource, newUrl);
-          // Keep reporting the observed stream until a speculative candidate
-          // has actually succeeded, avoiding a brief false 1080p status.
-          analyzeUrl(rewritePlan.source === 'inferred' ? url : newUrl);
+          // A planned URL is not an observed quality. Keep reporting the
+          // player's original request until the rewritten response succeeds.
+          analyzeUrl(url);
         } else {
           analyzeUrl(url);
         }
@@ -190,10 +190,10 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
           if (response.ok) {
             if (isInferredAttempt) {
               recordInferredFallbackResult(rewritePlan.streamKey, true);
-              analyzeUrl(newUrl);
             } else {
               recordAuthoritativeRewriteResult(rewritePlan, true);
             }
+            analyzeUrl(newUrl);
             return inspectManifestResponse(response, newUrl);
           }
 
@@ -256,7 +256,9 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
           this._pqi_rewritePlan = rewritePlan;
         }
 
-        analyzeUrl(finalUrl);
+        this._pqi_originalUrl = originalUrl;
+        this._pqi_plannedUrl = finalUrl;
+        analyzeUrl(originalUrl);
       }
       if (shouldPrefetch(finalUrl)) {
         maybePrefetchSegments(stripCMCD(finalUrl), ORIGINAL_FETCH);
@@ -273,6 +275,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
         } else {
           recordAuthoritativeRewriteResult(this._pqi_rewritePlan, succeeded);
         }
+        analyzeUrl(succeeded ? this._pqi_plannedUrl : this._pqi_originalUrl);
       });
     }
     return ORIGINAL_XHR_OPEN.apply(this, [method, finalUrl, ...rest]);

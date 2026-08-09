@@ -170,6 +170,22 @@ export function parseDashManifest(xmlString, requestUrl) {
     const representations = xmlDoc.getElementsByTagNameNS('*', 'Representation');
     const qualities = [];
 
+    function getBandwidthKbps(bandwidth) {
+      const parsed = parseInt(bandwidth, 10);
+      if (!parsed) return null;
+      return parsed >= 50000 ? parsed / 1000 : parsed;
+    }
+
+    function isPlausibleDashTier(tier, bandwidth) {
+      const parsedTier = parseInt(tier, 10);
+      const bandwidthKbps = getBandwidthKbps(bandwidth);
+      if (!parsedTier) return false;
+      if (!bandwidthKbps) return parsedTier <= 15000;
+
+      const ratio = parsedTier / bandwidthKbps;
+      return ratio >= 0.35 && ratio <= 2.5;
+    }
+
     function isVideoAdaptation(node) {
       const adaptSet = node.parentNode;
       if (!adaptSet) return true;
@@ -223,14 +239,12 @@ export function parseDashManifest(xmlString, requestUrl) {
         let dashTier = null;
         let pathId = rawId;
 
-        // Search for complex bitrate and path-segments in ID, BaseURL, or Template
+        // Representation names often contain unrelated production numbers (for
+        // example, THE_36001_001). Only accept a bitrate tier from the terminal
+        // representation-directory token, then sanity-check it against the MPD
+        // bandwidth. Arbitrary numeric tokens must never become URL tiers.
         const sources = [baseUrl, rawId, finalTemplate].filter(s => s && s.length > 0);
         for (const src of sources) {
-          if (!dashTier) {
-            const tierMatch = src.match(/_(\d{3,5})(?=[_/\.]|$)/);
-            if (tierMatch) dashTier = tierMatch[1];
-          }
-
           if (src.includes('_')) {
             let cleanSrc = src;
             if (src.includes('$')) {
@@ -240,13 +254,15 @@ export function parseDashManifest(xmlString, requestUrl) {
             const chunks = cleanSrc.split('/').filter(c => c.length > 0 && c.includes('_'));
             if (chunks.length > 0) {
               const best = chunks[chunks.length - 1];
+              const tierMatch = best.match(/_(\d{2,5})$/);
+              if (tierMatch && isPlausibleDashTier(tierMatch[1], bw)) {
+                dashTier = tierMatch[1];
+              }
+
               if (best.includes('PPUSA') || best.split('_').length > 3) {
                 pathId = best;
-                // Optimization: extract tier directly from complex ID if present
-                const tMatch = best.match(/_(\d{3,5})$/);
-                if (tMatch) dashTier = tMatch[1];
                 break;
-              } else if (pathId === id) {
+              } else if (pathId === rawId) {
                 pathId = best;
               }
             }
@@ -255,7 +271,7 @@ export function parseDashManifest(xmlString, requestUrl) {
 
         // Exact bitrate fallback
         if (!dashTier && bw) {
-          dashTier = Math.round(parseInt(bw) / 1000).toString();
+          dashTier = Math.round(getBandwidthKbps(bw)).toString();
         }
 
         if (h || bw) {
@@ -286,7 +302,7 @@ export function parseDashManifest(xmlString, requestUrl) {
             dashTier,
             width: w ? parseInt(w) : 0,
             height: finalHeight,
-            bandwidth: parseInt(bw),
+            bandwidth: parseInt(bw, 10),
             isContent: hasContentMarker && !isAd,
             family: 'dash',
             streamKey: deriveStreamKey(requestUrl, 'dash'),
@@ -332,24 +348,16 @@ export function parseDashManifest(xmlString, requestUrl) {
         manifestUrl: requestUrl
       });
       const displayQualities = unique.map(q => {
-        if (q.dashTier) {
-          const src = q.template || q.baseUrl || '';
-          const hasResolutionInUrl = src.match(/_(\d{3,4}p)_/);
-
-          if (hasResolutionInUrl) {
-            return {
-              ...q,
-              bandwidth: parseInt(q.dashTier) * 1000
-            };
-          }
-
-          return {
-            ...q,
-            bandwidth: parseInt(q.dashTier) * 1000,
-            height: q.height || estimateResolutionFromBitrate(parseInt(q.dashTier)).replace('p', '')
-          };
-        }
-        return q;
+        const fallbackBandwidth = q.dashTier ? parseInt(q.dashTier, 10) * 1000 : null;
+        return {
+          ...q,
+          // dashTier is a URL naming token and may be nominal. The MPD's
+          // bandwidth attribute remains the authoritative display value.
+          bandwidth: Number.isFinite(q.bandwidth) ? q.bandwidth : fallbackBandwidth,
+          height: q.height || (q.dashTier
+            ? parseInt(estimateResolutionFromBitrate(parseInt(q.dashTier, 10)), 10)
+            : 0)
+        };
       });
 
       displayQualities.sort((a, b) => parseInt(b.height) - parseInt(a.height));

@@ -36,7 +36,7 @@ describe('Quality Stats & Bitrate Reporting', () => {
         expect(window.postMessage).toHaveBeenCalled();
         const payload = window.postMessage.mock.calls[0][0].payload;
 
-        expect(payload.bitrate).toBe(3000); // Uses dashTier
+        expect(payload.bitrate).toBe(4100); // Uses MPD bandwidth, not the nominal URL tier
         expect(payload.resolution).toBe('720p');
         expect(payload.isEstimated).toBe(false);
         expect(payload.source).toBe('manifest');
@@ -69,5 +69,18 @@ describe('Quality Stats & Bitrate Reporting', () => {
         expect(payload.resolution).toBe('1080p');
         expect(payload.isEstimated).toBe(true);
         expect(payload.source).toBe('inferred');
+    });
+
+    test('Should prefer the current CMCD bitrate over nominal manifest metadata', () => {
+        setAvailableRepresentations([{
+            id: '720p',
+            height: 720,
+            bandwidth: 4100000,
+            dashTier: '3000'
+        }]);
+
+        analyzeUrl('https://host/video/_720p_/_3000/seg_1.m4s?CMCD=br%3D2875%2Cot%3Dv');
+
+        expect(window.postMessage.mock.calls[0][0].payload.bitrate).toBe(2875);
     });
 });

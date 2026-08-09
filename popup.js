@@ -484,13 +484,20 @@ function renderQualityList(qualities) {
         container.classList.remove('hidden');
     }
 
-    // Simple diff check: count
-    if (list.children.length === qualities.length) {
+    const qualitySignature = qualities
+        .map(q => `${q.id}:${q.height}:${q.bandwidth}`)
+        .join('|');
+
+    // A new stream can expose the same number of qualities with different
+    // metadata. Compare the actual ladder so stale labels never survive a
+    // same-sized manifest update.
+    if (list.dataset.qualitySignature === qualitySignature) {
         updateSelectionUI();
         return;
     }
 
     list.innerHTML = '';
+    list.dataset.qualitySignature = qualitySignature;
 
     qualities.forEach(q => {
         const btn = document.createElement('button');

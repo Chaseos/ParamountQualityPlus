@@ -26,13 +26,14 @@ class MockXMLHttpRequest extends EventTarget {
 
 const probeFetch = jest.fn();
 const parseManifest = jest.fn();
+const analyzeUrl = jest.fn();
 
 beforeAll(() => {
   window.fetch = probeFetch;
   window.XMLHttpRequest = MockXMLHttpRequest;
   globalThis.XMLHttpRequest = MockXMLHttpRequest;
   initNetworkHooks({
-    analyzeUrl: jest.fn(),
+    analyzeUrl,
     maybeRewriteUrl: url => url,
     parseManifest
   });
@@ -41,6 +42,7 @@ beforeAll(() => {
 beforeEach(() => {
   probeFetch.mockReset();
   parseManifest.mockReset();
+  analyzeUrl.mockReset();
   setRepresentations([]);
   setConfig({ forceMax: true, forcedId: null, enablePrefetch: false });
   resetInferredFallbackState();
@@ -64,6 +66,14 @@ describe('Inferred XHR fallback validation', () => {
     expect(probeFetch.mock.calls[0][0]).toContain('_c20_1080p_4309720_5400/seg_56.m4s');
     expect(probeFetch.mock.calls[0][1]).toEqual({ headers: { Range: 'bytes=0-1' } });
     expect(second.openCalls[0][1]).toContain('_c20_1080p_4309720_5400/seg_57.m4s');
+
+    const rewrittenUrl = second.openCalls[0][1];
+    expect(analyzeUrl).toHaveBeenLastCalledWith(SEGMENT_URL.replace('seg_56', 'seg_57'));
+
+    second.status = 206;
+    second.readyState = 4;
+    second.dispatchEvent(new Event('readystatechange'));
+    expect(analyzeUrl).toHaveBeenLastCalledWith(rewrittenUrl);
   });
 
   test('probes only once and keeps later segments original after rejection', async () => {

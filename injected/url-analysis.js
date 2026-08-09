@@ -28,11 +28,7 @@ export function analyzeUrl(url) {
       const numericRes = parseInt(resolution);
       const match = availableRepresentations.find(r => r.height === numericRes);
       if (match) {
-        if (match.dashTier) {
-          exactBandwidth = parseInt(match.dashTier) * 1000;
-        } else {
-          exactBandwidth = match.bandwidth;
-        }
+        exactBandwidth = match.bandwidth || (match.dashTier ? parseInt(match.dashTier, 10) * 1000 : null);
         isEstimated = false;
         source = 'manifest';
       }
@@ -97,9 +93,9 @@ export function analyzeUrl(url) {
 
     if (resolution || bitrate || exactBandwidth) {
       let finalBitrate = bitrate;
-      if (exactBandwidth) {
+      if (!finalBitrate && exactBandwidth) {
         finalBitrate = Math.round(exactBandwidth / 1000);
-      } else if (requestedTier) {
+      } else if (!finalBitrate && requestedTier) {
         finalBitrate = requestedTier;
       }
 

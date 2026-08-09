@@ -102,9 +102,10 @@ function getInferredRepresentationPlan(urlObj) {
   };
 }
 
-export function getInferredMaxCandidate(url) {
+export function getInferredMaxCandidate(url, options = {}) {
   const config = getConfig();
-  if (!config.forceMax || config.forcedId || getRepresentations().length > 0) return null;
+  if (!config.forceMax || config.forcedId ||
+      (!options.allowWithRepresentations && getRepresentations().length > 0)) return null;
 
   const request = classifyMediaRequest(url);
   if (!request.url || request.excluded || request.cmcd.ot !== 'v') return null;
@@ -269,9 +270,21 @@ export function planRequest(url, options = {}) {
   else if (family === 'tiered-hls' || family === 'hls') targetUrl = rewriteTieredHls(url, targetRep);
   else if (family === 'dash') targetUrl = rewriteDash(url, targetRep);
 
-  return targetUrl
+  const authoritativePlan = targetUrl
     ? buildPlan(url, targetUrl, targetRep, strategy)
     : passThrough(url, 'unrecognized-family-request');
+
+  if (authoritativePlan.action !== 'pass-through') return authoritativePlan;
+
+  // A nonempty manifest is not necessarily usable: malformed request
+  // descriptors and a previously rejected authoritative rewrite should still
+  // be able to use the verified Paramount VOD fallback in Force Max mode.
+  if (config.forceMax && !config.forcedId && options.allowInference !== false && request.kind === 'segment' &&
+      ['rejected', 'unrecognized-family-request'].includes(authoritativePlan.reason)) {
+    return getInferredMaxCandidate(url, { allowWithRepresentations: true }) || authoritativePlan;
+  }
+
+  return authoritativePlan;
 }
 
 export function maybeRewriteUrl(url) {
