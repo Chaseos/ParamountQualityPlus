@@ -3,6 +3,7 @@
 let currentConfig = {
     forceMax: false,
     forcedId: null,
+    forcedHeight: null,
     enableRetries: true,
     maxRetries: 3,
     enablePrefetch: true,
@@ -61,9 +62,10 @@ async function init() {
 
     // 1. Load Config
     try {
-        const result = await chrome.storage.sync.get(['forceMax', 'forcedId', 'reviewClicked', 'simpleVideoSpeedControllerAdShown', 'youtubeUiCleanerAdShown', 'lastPromotedExtensionAd', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount']);
+        const result = await chrome.storage.sync.get(['forceMax', 'forcedId', 'forcedHeight', 'reviewClicked', 'simpleVideoSpeedControllerAdShown', 'youtubeUiCleanerAdShown', 'lastPromotedExtensionAd', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount']);
         currentConfig.forceMax = result.forceMax || false;
         currentConfig.forcedId = result.forcedId || null;
+        currentConfig.forcedHeight = result.forcedHeight || null;
         currentConfig.enableRetries = result.enableRetries !== false;
         currentConfig.maxRetries = result.maxRetries !== undefined ? result.maxRetries : 3;
         currentConfig.enablePrefetch = result.enablePrefetch !== false;
@@ -210,27 +212,35 @@ function detectReviewStore(env = getReviewRoutingEnvironment()) {
     return "chrome";
 }
 
-function setMode(forceMax, forcedId) {
+function setMode(forceMax, forcedId, forcedHeight = null) {
+    const currentHeight = currentConfig.forcedHeight == null
+        ? null
+        : parseInt(currentConfig.forcedHeight, 10);
+    const nextHeight = forcedHeight == null ? null : parseInt(forcedHeight, 10);
+    const modeChanged = currentConfig.forceMax !== forceMax ||
+        currentConfig.forcedId !== forcedId ||
+        currentHeight !== nextHeight;
 
     currentConfig.forceMax = forceMax;
     currentConfig.forcedId = forcedId;
+    currentConfig.forcedHeight = forcedHeight;
 
-    // Save
-    chrome.storage.sync.set({ forceMax, forcedId }, () => {
+    // Persist first so a controlled live-page reload starts with the selected
+    // representation instead of briefly booting in Auto mode.
+    chrome.storage.sync.set({ forceMax, forcedId, forcedHeight }, () => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const tab = tabs[0];
+            if (!tab) {
+                console.warn('[PQI Popup] No active tab found to notify');
+                return;
+            }
 
-    });
-
-    // Notify Content
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]) {
-
-            chrome.tabs.sendMessage(tabs[0].id, {
-                type: 'UPDATE_CONFIG',
-                payload: { forceMax, forcedId }
+            chrome.tabs.sendMessage(tab.id, {
+                type: 'APPLY_QUALITY_CHANGE',
+                payload: { ...currentConfig },
+                reloadLivePlayback: modeChanged
             });
-        } else {
-            console.warn('[PQI Popup] No active tab found to notify');
-        }
+        });
     });
 
     updateSelectionUI();
@@ -381,7 +391,7 @@ function updateSelectionUI() {
     btnMax.classList.remove('active');
 
     // Auto
-    if (!currentConfig.forceMax && !currentConfig.forcedId) {
+    if (!currentConfig.forceMax && !currentConfig.forcedId && !currentConfig.forcedHeight) {
         btnAuto.classList.add('active');
     }
     // Max
@@ -390,17 +400,21 @@ function updateSelectionUI() {
     }
 
     // Specific List Items
-    let isForcedIdInList = false;
+    let isForcedSelectionInList = false;
     Array.from(qList.children).forEach(btn => {
         btn.classList.remove('active');
-        if (!currentConfig.forceMax && currentConfig.forcedId && btn.dataset.id === currentConfig.forcedId) {
+        const matchesId = currentConfig.forcedId && btn.dataset.id === currentConfig.forcedId;
+        const matchesHeight = currentConfig.forcedHeight &&
+            parseInt(btn.dataset.height, 10) === parseInt(currentConfig.forcedHeight, 10);
+        if (!currentConfig.forceMax && (matchesId || matchesHeight)) {
             btn.classList.add('active');
-            isForcedIdInList = true;
+            isForcedSelectionInList = true;
         }
     });
 
     // Fallback to Auto if the forced ID is not in the list (but we have a list loaded)
-    if (!currentConfig.forceMax && currentConfig.forcedId && !isForcedIdInList && qList.children.length > 0) {
+    if (!currentConfig.forceMax && (currentConfig.forcedId || currentConfig.forcedHeight) &&
+        !isForcedSelectionInList && qList.children.length > 0) {
         btnAuto.classList.add('active');
     }
 }
@@ -503,6 +517,7 @@ function renderQualityList(qualities) {
         const btn = document.createElement('button');
         btn.className = 'q-btn';
         btn.dataset.id = q.id;
+        btn.dataset.height = q.height;
 
         const mbps = Math.round(q.bandwidth / 10000) / 100; // rough Mbps
 
@@ -513,7 +528,7 @@ function renderQualityList(qualities) {
 
         // Click -> Specific Mode
         btn.addEventListener('click', () => {
-            setMode(false, q.id);
+            setMode(false, q.id, q.height);
         });
 
         list.appendChild(btn);

@@ -14,12 +14,20 @@ let streamState = {
     initializedAt: Date.now()
 };
 
+const PENDING_CONFIG_KEY = 'pqiPendingQualityConfig';
+
 function detectPlaybackContext() {
     const player = document.querySelector('video, [class*="player"], [id*="player"], [data-testid*="player"]');
     const path = window.location.pathname.toLowerCase();
     const playbackPath = /\/(video|live|live-tv)\b/.test(path) || /\/sports\/.*\b(live|watch|stream)\b/.test(path);
 
     return Boolean(player || playbackPath);
+}
+
+function isLivePlaybackPath(path = window.location.pathname) {
+    const normalized = path.toLowerCase();
+    return normalized.includes('/live-tv/') || normalized.includes('/live/') ||
+        /\/sports\/.*\/(?:live|watch|stream)\b/.test(normalized);
 }
 
 // --- Injection Logic ---
@@ -29,6 +37,7 @@ function injectScript() {
     script.src = chrome.runtime.getURL('injected/index.js');
     script.onload = function () {
         this.remove();
+        syncConfig();
     };
     (document.head || document.documentElement).appendChild(script);
 
@@ -93,6 +102,7 @@ window.addEventListener('message', (event) => {
         if (event.data.type === 'PQI_MANIFEST_DATA') {
             streamState.manifestQualities = event.data.payload;
             streamState.qualitySource = 'manifest';
+            reconcileStoredQuality(event.data.payload);
         } else if (event.data.type === 'PQI_ACTIVE_QUALITY') {
             // Update live stats from DAI variant playlist match
             const { resolution, bitrate, daiId } = event.data.payload;
@@ -138,8 +148,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         timeoutId = setTimeout(() => respondOnce({ outcome: 'timeout' }), 12000);
 
         return true;
+    } else if (request.type === 'APPLY_QUALITY_CHANGE') {
+        if (request.reloadLivePlayback && isLivePlaybackPath()) {
+            try {
+                window.sessionStorage.setItem(PENDING_CONFIG_KEY, JSON.stringify(request.payload));
+            } catch (error) {
+                console.warn('[PQI] Unable to stage live quality configuration for reload.', error);
+            }
+            window.location.reload();
+            return;
+        }
+        window.postMessage({ type: 'PQI_CONFIG', payload: request.payload }, '*');
     }
 });
+
+function reconcileStoredQuality(qualities) {
+    chrome.storage.sync.get(['forceMax', 'forcedId', 'forcedHeight'], (config) => {
+        if (config.forceMax || (!config.forcedId && !config.forcedHeight)) return;
+
+        const targetHeight = parseInt(config.forcedHeight, 10);
+        const match = Number.isFinite(targetHeight)
+            ? qualities.find(q => parseInt(q.height, 10) === targetHeight)
+            : qualities.find(q => q.id === config.forcedId);
+
+        if (!match) {
+            chrome.storage.sync.set({ forcedId: null, forcedHeight: null });
+            return;
+        }
+
+        if (config.forcedId !== match.id || parseInt(config.forcedHeight, 10) !== parseInt(match.height, 10)) {
+            chrome.storage.sync.set({ forcedId: match.id, forcedHeight: match.height });
+        }
+    });
+}
 
 // Initialize
 injectScript();
@@ -147,10 +188,11 @@ injectScript();
 
 // --- Config Sync ---
 function syncConfig() {
-    chrome.storage.sync.get(['forceMax', 'forcedId', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount'], (res) => {
+    chrome.storage.sync.get(['forceMax', 'forcedId', 'forcedHeight', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount'], (res) => {
         const config = {
             forceMax: !!res.forceMax,
             forcedId: res.forcedId || null,
+            forcedHeight: res.forcedHeight || null,
             enableRetries: res.enableRetries !== false, // default true
             maxRetries: res.maxRetries !== undefined ? res.maxRetries : 3,
             enablePrefetch: res.enablePrefetch !== false, // default true
@@ -164,11 +206,8 @@ function syncConfig() {
 
 // Listen for storage changes
 chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync' && (changes.forceMax || changes.forcedId || changes.enableRetries || changes.maxRetries || changes.enablePrefetch || changes.prefetchCount)) {
+    if (area === 'sync' && (changes.forceMax || changes.forcedId || changes.forcedHeight || changes.enableRetries || changes.maxRetries || changes.enablePrefetch || changes.prefetchCount)) {
 
         syncConfig();
     }
 });
-
-// Initial sync (give injected script a moment to load)
-setTimeout(syncConfig, 500);

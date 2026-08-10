@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { parseDashManifest, parseHlsManifest } from '../injected/manifest-parser.js';
 import { getRepresentations, getStreamSession, setRepresentations } from '../injected/state.js';
+import { selectRepresentation } from '../injected/stream-model.js';
 
 window.postMessage = jest.fn();
 
@@ -39,5 +40,18 @@ manifest_8.m3u8`, 'https://host/first/master.m3u8');
       key: 'https://host/out/v1/second',
       family: 'dash'
     }));
+  });
+
+  test('remaps a stale manual representation ID by manifest-confirmed height', () => {
+    const representations = [
+      { id: 's1-7', height: 1080, bandwidth: 8000000 },
+      { id: 's1-5', height: 720, bandwidth: 3500000 }
+    ];
+
+    expect(selectRepresentation(representations, {
+      forceMax: false,
+      forcedId: 's0-7',
+      forcedHeight: 1080
+    })).toBe(representations[0]);
   });
 });

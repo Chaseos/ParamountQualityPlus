@@ -1,4 +1,4 @@
-import { initConfigListener } from './config.js';
+import { consumePendingConfig, initConfigListener } from './config.js';
 import { analyzeUrl, resetAnalysisState } from './url-analysis.js';
 import { parseManifest, parseDashManifest, parseHlsManifest } from './manifest-parser.js';
 import {
@@ -17,6 +17,7 @@ import { getConfig, getRepresentations, getStreamSession, setConfig, setRepresen
 
 // Wire together config handling and network interception as soon as the module
 // loads so the injected script is fully operational without additional setup.
+consumePendingConfig();
 initConfigListener();
 initNetworkHooks({ analyzeUrl, parseManifest });
 initGeolocationPermissionObserver();

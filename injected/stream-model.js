@@ -127,7 +127,15 @@ export function normalizeRepresentations(representations, context = {}) {
 
 export function selectRepresentation(representations, config) {
   if (!representations.length) return null;
-  if (config.forcedId) return representations.find(rep => rep.id === config.forcedId) || null;
+  if (config.forcedId || config.forcedHeight) {
+    const forcedHeight = parseInt(config.forcedHeight, 10);
+    const exactId = representations.find(rep => rep.id === config.forcedId);
+    if (exactId && (!Number.isFinite(forcedHeight) || exactId.height === forcedHeight)) return exactId;
+    if (Number.isFinite(forcedHeight)) {
+      return representations.find(rep => rep.height === forcedHeight) || null;
+    }
+    return null;
+  }
   return config.forceMax ? representations[0] : null;
 }
 

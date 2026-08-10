@@ -3,6 +3,7 @@
 let config = {
   forceMax: false,
   forcedId: null,
+  forcedHeight: null,
   enableRetries: true,
   maxRetries: 3,
   enablePrefetch: true,
