@@ -83,4 +83,24 @@ describe('Quality Stats & Bitrate Reporting', () => {
 
         expect(window.postMessage.mock.calls[0][0].payload.bitrate).toBe(2875);
     });
+
+    test('reports the target manifest bitrate after a successful rewrite', () => {
+        setAvailableRepresentations([{
+            id: '4',
+            rawId: '4',
+            height: 1080,
+            bandwidth: 8000000,
+            hlsTier: '4'
+        }]);
+
+        analyzeUrl(
+            'https://host/video/manifest_video_4_0_123.mp4?CMCD=br%3D1802%2Cot%3Dv',
+            { rewritten: true }
+        );
+
+        const payload = window.postMessage.mock.calls[0][0].payload;
+        expect(payload.resolution).toBe('1080p');
+        expect(payload.bitrate).toBe(8000);
+        expect(payload.source).toBe('manifest');
+    });
 });

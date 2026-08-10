@@ -135,12 +135,14 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     for (let i = 0; i < maxRetries; i++) {
       try {
         const response = await ORIGINAL_FETCH.apply(thisArg, args);
-        if (response.ok || i === maxRetries - 1) {
+        const requestSignal = args[0]?.signal || args[1]?.signal;
+        if (response.ok || requestSignal?.aborted || i === maxRetries - 1) {
           return response;
         }
         console.warn(`[PQI] Fetch failed (${response.status}), retrying ${i + 1}/${maxRetries}: ${urlInfo}`);
       } catch (err) {
-        if (i === maxRetries - 1) throw err;
+        const requestSignal = args[0]?.signal || args[1]?.signal;
+        if (err?.name === 'AbortError' || requestSignal?.aborted || i === maxRetries - 1) throw err;
         console.warn(`[PQI] Network error, retrying ${i + 1}/${maxRetries}: ${urlInfo}`, err);
       }
       await new Promise(r => setTimeout(r, 500 * Math.pow(2, i)));
@@ -163,7 +165,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       if (isSegmentUrl(url) || isManifestUrl(url)) {
 
         rewritePlan = planRequest(url);
-        if (rewritePlan.action !== 'pass-through') {
+        if (rewritePlan && rewritePlan.action !== 'pass-through') {
           newUrl = rewritePlan.url;
           replaceResource(args, resource, newUrl);
           // A planned URL is not an observed quality. Keep reporting the
@@ -176,7 +178,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
         analyzeUrl(url);
       }
 
-      if (rewritePlan?.action !== 'pass-through') {
+      if (rewritePlan && rewritePlan.action !== 'pass-through') {
         try {
           const isInferredAttempt = rewritePlan.action === 'inferred-probe';
           if (isSegmentUrl(newUrl) && (!isInferredAttempt || !rewritePlan.needsValidation)) {
@@ -193,7 +195,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
             } else {
               recordAuthoritativeRewriteResult(rewritePlan, true);
             }
-            analyzeUrl(newUrl);
+            analyzeUrl(newUrl, { rewritten: true });
             return inspectManifestResponse(response, newUrl);
           }
 
@@ -210,9 +212,9 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
           return fetchWithRetry(this, args, true, url);
 
         } catch (err) {
-          if (rewritePlan.action === 'inferred-probe') {
+          if (rewritePlan?.action === 'inferred-probe') {
             recordInferredFallbackResult(rewritePlan.streamKey, false);
-          } else {
+          } else if (rewritePlan) {
             recordAuthoritativeRewriteResult(rewritePlan, false);
           }
           console.warn('[PQI] Network error during rewrite, reverting.', err);
@@ -225,7 +227,8 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       // For untouched requests, still mirror manifest responses to the parser so
       // available quality tiers stay in sync with the player session.
       if (shouldPrefetch(url)) maybePrefetchSegments(stripCMCD(url), ORIGINAL_FETCH);
-      const response = await fetchWithRetry(this, args, true, url);
+      const isRetryable = isSegmentUrl(url) || isManifestUrl(url);
+      const response = await fetchWithRetry(this, args, isRetryable, url);
       return inspectManifestResponse(response, url);
     }
 
@@ -249,9 +252,9 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       if (isSegmentUrl(finalUrl) || isManifestUrl(finalUrl)) {
         const originalUrl = finalUrl;
         const rewritePlan = planRequest(originalUrl);
-        if (rewritePlan.action === 'inferred-probe' && rewritePlan.needsValidation) {
+        if (rewritePlan?.action === 'inferred-probe' && rewritePlan.needsValidation) {
           validateInferredCandidate(rewritePlan);
-        } else if (rewritePlan.action !== 'pass-through') {
+        } else if (rewritePlan && rewritePlan.action !== 'pass-through') {
           finalUrl = rewritePlan.url;
           this._pqi_rewritePlan = rewritePlan;
         }
@@ -275,7 +278,10 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
         } else {
           recordAuthoritativeRewriteResult(this._pqi_rewritePlan, succeeded);
         }
-        analyzeUrl(succeeded ? this._pqi_plannedUrl : this._pqi_originalUrl);
+        analyzeUrl(
+          succeeded ? this._pqi_plannedUrl : this._pqi_originalUrl,
+          { rewritten: succeeded }
+        );
       });
     }
     return ORIGINAL_XHR_OPEN.apply(this, [method, finalUrl, ...rest]);

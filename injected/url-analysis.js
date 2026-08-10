@@ -6,7 +6,7 @@ import { classifyMediaRequest } from './stream-model.js';
 
 // Inspect requested media segment URLs, infer their resolution/bitrate, and
 // surface the data to the extension UI via postMessage for live telemetry.
-export function analyzeUrl(url) {
+export function analyzeUrl(url, options = {}) {
   try {
     if (!isSegmentUrl(url)) return;
 
@@ -45,11 +45,10 @@ export function analyzeUrl(url) {
     // Detect manifest_video pattern for stats mapping
     const hlsTierMatch = pathname.match(/manifest(?:_video)?_(\d+)[_\/]/);
 
-    let requestedTier = null;
+    const dashTierMatch = pathname.match(/_(\d{3,5})\/seg_/);
+    const requestedTier = dashTierMatch ? parseInt(dashTierMatch[1], 10) : null;
     if (!resolution) {
-      const dashTierMatch = pathname.match(/_(\d{3,5})\/seg_/);
       if (dashTierMatch) {
-        requestedTier = parseInt(dashTierMatch[1], 10);
         const match = availableRepresentations.find(r => r.dashTier === dashTierMatch[1]);
         if (match) {
           resolution = match.height + 'p';
@@ -93,7 +92,14 @@ export function analyzeUrl(url) {
 
     if (resolution || bitrate || exactBandwidth) {
       let finalBitrate = bitrate;
-      if (!finalBitrate && exactBandwidth) {
+      // CMCD belongs to the player's original request and intentionally stays
+      // unchanged on a rewritten URL. Once that rewrite succeeds, report the
+      // target representation instead of the now-stale CMCD `br` value.
+      if (options.rewritten && exactBandwidth) {
+        finalBitrate = Math.round(exactBandwidth / 1000);
+      } else if (options.rewritten && requestedTier) {
+        finalBitrate = requestedTier;
+      } else if (!finalBitrate && exactBandwidth) {
         finalBitrate = Math.round(exactBandwidth / 1000);
       } else if (!finalBitrate && requestedTier) {
         finalBitrate = requestedTier;

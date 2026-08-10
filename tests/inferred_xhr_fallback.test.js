@@ -73,7 +73,7 @@ describe('Inferred XHR fallback validation', () => {
     second.status = 206;
     second.readyState = 4;
     second.dispatchEvent(new Event('readystatechange'));
-    expect(analyzeUrl).toHaveBeenLastCalledWith(rewrittenUrl);
+    expect(analyzeUrl).toHaveBeenLastCalledWith(rewrittenUrl, { rewritten: true });
   });
 
   test('probes only once and keeps later segments original after rejection', async () => {

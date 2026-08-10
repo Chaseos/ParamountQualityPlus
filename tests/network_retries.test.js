@@ -86,6 +86,15 @@ describe('Fetch Retries for Segments', () => {
         expect(response.ok).toBe(false);
     });
 
+    test('does not retry a player-cancelled segment request', async () => {
+        const aborted = Object.assign(new Error('signal is aborted'), { name: 'AbortError' });
+        originalFetchMock.mockRejectedValue(aborted);
+
+        await expect(window.fetch('https://host/video/seg_10.m4s')).rejects.toBe(aborted);
+        expect(originalFetchMock).toHaveBeenCalledTimes(6); // One player request plus five prefetches.
+        expect(originalFetchMock.mock.calls.filter(([resource]) => resource === 'https://host/video/seg_10.m4s')).toHaveLength(1);
+    });
+
     test('Should not retry non-segment / non-manifest URLs', async () => {
         originalFetchMock.mockResolvedValue({ ok: false, status: 500 });
 
@@ -94,6 +103,41 @@ describe('Fetch Retries for Segments', () => {
         // Should only be called once, no retries
         expect(originalFetchMock).toHaveBeenCalledTimes(1);
         expect(response.ok).toBe(false);
+    });
+
+    test('passes ordinary API requests through unchanged when Force Max is active', async () => {
+        const apiUrl = 'https://www.paramountplus.com/apps-api/v2.0/live/channels';
+        const response = { ok: true, status: 200 };
+        setConfig({
+            forceMax: true,
+            forcedId: null,
+            enableRetries: true,
+            maxRetries: 3,
+            enablePrefetch: true,
+            prefetchCount: 5
+        });
+        originalFetchMock.mockResolvedValue(response);
+
+        await expect(window.fetch(apiUrl)).resolves.toBe(response);
+        expect(originalFetchMock).toHaveBeenCalledTimes(1);
+        expect(originalFetchMock).toHaveBeenCalledWith(apiUrl);
+    });
+
+    test('does not retry failed ordinary API requests when Force Max is active', async () => {
+        const apiUrl = 'https://www.paramountplus.com/apps-api/v2.0/live/channel/metadata';
+        const response = { ok: false, status: 503 };
+        setConfig({
+            forceMax: true,
+            forcedId: null,
+            enableRetries: true,
+            maxRetries: 3,
+            enablePrefetch: true,
+            prefetchCount: 5
+        });
+        originalFetchMock.mockResolvedValue(response);
+
+        await expect(window.fetch(apiUrl)).resolves.toBe(response);
+        expect(originalFetchMock).toHaveBeenCalledTimes(1);
     });
 
     test('preserves CMCD on the player request while normalizing prefetches', async () => {
