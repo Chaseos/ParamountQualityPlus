@@ -53,6 +53,10 @@ export function classifyMediaRequest(url) {
   const isAd = !isDaiPlaylist && isAdReference(lower);
   const isManifest = /\.(?:mpd|m3u8)(?:$|\?)/i.test(urlObj.toString());
   const isSegment = /\.(?:m4s|m4v|mp4|ts)(?:$|\?)/i.test(urlObj.toString());
+  const filename = urlObj.pathname.slice(urlObj.pathname.lastIndexOf('/') + 1);
+  const isInitialization = /(?:^|[_-])init(?:[_-][^.]*)?\.(?:m4s|m4v|mp4)$/i.test(filename);
+  const isLive = cmcd.st === 'l' ||
+    /\/out\/v1\/|\/linear\/hls\/pa\/event\//i.test(urlObj.pathname);
 
   return {
     url: urlObj,
@@ -61,6 +65,8 @@ export function classifyMediaRequest(url) {
     excluded: isAudio || isAd,
     isAd,
     isAudio,
+    isInitialization,
+    isLive,
     isDaiPlaylist
   };
 }

@@ -6,6 +6,7 @@ import { setConfig, setRepresentations } from '../injected/state.js';
 const SEGMENT_URL = 'https://vod.pplus.paramount.tech/path/asset_cenc_precon_dash/PPUSA_MOVIE_UHD_V1_c24_540p_4309720_2000/seg_56.m4s?CMCD=br%3D1802%2Cot%3Dv%2Ctb%3D5812';
 const LEGACY_CBS_SEGMENT_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/path/asset_cenc_precon_dash/WOLF_OF_WALL_STREET_c24_540p_3054956_2000/seg_5.m4s?CMCD=br%3D1969%2Cot%3Dv%2Ctb%3D5583';
 const LEGACY_CBS_PLAIN_TIER_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/path/asset_cenc_precon_dash/Sleepy_Hollow_FTR_VMASTER_2725014_2100/seg_6.m4s?CMCD=br%3D2738%2Cot%3Dv%2Ctb%3D5880';
+const LEGACY_CBS_PLAIN_INIT_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/path/asset_cenc_precon_dash/Sleepy_Hollow_FTR_VMASTER_2725014_2100/init.m4v?CMCD=br%3D2738%2Cot%3Di';
 const PARAMOUNT_PLAIN_TIER_URL = 'https://vod.pplus.paramount.tech/path/asset_cenc_precon_dash/NICKELODEON_SPONGEBOBSQUAREPANTSHD_001_V1_917732_2100/seg_4.m4s?CMCD=br%3D2729%2Cot%3Dv%2Ctb%3D5698';
 const successResponse = () => ({ ok: true, status: 200, headers: { get: () => 'video/mp4' } });
 
@@ -72,6 +73,31 @@ describe('Inferred fallback network validation', () => {
     expect(originalFetch).toHaveBeenCalledTimes(2);
     expect(originalFetch.mock.calls[0][0]).toContain('_2725014_4500/seg_6.m4s');
     expect(originalFetch.mock.calls[1][0]).toContain('_2725014_4500/seg_7.m4s');
+  });
+
+  test('validates the legacy initialization tier before rewriting its media', async () => {
+    originalFetch.mockResolvedValue(successResponse());
+
+    await window.fetch(LEGACY_CBS_PLAIN_INIT_URL);
+    await window.fetch(LEGACY_CBS_PLAIN_TIER_URL);
+
+    expect(originalFetch).toHaveBeenCalledTimes(2);
+    expect(originalFetch.mock.calls[0][0]).toContain('_2725014_4500/init.m4v');
+    expect(originalFetch.mock.calls[1][0]).toContain('_2725014_4500/seg_6.m4s');
+  });
+
+  test('does not mix a lower segment after committing the inferred initialization', async () => {
+    const failedSegment = { ok: false, status: 404, headers: { get: () => 'video/mp4' } };
+    originalFetch
+      .mockResolvedValueOnce(successResponse())
+      .mockResolvedValueOnce(failedSegment);
+
+    await window.fetch(LEGACY_CBS_PLAIN_INIT_URL);
+    const response = await window.fetch(LEGACY_CBS_PLAIN_TIER_URL);
+
+    expect(response).toBe(failedSegment);
+    expect(originalFetch).toHaveBeenCalledTimes(2);
+    expect(originalFetch.mock.calls[1][0]).toContain('_2725014_4500/seg_6.m4s');
   });
 
   test('validates the plain 4500 tier on the Paramount CDN', async () => {

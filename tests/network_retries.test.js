@@ -150,6 +150,71 @@ describe('Fetch Retries for Segments', () => {
         expect(originalFetchMock.mock.calls.filter(([resource]) => resource.includes('seg_10.m4s'))[0][0]).toBe(url);
     });
 
+    test('does not prefetch rewritten live initialization files', async () => {
+        setRepresentations([
+            { id: 's0-7', rawId: '7', height: 1080, bandwidth: 8000000 },
+            { id: 's0-4', rawId: '4', height: 540, bandwidth: 1800000 }
+        ]);
+        setConfig({
+            forceMax: true,
+            forcedId: null,
+            enableRetries: true,
+            maxRetries: 3,
+            enablePrefetch: true,
+            prefetchCount: 5
+        });
+        originalFetchMock.mockResolvedValue({
+            ok: true,
+            status: 200,
+            headers: { get: () => 'video/mp4' }
+        });
+
+        await window.fetch('https://host/out/v1/live/manifest_video_4_0_init.mp4?m=1');
+
+        expect(originalFetchMock).toHaveBeenCalledTimes(1);
+        expect(originalFetchMock.mock.calls[0][0])
+            .toContain('/manifest_video_7_0_init.mp4?m=1');
+    });
+
+    test('keeps live DASH refreshes authoritative and continues rewriting later media', async () => {
+        const manifestUrl = 'https://host/out/v1/live/manifest.mpd?m=1';
+        const segmentUrl = 'https://host/out/v1/live/manifest_video_4_0_123.mp4?m=1';
+        const manifestText = `<MPD><Period><AdaptationSet contentType="video">
+          <SegmentTemplate media="manifest_video_$RepresentationID$_0_$Number$.mp4" />
+          <Representation id="7" width="1920" height="1080" bandwidth="8000000" />
+          <Representation id="4" width="960" height="540" bandwidth="1800000" />
+        </AdaptationSet></Period></MPD>`;
+        const manifestResponse = {
+            ok: true,
+            status: 200,
+            headers: { get: () => 'application/dash+xml' },
+            clone: () => ({ text: async () => manifestText })
+        };
+        const segmentResponse = {
+            ok: true,
+            status: 200,
+            headers: { get: () => 'video/mp4' }
+        };
+        setConfig({
+            forceMax: true,
+            forcedId: null,
+            enableRetries: true,
+            maxRetries: 3,
+            enablePrefetch: true,
+            prefetchCount: 5
+        });
+        originalFetchMock.mockImplementation(url =>
+            String(url).includes('.mpd') ? Promise.resolve(manifestResponse) : Promise.resolve(segmentResponse)
+        );
+
+        await window.fetch(manifestUrl);
+        await window.fetch(segmentUrl);
+
+        expect(originalFetchMock).toHaveBeenCalledTimes(2);
+        expect(originalFetchMock.mock.calls[0][0]).toBe(manifestUrl);
+        expect(originalFetchMock.mock.calls[1][0]).toContain('manifest_video_7_0_123.mp4?m=1');
+    });
+
     test('parses a manifest before resolving it to the player', async () => {
         let releaseManifest;
         const manifestText = new Promise(resolve => { releaseManifest = resolve; });

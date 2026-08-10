@@ -39,6 +39,8 @@ describe('URL Utils', () => {
             expect(isSegmentUrl('seg_10.m4s')).toBe(true);
             expect(isSegmentUrl('video_1_10.ts')).toBe(true);
             expect(isSegmentUrl('init.mp4')).toBe(true);
+            expect(isSegmentUrl('init.m4v')).toBe(true);
+            expect(isSegmentUrl('init.m4s')).toBe(true);
             expect(isSegmentUrl('manifest.mpd')).toBe(false);
             expect(isSegmentUrl('playlist.m3u8')).toBe(false);
         });

@@ -11,11 +11,13 @@ import { setConfig, setRepresentations } from '../injected/state.js';
 const SEGMENT_URL = 'https://vod.pplus.paramount.tech/intl_vms/title/asset_cenc_precon_dash/PPUSA_MOVIE_UHD_V1_c24_540p_4309720_2000/seg_56.m4s?CMCD=br%3D1802%2Cot%3Dv%2Ctb%3D5812';
 const LEGACY_CBS_SEGMENT_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/title/asset_cenc_precon_dash/WOLF_OF_WALL_STREET_c24_540p_3054956_2000/seg_5.m4s?CMCD=br%3D1969%2Cot%3Dv%2Ctb%3D5583';
 const LEGACY_CBS_PLAIN_TIER_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/title/asset_cenc_precon_dash/Sleepy_Hollow_FTR_VMASTER_2725014_2100/seg_6.m4s?CMCD=br%3D2738%2Cot%3Dv%2Ctb%3D5880';
+const LEGACY_CBS_PLAIN_INIT_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/title/asset_cenc_precon_dash/Sleepy_Hollow_FTR_VMASTER_2725014_2100/init.m4v?CMCD=br%3D2738%2Cot%3Di';
 const CLASSIC_TV_PLAIN_TIER_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/title/asset_cenc_precon_dash/CBS_STAR_TREK_REM_S01E00_THE_CAGE_1236221_2100/seg_4.m4s?CMCD=br%3D2732%2Cot%3Dv%2Ctb%3D5887';
 const PARAMOUNT_PLAIN_TIER_URL = 'https://vod.pplus.paramount.tech/intl_vms/title/asset_cenc_precon_dash/NICKELODEON_SPONGEBOBSQUAREPANTSHD_001_V1_917732_2100/seg_4.m4s?CMCD=br%3D2729%2Cot%3Dv%2Ctb%3D5698';
 const NICKELODEON_HD_SEGMENT_URL = 'https://vod.pplus.paramount.tech/intl_vms/title/asset_cenc_precon_dash/NICKELODEON_SPONGEBOBSQUAREPANTS_307_HD_c24_540p_3480060_2000/seg_4.m4s?CMCD=br%3D1961%2Cot%3Dv%2Ctb%3D5387';
 const NUMERIC_PREFIX_SEGMENT_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/title/asset_cenc_precon_dash/3478685_c24_540p_118423_2000/seg_4.m4s?CMCD=br%3D2011%2Cot%3Dv%2Ctb%3D5585';
 const SURVIVOR_SEGMENT_URL = 'https://vod.pplus.paramount.tech/intl_vms/2026/02/25/V2Qj7a_IhC8VoKNNQ9WxqGjbwF7GrBZg/3820173_cenc_precon_dash/PPUSA_SURVIVOR_5008_V1_c24_540p_3820071_2000/seg_5.m4s?CMCD=br%3D2054%2Cot%3Dv%2Ctb%3D5678';
+const TONY_ZIVA_SEGMENT_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/2025/07/01/2436849731966/3343868_cenc_precon_dash/PPUSA_NCISTONYANDZIVA_101_UHD_c24_540p_3343844_2000/seg_4.m4s?CMCD=br%3D2000%2Cot%3Dv%2Ctb%3D5400';
 const LEGACY_CBS_VOD_HOST = 'vod-gcs-cedexis.cbsaavideo.com';
 
 describe('Inferred Paramount VOD fallback', () => {
@@ -50,6 +52,29 @@ describe('Inferred Paramount VOD fallback', () => {
     expect(candidate.url).toContain('CMCD=br%3D2738%2Cot%3Dv%2Ctb%3D5880');
   });
 
+  test('rewrites and validates the matching initialization file before legacy media segments', () => {
+    const candidate = getInferredMaxCandidate(LEGACY_CBS_PLAIN_INIT_URL);
+
+    expect(candidate).toEqual(expect.objectContaining({
+      action: 'inferred-probe',
+      mediaRole: 'initialization',
+      needsValidation: true
+    }));
+    expect(candidate.url).toContain('Sleepy_Hollow_FTR_VMASTER_2725014_4500/init.m4v');
+
+    recordInferredFallbackResult(candidate.streamKey, true, candidate.mediaRole);
+    expect(getInferredMaxCandidate(LEGACY_CBS_PLAIN_TIER_URL).fallbackAllowed).toBe(false);
+  });
+
+  test('supports DASH initialization files using the m4s extension', () => {
+    const candidate = getInferredMaxCandidate(
+      LEGACY_CBS_PLAIN_INIT_URL.replace('init.m4v', 'init.m4s')
+    );
+
+    expect(candidate.url).toContain('Sleepy_Hollow_FTR_VMASTER_2725014_4500/init.m4s');
+    expect(candidate.mediaRole).toBe('initialization');
+  });
+
   test('recognizes plain tiers without mastering markers and on the Paramount CDN', () => {
     expect(getInferredMaxCandidate(CLASSIC_TV_PLAIN_TIER_URL).url)
       .toContain('CBS_STAR_TREK_REM_S01E00_THE_CAGE_1236221_4500/seg_4.m4s');
@@ -71,6 +96,11 @@ describe('Inferred Paramount VOD fallback', () => {
   test('uses the verified c23 ladder for Survivor VOD', () => {
     expect(getInferredMaxCandidate(SURVIVOR_SEGMENT_URL).url)
       .toContain('PPUSA_SURVIVOR_5008_V1_c23_1080p_3820071_5400/seg_5.m4s');
+  });
+
+  test('uses the modern c20 ladder for new content on the legacy CBS host', () => {
+    expect(getInferredMaxCandidate(TONY_ZIVA_SEGMENT_URL).url)
+      .toContain('PPUSA_NCISTONYANDZIVA_101_UHD_c20_1080p_3343844_5400/seg_4.m4s');
   });
 
   test('reuses a validated stream and suppresses a rejected stream', () => {

@@ -52,6 +52,28 @@ describe('URL Rewriting', () => {
         expect(result).toContain('seg_123.m4s');
     });
 
+    test('rewrites VOD initialization files to the selected representation directory', () => {
+        setAvailableRepresentations([
+            {
+                id: '1080p',
+                height: 1080,
+                bandwidth: 5880000,
+                pathId: 'Sleepy_Hollow_FTR_VMASTER_2725014_4500'
+            },
+            {
+                id: '540p',
+                height: 540,
+                bandwidth: 2738000,
+                pathId: 'Sleepy_Hollow_FTR_VMASTER_2725014_2100'
+            }
+        ]);
+        setConfig({ forceMax: true });
+
+        const input = 'https://vod-gcs-cedexis.cbsaavideo.com/path/Sleepy_Hollow_FTR_VMASTER_2725014_2100/init.m4v?CMCD=ot%3Di';
+        expect(maybeRewriteUrl(input))
+            .toContain('/Sleepy_Hollow_FTR_VMASTER_2725014_4500/init.m4v');
+    });
+
     test('Should NOT rewrite audio segments', () => {
         setAvailableRepresentations(repsTypeB);
         setConfig({ forceMax: true });
@@ -89,5 +111,21 @@ describe('URL Rewriting', () => {
         const input = 'https://airspace-cdn.cbsivideo.com/out/v1/live/manifest_video_4_0_465410.mp4?CMCD=br%3D1800%2Cot%3Dv%2Ctb%3D8000';
         expect(maybeRewriteUrl(input))
             .toContain('manifest_video_7_0_465410.mp4');
+    });
+
+    test('never rewrites a DASH manifest URL', () => {
+        setAvailableRepresentations([
+            {
+                id: 's0-7',
+                rawId: '7',
+                height: 1080,
+                bandwidth: 8000000,
+                template: 'manifest_video_$RepresentationID$_0_$Number$.mp4'
+            }
+        ]);
+        setConfig({ forceMax: true, forcedId: null });
+
+        const manifestUrl = 'https://host/out/v1/live/manifest.mpd?m=1';
+        expect(maybeRewriteUrl(manifestUrl)).toBe(manifestUrl);
     });
 });

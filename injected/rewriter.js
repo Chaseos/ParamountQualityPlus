@@ -7,8 +7,8 @@ import {
   selectRepresentation
 } from './stream-model.js';
 
-const PARAMOUNT_VOD_REP_PATTERN = /\/([^/?]+)_c(\d{2})_(\d{3,4})p_([^/?]+)_(\d{3,5})\/(seg_\d+\.m4s|init\.m4v)(?=\?|$)/i;
-const LEGACY_CBS_PLAIN_TIER_PATTERN = /\/([^/?]+)_(\d{5,})_(\d{3,5})\/(seg_\d+\.m4s|init\.m4v)(?=\?|$)/i;
+const PARAMOUNT_VOD_REP_PATTERN = /\/([^/?]+)_c(\d{2})_(\d{3,4})p_([^/?]+)_(\d{3,5})\/(seg_\d+\.m4s|init\.(?:m4s|m4v|mp4))(?=\?|$)/i;
+const LEGACY_CBS_PLAIN_TIER_PATTERN = /\/([^/?]+)_(\d{5,})_(\d{3,5})\/(seg_\d+\.m4s|init\.(?:m4s|m4v|mp4))(?=\?|$)/i;
 const LEGACY_CBS_VOD_HOST = 'vod-gcs-cedexis.cbsaavideo.com';
 const PARAMOUNT_VOD_HOSTS = new Set([LEGACY_CBS_VOD_HOST, 'vod.pplus.paramount.tech']);
 const LEGACY_CBS_PLAIN_SOURCE_TIERS = new Set(['110', '375', '750', '1500', '2100', '3000']);
@@ -16,8 +16,9 @@ const INFERRED_MAX_HEIGHT = 1080;
 
 const INFERENCE_PROFILES = [
   {
-    id: 'legacy-named-c23',
-    matches: ({ url, contentPrefix }) => url.hostname === LEGACY_CBS_VOD_HOST && !/^\d+$/.test(contentPrefix),
+    id: 'legacy-mastered-c23',
+    matches: ({ url, contentPrefix }) => url.hostname === LEGACY_CBS_VOD_HOST &&
+      /(?:^|_)(?:FTR|VMASTER|PRORES)(?:_|$)|WOLF_OF_WALL_STREET/i.test(contentPrefix),
     codecTier: '23',
     urlTier: '5400'
   },
@@ -41,7 +42,11 @@ const INFERENCE_PROFILES = [
   }
 ];
 
-let inferredFallbackState = { streamKey: null, status: 'untested' };
+let inferredFallbackState = {
+  streamKey: null,
+  status: 'untested',
+  initializationCommitted: false
+};
 const rejectedAuthoritativePlans = new Set();
 
 function passThrough(url, reason = 'unsupported') {
@@ -108,14 +113,13 @@ export function getInferredMaxCandidate(url, options = {}) {
       (!options.allowWithRepresentations && getRepresentations().length > 0)) return null;
 
   const request = classifyMediaRequest(url);
-  if (!request.url || request.excluded || request.cmcd.ot !== 'v') return null;
+  if (!request.url || request.excluded) return null;
+
+  const isInitialization = request.isInitialization;
+  if (!isInitialization && request.cmcd.ot !== 'v') return null;
 
   const representationPlan = getInferredRepresentationPlan(request.url);
   if (!representationPlan) return null;
-
-  const topBitrate = parseInt(request.cmcd.tb, 10);
-  if (!topBitrate || representationPlan.alreadyMax ||
-      parseInt(estimateResolutionFromBitrate(topBitrate), 10) < INFERRED_MAX_HEIGHT) return null;
 
   const { match, contentPrefix, assetId, segmentName, targetDirectory, profileId } = representationPlan;
   const representationDirectory = match[0].slice(1, match[0].lastIndexOf(`/${segmentName}`));
@@ -123,9 +127,14 @@ export function getInferredMaxCandidate(url, options = {}) {
   const streamKey = `${request.url.origin}${streamPrefix}/${contentPrefix}_${assetId}`;
 
   if (inferredFallbackState.streamKey !== streamKey) {
-    inferredFallbackState = { streamKey, status: 'untested' };
+    inferredFallbackState = { streamKey, status: 'untested', initializationCommitted: false };
   }
   if (inferredFallbackState.status === 'rejected') return null;
+
+  const topBitrate = parseInt(request.cmcd.tb, 10);
+  if (representationPlan.alreadyMax ||
+      (inferredFallbackState.status !== 'validated' && !isInitialization &&
+        (!topBitrate || parseInt(estimateResolutionFromBitrate(topBitrate), 10) < INFERRED_MAX_HEIGHT))) return null;
 
   request.url.pathname = request.url.pathname.replace(`/${representationDirectory}/`, `/${targetDirectory}/`);
   return {
@@ -134,14 +143,19 @@ export function getInferredMaxCandidate(url, options = {}) {
     originalUrl: url,
     streamKey,
     strategy: `paramount-vod:${profileId}`,
+    mediaRole: isInitialization ? 'initialization' : 'segment',
+    fallbackAllowed: isInitialization || !inferredFallbackState.initializationCommitted,
     needsValidation: inferredFallbackState.status !== 'validated',
     source: 'inferred'
   };
 }
 
-export function recordInferredFallbackResult(streamKey, succeeded) {
+export function recordInferredFallbackResult(streamKey, succeeded, mediaRole = 'segment') {
   if (inferredFallbackState.streamKey === streamKey) {
     inferredFallbackState.status = succeeded ? 'validated' : 'rejected';
+    if (succeeded && mediaRole === 'initialization') {
+      inferredFallbackState.initializationCommitted = true;
+    }
   }
 }
 
@@ -152,7 +166,7 @@ export function recordAuthoritativeRewriteResult(plan, succeeded) {
 }
 
 export function resetInferredFallbackState() {
-  inferredFallbackState = { streamKey: null, status: 'untested' };
+  inferredFallbackState = { streamKey: null, status: 'untested', initializationCommitted: false };
   rejectedAuthoritativePlans.clear();
 }
 
@@ -227,7 +241,9 @@ function rewriteDash(url, targetRep) {
   }
 
   const targetPath = targetRep.request?.pathId || targetRep.pathId;
-  const currentDirectory = url.match(/\/([^/?]+)\/(?:seg_\d+\.m4s|init\.m4v)(?:\?|$)/i)?.[1];
+  const requestUrl = classifyMediaRequest(url).url;
+  const pathParts = requestUrl?.pathname.split('/').filter(Boolean) || [];
+  const currentDirectory = pathParts.length > 1 ? pathParts[pathParts.length - 2] : null;
   if (targetPath && currentDirectory && targetPath !== currentDirectory) {
     return url.replace(`/${currentDirectory}/`, `/${targetPath}/`);
   }
@@ -263,6 +279,14 @@ export function planRequest(url, options = {}) {
 
   const family = targetRep.family || targetRep.request?.family ||
     (targetRep.daiId ? 'google-dai-hls' : targetRep.hlsTier ? 'tiered-hls' : 'dash');
+
+  // A DASH MPD describes the authoritative live/VOD ladder and must reach the
+  // player unchanged. Only its initialization and media requests are eligible
+  // for representation rewriting.
+  if (family === 'dash' && request.kind === 'manifest') {
+    return passThrough(url, 'dash-manifest-authoritative');
+  }
+
   let targetUrl = null;
   let strategy = family;
 

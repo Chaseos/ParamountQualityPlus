@@ -68,7 +68,8 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
   }
 
   function shouldPrefetch(url) {
-    return isSegmentUrl(url) && !classifyMediaRequest(url).excluded;
+    const request = classifyMediaRequest(url);
+    return isSegmentUrl(url) && !request.excluded && !request.isInitialization && !request.isLive;
   }
 
   async function inspectManifestResponse(response, url) {
@@ -92,13 +93,13 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       headers: { Range: 'bytes=0-1' }
     })
       .then(response => {
-        recordInferredFallbackResult(candidate.streamKey, response.ok);
+        recordInferredFallbackResult(candidate.streamKey, response.ok, candidate.mediaRole);
         if (!response.ok) {
           console.warn(`[PQI] Inferred XHR max-quality path failed (${response.status}); keeping the original stream.`);
         }
       })
       .catch(error => {
-        recordInferredFallbackResult(candidate.streamKey, false);
+        recordInferredFallbackResult(candidate.streamKey, false, candidate.mediaRole);
         console.warn('[PQI] Inferred XHR max-quality probe failed; keeping the original stream.', error);
       })
       .finally(() => xhrInferenceProbes.delete(candidate.streamKey));
@@ -181,7 +182,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       if (rewritePlan && rewritePlan.action !== 'pass-through') {
         try {
           const isInferredAttempt = rewritePlan.action === 'inferred-probe';
-          if (isSegmentUrl(newUrl) && (!isInferredAttempt || !rewritePlan.needsValidation)) {
+          if (shouldPrefetch(newUrl) && (!isInferredAttempt || !rewritePlan.needsValidation)) {
             maybePrefetchSegments(stripCMCD(newUrl), ORIGINAL_FETCH);
           }
 
@@ -191,7 +192,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
 
           if (response.ok) {
             if (isInferredAttempt) {
-              recordInferredFallbackResult(rewritePlan.streamKey, true);
+              recordInferredFallbackResult(rewritePlan.streamKey, true, rewritePlan.mediaRole);
             } else {
               recordAuthoritativeRewriteResult(rewritePlan, true);
             }
@@ -200,12 +201,17 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
           }
 
           if (isInferredAttempt) {
-            recordInferredFallbackResult(rewritePlan.streamKey, false);
-            console.warn(`[PQI] Inferred max-quality path failed (${response.status}); using the original stream.`);
+            recordInferredFallbackResult(rewritePlan.streamKey, false, rewritePlan.mediaRole);
+            const outcome = rewritePlan.fallbackAllowed === false
+              ? 'not mixing it with the original representation.'
+              : 'using the original stream.';
+            console.warn(`[PQI] Inferred max-quality path failed (${response.status}); ${outcome}`);
           } else {
             recordAuthoritativeRewriteResult(rewritePlan, false);
             console.warn(`[PQI] Authoritative ${rewritePlan.strategy} rewrite failed (${response.status}); using the original stream.`);
           }
+
+          if (isInferredAttempt && rewritePlan.fallbackAllowed === false) return response;
 
           args[0] = originalResource;
           analyzeUrl(url);
@@ -213,11 +219,17 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
 
         } catch (err) {
           if (rewritePlan?.action === 'inferred-probe') {
-            recordInferredFallbackResult(rewritePlan.streamKey, false);
+            recordInferredFallbackResult(rewritePlan.streamKey, false, rewritePlan.mediaRole);
           } else if (rewritePlan) {
             recordAuthoritativeRewriteResult(rewritePlan, false);
           }
+          if (rewritePlan?.action === 'inferred-probe' && rewritePlan.fallbackAllowed === false) {
+            console.warn('[PQI] Network error after committing the inferred initialization; not mixing representations.', err);
+            throw err;
+          }
+
           console.warn('[PQI] Network error during rewrite, reverting.', err);
+
           args[0] = originalResource;
           analyzeUrl(url);
           return fetchWithRetry(this, args, true, url);
@@ -253,7 +265,14 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
         const originalUrl = finalUrl;
         const rewritePlan = planRequest(originalUrl);
         if (rewritePlan?.action === 'inferred-probe' && rewritePlan.needsValidation) {
-          validateInferredCandidate(rewritePlan);
+          if (rewritePlan.mediaRole === 'initialization') {
+            // XHR cannot be redirected after an asynchronous probe without
+            // losing request headers. Keep both initialization and media on
+            // the original representation for this stream.
+            recordInferredFallbackResult(rewritePlan.streamKey, false, rewritePlan.mediaRole);
+          } else {
+            validateInferredCandidate(rewritePlan);
+          }
         } else if (rewritePlan && rewritePlan.action !== 'pass-through') {
           finalUrl = rewritePlan.url;
           this._pqi_rewritePlan = rewritePlan;
@@ -274,7 +293,11 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
         this._pqi_rewriteRecorded = true;
         const succeeded = this.status >= 200 && this.status < 400;
         if (this._pqi_rewritePlan.action === 'inferred-probe') {
-          recordInferredFallbackResult(this._pqi_rewritePlan.streamKey, succeeded);
+          recordInferredFallbackResult(
+            this._pqi_rewritePlan.streamKey,
+            succeeded,
+            this._pqi_rewritePlan.mediaRole
+          );
         } else {
           recordAuthoritativeRewriteResult(this._pqi_rewritePlan, succeeded);
         }

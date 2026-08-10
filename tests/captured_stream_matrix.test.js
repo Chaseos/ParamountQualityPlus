@@ -39,6 +39,26 @@ const capturedVodStreams = [
     title: 'Sleepy Hollow',
     url: 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/2019/01/25/1432125507781/2725042_cenc_precon_dash/Sleepy_Hollow_32962_001_FTR_VMASTER_M3497_ProRes_422_HQ_3840x2160_2398_5_1_2_0_16x9LB_engAU_engPT_5005095383_2725014_2100/seg_1.m4s',
     expected: 'Sleepy_Hollow_32962_001_FTR_VMASTER_M3497_ProRes_422_HQ_3840x2160_2398_5_1_2_0_16x9LB_engAU_engPT_5005095383_2725014_4500'
+  },
+  {
+    title: 'Mean Girls (2024)',
+    url: 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/2024/01/05/2297393731558/2595923_cenc_precon_dash/Mean_Girls_2024_36803_3840x2160_HQ_SDR_2579365_2100/seg_4.m4s',
+    expected: 'Mean_Girls_2024_36803_3840x2160_HQ_SDR_2579365_4500'
+  },
+  {
+    title: 'Roofman',
+    url: 'https://vod.pplus.paramount.tech/intl_vms/2025/11/04/2463647811886/3465539_cenc_precon_dash/PPUSA_ROOFMAN_MOVIE_UHD_c24_540p_3465433_2000/seg_4.m4s',
+    expected: 'PPUSA_ROOFMAN_MOVIE_UHD_c20_1080p_3465433_5400'
+  },
+  {
+    title: 'NCIS Tony and Ziva S1E1',
+    url: 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/2025/07/01/2436849731966/3343868_cenc_precon_dash/PPUSA_NCISTONYANDZIVA_101_UHD_c24_540p_3343844_2000/seg_4.m4s',
+    expected: 'PPUSA_NCISTONYANDZIVA_101_UHD_c20_1080p_3343844_5400'
+  },
+  {
+    title: 'The Madison S1E4',
+    url: 'https://vod.pplus.paramount.tech/intl_vms/2026/02/12/3CLc3H89J48USOj146WgpHpqzHWcpVpD/3772149_cenc_precon_dash/PARPUS_THEMADISON_104_V2_c24_540p_3772056_2000/seg_4.m4s',
+    expected: 'PARPUS_THEMADISON_104_V2_c20_1080p_3772056_5400'
   }
 ];
 
@@ -56,5 +76,17 @@ describe('Captured Paramount playback matrix', () => {
       source: 'inferred'
     }));
     expect(candidate.url).toContain(expected);
+  });
+
+  test.each(capturedVodStreams)('$title keeps its initialization on the max representation', ({ url, expected }) => {
+    const initializationUrl = url.replace(/\/seg_\d+\.m4s$/, '/init.m4v');
+    const candidate = getInferredMaxCandidate(initializationUrl + '?CMCD=ot%3Di');
+
+    expect(candidate).toEqual(expect.objectContaining({
+      action: 'inferred-probe',
+      mediaRole: 'initialization',
+      source: 'inferred'
+    }));
+    expect(candidate.url).toContain(`${expected}/init.m4v`);
   });
 });

@@ -4,6 +4,8 @@ import { resetInferredFallbackState } from '../injected/rewriter.js';
 import { setConfig, setRepresentations } from '../injected/state.js';
 
 const SEGMENT_URL = 'https://vod.pplus.paramount.tech/path/asset_cenc_precon_dash/PPUSA_MOVIE_UHD_V1_c24_540p_4309720_2000/seg_56.m4s?CMCD=br%3D1802%2Cot%3Dv%2Ctb%3D5812';
+const INIT_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/path/asset_cenc_precon_dash/Sleepy_Hollow_FTR_VMASTER_2725014_2100/init.m4v?CMCD=br%3D2738%2Cot%3Di';
+const SLEEPY_SEGMENT_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/path/asset_cenc_precon_dash/Sleepy_Hollow_FTR_VMASTER_2725014_2100/seg_6.m4s?CMCD=br%3D2738%2Cot%3Dv%2Ctb%3D5880';
 
 class MockXMLHttpRequest extends EventTarget {
   constructor() {
@@ -90,6 +92,18 @@ describe('Inferred XHR fallback validation', () => {
 
     expect(probeFetch).toHaveBeenCalledTimes(1);
     expect(second.openCalls[0][1]).toBe(secondUrl);
+  });
+
+  test('keeps initialization and media together when XHR cannot await an inferred probe', () => {
+    const initialization = new XMLHttpRequest();
+    initialization.open('GET', INIT_URL);
+
+    const segment = new XMLHttpRequest();
+    segment.open('GET', SLEEPY_SEGMENT_URL);
+
+    expect(initialization.openCalls[0][1]).toBe(INIT_URL);
+    expect(segment.openCalls[0][1]).toBe(SLEEPY_SEGMENT_URL);
+    expect(probeFetch).not.toHaveBeenCalled();
   });
 
   test('parses XHR manifests before listeners registered after open', () => {

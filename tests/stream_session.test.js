@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { parseDashManifest, parseHlsManifest } from '../injected/manifest-parser.js';
 import { getRepresentations, getStreamSession, setRepresentations } from '../injected/state.js';
-import { selectRepresentation } from '../injected/stream-model.js';
+import { classifyMediaRequest, selectRepresentation } from '../injected/stream-model.js';
 
 window.postMessage = jest.fn();
 
@@ -53,5 +53,32 @@ manifest_8.m3u8`, 'https://host/first/master.m3u8');
       forcedId: 's0-7',
       forcedHeight: 1080
     })).toBe(representations[0]);
+  });
+});
+
+describe('Media request classification', () => {
+  test.each([
+    'https://host/path/init.m4v',
+    'https://host/path/init.m4s',
+    'https://host/path/init-video-7.mp4',
+    'https://host/path/manifest_video_7_0_init.mp4'
+  ])('recognizes initialization request %s', url => {
+    expect(classifyMediaRequest(url)).toEqual(expect.objectContaining({
+      kind: 'segment',
+      isInitialization: true
+    }));
+  });
+
+  test('does not classify ordinary media as initialization', () => {
+    expect(classifyMediaRequest('https://host/path/manifest_video_7_0_123.mp4').isInitialization)
+      .toBe(false);
+  });
+
+  test.each([
+    'https://host/out/v1/event/manifest_video_7_0_123.mp4',
+    'https://dai.google.com/linear/hls/pa/event/E1/stream/S1/segment.ts',
+    'https://host/video/seg_1.m4s?CMCD=st%3Dl%2Cot%3Dv'
+  ])('recognizes live request %s', url => {
+    expect(classifyMediaRequest(url).isLive).toBe(true);
   });
 });
