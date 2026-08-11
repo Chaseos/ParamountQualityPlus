@@ -88,6 +88,27 @@ describe('Inferred fallback network validation', () => {
     expect(originalFetch.mock.calls[2][0]).toContain('_2725014_4500/seg_6.m4s');
   });
 
+  test('validates initialization and companion media on the same alternate ladder', async () => {
+    const avatarInit = LEGACY_CBS_SEGMENT_URL.replace('seg_5.m4s', 'init.m4v');
+    const controller = new AbortController();
+    originalFetch
+      .mockResolvedValueOnce(successResponse())
+      .mockResolvedValueOnce({ ok: false, status: 404, headers: { get: () => 'video/mp4' } })
+      .mockResolvedValueOnce(successResponse())
+      .mockResolvedValueOnce(successResponse())
+      .mockResolvedValue(successResponse());
+
+    await window.fetch(avatarInit, { signal: controller.signal });
+    await window.fetch(LEGACY_CBS_SEGMENT_URL);
+
+    expect(originalFetch.mock.calls[0][0]).toContain('_c23_1080p_3054956_5400/init.m4v');
+    expect(originalFetch.mock.calls[1][0]).toContain('_c23_1080p_3054956_5400/seg_1.m4s');
+    expect(originalFetch.mock.calls[1][1].signal).toBe(controller.signal);
+    expect(originalFetch.mock.calls[2][0]).toContain('_c20_1080p_3054956_5400/init.m4v');
+    expect(originalFetch.mock.calls[3][0]).toContain('_c20_1080p_3054956_5400/seg_1.m4s');
+    expect(originalFetch.mock.calls[4][0]).toContain('_c20_1080p_3054956_5400/seg_5.m4s');
+  });
+
   test('does not mix original media after a rewritten initialization is committed', async () => {
     const failedSegment = { ok: false, status: 404, headers: { get: () => 'video/mp4' } };
     originalFetch
@@ -106,6 +127,22 @@ describe('Inferred fallback network validation', () => {
 
     await window.fetch(LEGACY_CBS_PLAIN_TIER_URL.replace('seg_6', 'seg_7'));
     expect(originalFetch.mock.calls[3][0]).toContain('_2725014_4500/seg_7.m4s');
+  });
+
+  test('does not splice original media after a rewritten segment is delivered', async () => {
+    const successfulRewrite = successResponse();
+    const failedRewrite = { ok: false, status: 404, headers: { get: () => 'video/mp4' } };
+    originalFetch
+      .mockResolvedValueOnce(successfulRewrite)
+      .mockResolvedValueOnce(failedRewrite);
+
+    await expect(window.fetch(SEGMENT_URL)).resolves.toBe(successfulRewrite);
+    const response = await window.fetch(SEGMENT_URL.replace('seg_56', 'seg_57'));
+
+    expect(response).toBe(failedRewrite);
+    expect(originalFetch).toHaveBeenCalledTimes(2);
+    expect(originalFetch.mock.calls[0][0]).toContain('_c20_1080p_4309720_5400/seg_56.m4s');
+    expect(originalFetch.mock.calls[1][0]).toContain('_c20_1080p_4309720_5400/seg_57.m4s');
   });
 
   test('falls back to the original rendition from a bad manifest descriptor', async () => {
@@ -151,7 +188,7 @@ describe('Inferred fallback network validation', () => {
     expect(originalFetch.mock.calls[0][0]).toContain('_917732_4500/seg_4.m4s');
   });
 
-  test('falls back immediately and suppresses later guesses after rejection', async () => {
+  test('tries the alternate ladder before falling back and then reuses it', async () => {
     originalFetch
       .mockResolvedValueOnce({ ok: false, status: 404, headers: { get: () => 'video/mp4' } })
       .mockResolvedValue(successResponse());
@@ -161,8 +198,24 @@ describe('Inferred fallback network validation', () => {
 
     expect(originalFetch).toHaveBeenCalledTimes(3);
     expect(originalFetch.mock.calls[0][0]).toContain('_c20_1080p_4309720_5400/seg_56.m4s');
-    expect(originalFetch.mock.calls[1][0]).toBe(SEGMENT_URL);
-    expect(originalFetch.mock.calls[2][0]).toContain('_c24_540p_4309720_2000/seg_57.m4s');
+    expect(originalFetch.mock.calls[1][0]).toContain('_c23_1080p_4309720_5400/seg_56.m4s');
+    expect(originalFetch.mock.calls[2][0]).toContain('_c23_1080p_4309720_5400/seg_57.m4s');
+  });
+
+  test('uses the original rendition only after every inferred ladder is rejected', async () => {
+    originalFetch
+      .mockResolvedValueOnce({ ok: false, status: 404, headers: { get: () => 'video/mp4' } })
+      .mockResolvedValueOnce({ ok: false, status: 404, headers: { get: () => 'video/mp4' } })
+      .mockResolvedValue(successResponse());
+
+    await window.fetch(SEGMENT_URL);
+    await window.fetch(SEGMENT_URL.replace('seg_56', 'seg_57'));
+
+    expect(originalFetch).toHaveBeenCalledTimes(4);
+    expect(originalFetch.mock.calls[0][0]).toContain('_c20_1080p_4309720_5400/seg_56.m4s');
+    expect(originalFetch.mock.calls[1][0]).toContain('_c23_1080p_4309720_5400/seg_56.m4s');
+    expect(originalFetch.mock.calls[2][0]).toBe(SEGMENT_URL);
+    expect(originalFetch.mock.calls[3][0]).toContain('_c24_540p_4309720_2000/seg_57.m4s');
   });
 
   test('does not turn a cancelled inferred request into a fallback request', async () => {

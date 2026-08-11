@@ -8,17 +8,18 @@ import {
   recordInferredFallbackResult,
   resetInferredFallbackState,
   retryRewriteUrl,
-  resolveNextBestRepresentation,
   resolveTargetRepresentation
 } from './rewriter.js';
 import { initNetworkHooks } from './network-hooks.js';
 import { estimateResolutionFromBitrate } from './constants.js';
 import { getConfig, getRepresentations, getStreamSession, setConfig, setRepresentations } from './state.js';
+import { getDiagnosticSnapshot, initDiagnostics, resetDiagnostics } from './diagnostics.js';
 
 // Wire together config handling and network interception as soon as the module
 // loads so the injected script is fully operational without additional setup.
 consumePendingConfig();
 initConfigListener();
+initDiagnostics();
 initNetworkHooks({ analyzeUrl, parseManifest });
 initGeolocationPermissionObserver();
 initGeolocationRequestListener();
@@ -97,10 +98,11 @@ export {
   parseManifest,
   recordInferredFallbackResult,
   resetInferredFallbackState,
-  resolveNextBestRepresentation,
   resolveTargetRepresentation,
   retryRewriteUrl,
   setConfig,
   getStreamSession,
+  getDiagnosticSnapshot,
+  resetDiagnostics,
   setRepresentations as setAvailableRepresentations
 };

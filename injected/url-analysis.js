@@ -48,6 +48,7 @@ export function analyzeUrl(url, options = {}) {
     let resolution = null;
     let isEstimated = false;
     let exactBandwidth = null;
+    let telemetryConflictsWithPath = false;
     let source = options.rewritten ? (targetSource || 'inferred') : 'inferred';
 
     // Use the rewrite target directly when available so the UI reflects the
@@ -86,9 +87,11 @@ export function analyzeUrl(url, options = {}) {
       const pathMatch = pathResolution
         ? availableRepresentations.find(r => r.height === pathResolution)
         : null;
-      const manifestMatch = bitrateMatch && (!pathMatch || bitrateMatch.height !== pathResolution)
-        ? bitrateMatch
-        : pathMatch;
+      // A representation directory is the media actually requested. CMCD can
+      // lag during switches, so use bitrate matching only when the path does
+      // not identify a known representation.
+      telemetryConflictsWithPath = Boolean(pathMatch && bitrateMatch && bitrateMatch.height !== pathMatch.height);
+      const manifestMatch = pathMatch || bitrateMatch;
 
       if (manifestMatch) {
         resolution = `${manifestMatch.height}p`;
@@ -156,6 +159,8 @@ export function analyzeUrl(url, options = {}) {
         finalBitrate = targetBitrateKbps;
       } else if (options.rewritten && requestedTier) {
         finalBitrate = requestedTier;
+      } else if (telemetryConflictsWithPath && exactBandwidth) {
+        finalBitrate = Math.round(exactBandwidth / 1000);
       } else if (!finalBitrate && exactBandwidth) {
         finalBitrate = Math.round(exactBandwidth / 1000);
       } else if (!finalBitrate && requestedTier) {

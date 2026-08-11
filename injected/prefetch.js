@@ -1,4 +1,5 @@
 import { getConfig } from './state.js';
+import { diagnosticNow, recordDiagnosticEvent, recordRequestAttempt } from './diagnostics.js';
 
 const PREFETCH_CACHE_LIMIT = 200; // Keep the set from growing infinitely
 const prefetchQueue = new Set();
@@ -46,7 +47,25 @@ export function maybePrefetchSegments(url, originalFetch) {
       console.log(`[PQI Debug] Prefetching future segment: ${nextUrl}`);
       // Fire and forget the background fetch using the raw fetch function.
       // The browser's network stack will cache the response.
-      Promise.resolve(originalFetch(nextUrl, { priority: 'low' })).catch(() => {
+      const startedAt = diagnosticNow();
+      Promise.resolve(originalFetch(nextUrl, { priority: 'low' })).then(response => {
+        recordRequestAttempt({
+          transport: 'fetch',
+          category: 'prefetch',
+          url: nextUrl,
+          status: response?.status ?? null,
+          ok: response?.ok ?? null,
+          outcome: response?.ok === false ? 'http-error' : 'success',
+          durationMs: diagnosticNow() - startedAt
+        });
+      }).catch(error => {
+        recordRequestAttempt({
+          transport: 'fetch',
+          category: 'prefetch',
+          url: nextUrl,
+          outcome: error?.name === 'AbortError' ? 'cancelled' : 'network-error',
+          durationMs: diagnosticNow() - startedAt
+        });
         // Ignore prefetch failures; if the network hiccuped, the player
         // will just try again later and our fetchWithRetry will catch it.
       });
@@ -54,6 +73,7 @@ export function maybePrefetchSegments(url, originalFetch) {
   }
   
   if (prefetchedCount > 0) {
+    recordDiagnosticEvent('prefetch_batch', { count: prefetchedCount });
     console.log(`[PQI Debug] Triggered ${prefetchedCount} prefetch(es) based on: ${url}`);
   }
 }

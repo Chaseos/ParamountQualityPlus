@@ -11,6 +11,8 @@ let streamState = {
     hasActiveStream: false, // true if we're receiving segment data
     geolocationPermission: 'unknown',
     playbackDetected: false,
+    recoveryActive: false,
+    appliedConfig: null,
     initializedAt: Date.now()
 };
 
@@ -42,13 +44,16 @@ function isLivePlaybackPath(path = window.location.pathname) {
 }
 
 // --- Injection Logic ---
-function injectScript() {
+function injectScript(initialConfig) {
     const script = document.createElement('script');
     script.type = 'module';
     script.src = chrome.runtime.getURL('injected/index.js');
     script.onload = function () {
         this.remove();
-        syncConfig();
+        // The module consumes the staged value before installing its network
+        // hooks. Posting it again covers browsers where sessionStorage was
+        // unavailable without reintroducing a startup Auto/Force Max race.
+        window.postMessage({ type: 'PQI_CONFIG', payload: initialConfig }, '*');
     };
     (document.head || document.documentElement).appendChild(script);
 
@@ -145,6 +150,12 @@ window.addEventListener('message', (event) => {
             streamState.geolocationPermission = event.data.payload?.state || 'unknown';
         } else if (event.data.type === 'PQI_ORIGINAL_STREAM_RECOVERY' && !recoveryReloadRequested) {
             recoveryReloadRequested = true;
+            streamState.recoveryActive = true;
+            streamState.appliedConfig = {
+                forceMax: false,
+                forcedId: null,
+                forcedHeight: null
+            };
             try {
                 window.sessionStorage.setItem(ORIGINAL_STREAM_RECOVERY_KEY, '1');
             } catch (error) {
@@ -187,6 +198,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         return true;
     } else if (request.type === 'APPLY_QUALITY_CHANGE') {
+        streamState.recoveryActive = false;
+        streamState.appliedConfig = request.payload;
         if (request.reloadLivePlayback && isLivePlaybackPath()) {
             try {
                 window.sessionStorage.setItem(PENDING_CONFIG_KEY, JSON.stringify(request.payload));
@@ -210,7 +223,10 @@ function reconcileStoredQuality(qualities) {
             : qualities.find(q => q.id === config.forcedId);
 
         if (!match) {
-            chrome.storage.sync.set({ forcedId: null, forcedHeight: null });
+            // A partial/ad-period manifest or a new representation ID should
+            // not erase the user's cross-title height preference. Keep the
+            // stable height and allow a later content ladder to remap its ID.
+            if (config.forcedId) chrome.storage.sync.set({ forcedId: null });
             return;
         }
 
@@ -220,12 +236,8 @@ function reconcileStoredQuality(qualities) {
     });
 }
 
-// Initialize
-injectScript();
-
-
 // --- Config Sync ---
-function syncConfig() {
+function syncConfig({ bootstrap = false } = {}) {
     chrome.storage.sync.get(['forceMax', 'forcedId', 'forcedHeight', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount'], (res) => {
         let recoverOriginalStream = false;
         try {
@@ -245,10 +257,28 @@ function syncConfig() {
             prefetchCount: res.prefetchCount !== undefined ? res.prefetchCount : 5
         };
 
-        // Send to injected script
-        window.postMessage({ type: 'PQI_CONFIG', payload: config }, '*');
+        if (recoverOriginalStream) streamState.recoveryActive = true;
+        const appliedConfig = streamState.recoveryActive
+            ? { ...config, forceMax: false, forcedId: null, forcedHeight: null }
+            : config;
+        streamState.appliedConfig = appliedConfig;
+
+        if (bootstrap) {
+            try {
+                window.sessionStorage.setItem(PENDING_CONFIG_KEY, JSON.stringify(appliedConfig));
+            } catch (error) {
+                console.warn('[PQI] Unable to stage initial quality configuration.', error);
+            }
+            injectScript(appliedConfig);
+        } else {
+            window.postMessage({ type: 'PQI_CONFIG', payload: appliedConfig }, '*');
+        }
     });
 }
+
+// Read the saved selection before the main-world hooks are installed. This
+// prevents an original initialization segment from racing ahead of Force Max.
+syncConfig({ bootstrap: true });
 
 // Listen for storage changes
 chrome.storage.onChanged.addListener((changes, area) => {

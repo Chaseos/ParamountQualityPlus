@@ -41,6 +41,25 @@ beforeEach(() => {
 });
 
 describe('Successful-response quality observations', () => {
+  test('honors a height-only manual selection after a manifest ID changes', async () => {
+    originalFetch.mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'video/mp4' } });
+    setConfig({
+      forceMax: false,
+      forcedId: null,
+      forcedHeight: 234,
+      enableRetries: false,
+      enablePrefetch: false
+    });
+
+    await window.fetch(AVATAR_540);
+
+    expect(originalFetch.mock.calls[0][0]).toContain('_c28_234p_4309720_130/seg_10.m4s');
+    expect(analyzeUrl).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
+      rewritten: true,
+      targetHeight: 234
+    }));
+  });
+
   test('reports Avatar 234p only after the rewritten response succeeds', async () => {
     let finishRequest;
     originalFetch.mockReturnValue(new Promise(resolve => { finishRequest = resolve; }));

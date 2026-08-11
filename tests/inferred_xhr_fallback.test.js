@@ -81,7 +81,7 @@ describe('Inferred XHR fallback validation', () => {
     }));
   });
 
-  test('probes only once and keeps later segments original after rejection', async () => {
+  test('probes each inferred ladder once and keeps later segments original after rejection', async () => {
     probeFetch.mockResolvedValue({ ok: false, status: 404 });
 
     const first = new XMLHttpRequest();
@@ -93,7 +93,9 @@ describe('Inferred XHR fallback validation', () => {
     const second = new XMLHttpRequest();
     second.open('GET', secondUrl);
 
-    expect(probeFetch).toHaveBeenCalledTimes(1);
+    expect(probeFetch).toHaveBeenCalledTimes(2);
+    expect(probeFetch.mock.calls[0][0]).toContain('_c20_1080p_4309720_5400/seg_56.m4s');
+    expect(probeFetch.mock.calls[1][0]).toContain('_c23_1080p_4309720_5400/seg_56.m4s');
     expect(second.openCalls[0][1]).toBe(secondUrl);
   });
 

@@ -53,9 +53,13 @@ export function classifyMediaRequest(url) {
   const isAd = !isDaiPlaylist && isAdReference(lower);
   const isManifest = /\.(?:mpd|m3u8)(?:$|\?)/i.test(urlObj.toString());
   const isSegment = /\.(?:m4s|m4v|mp4|ts)(?:$|\?)/i.test(urlObj.toString());
+  // DAI media can be served from event playlists, stitched program CDNs, or
+  // ad-pod paths such as /linear/pods/v1/. None of those player-owned segment
+  // requests are safe candidates for speculative extension prefetching.
+  const isGoogleDaiMedia = urlObj.hostname.toLowerCase() === 'dai.google.com' && isSegment;
   const filename = urlObj.pathname.slice(urlObj.pathname.lastIndexOf('/') + 1);
   const isInitialization = /(?:^|[_-])init(?:[_-][^.]*)?\.(?:m4s|m4v|mp4)$/i.test(filename);
-  const isLive = cmcd.st === 'l' ||
+  const isLive = cmcd.st === 'l' || isGoogleDaiMedia ||
     /\/out\/v1\/|\/linear\/hls\/pa\/event\//i.test(urlObj.pathname) ||
     // Google DAI media segments are served from a different CDN than the
     // event playlist and frequently omit CMCD's `st=l` marker.
@@ -65,12 +69,13 @@ export function classifyMediaRequest(url) {
     url: urlObj,
     cmcd,
     kind: isManifest ? 'manifest' : (isSegment ? 'segment' : 'unknown'),
-    excluded: isAudio || isAd,
+    excluded: isAudio || isAd || isGoogleDaiMedia,
     isAd,
     isAudio,
     isInitialization,
     isLive,
-    isDaiPlaylist
+    isDaiPlaylist,
+    isGoogleDaiMedia
   };
 }
 

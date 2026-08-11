@@ -187,6 +187,17 @@ describe('Fetch Retries for Segments', () => {
         expect(originalFetchMock).toHaveBeenCalledWith(url);
     });
 
+    test('does not prefetch Google DAI pod segments', async () => {
+        const url = 'https://dai.google.com/linear/pods/v1/p/provider/session/53736/0/1/variant/1.ts';
+        const response = { ok: true, status: 200, headers: { get: () => 'video/mp2t' } };
+        originalFetchMock.mockResolvedValue(response);
+
+        await expect(window.fetch(url)).resolves.toBe(response);
+
+        expect(originalFetchMock).toHaveBeenCalledTimes(1);
+        expect(originalFetchMock).toHaveBeenCalledWith(url);
+    });
+
     test('does not prefetch encrypted Paramount VOD segments', async () => {
         const url = 'https://vod.pplus.paramount.tech/path/asset_cenc_precon_dash/title_2100/seg_10.m4s?token=1';
         const response = { ok: true, status: 200, headers: { get: () => 'video/mp4' } };
@@ -311,6 +322,37 @@ describe('Fetch Retries for Segments', () => {
         await window.fetch('https://pubads.g.doubleclick.net/ondemand/dash/content/1/vid/NEW_TITLE/CHS/streams/1/manifest.mpd');
 
         expect(getRepresentations()).toEqual([]);
+    });
+
+    test('does not clear the content ladder for a separate ad-only manifest', async () => {
+        const contentLadder = [{
+            id: 'content-1080',
+            height: 1080,
+            bandwidth: 5800000,
+            family: 'dash',
+            source: 'manifest'
+        }];
+        setRepresentations(contentLadder, {
+            streamKey: 'https://pubads.g.doubleclick.net/vid/ACTIVE_TITLE',
+            family: 'dash'
+        });
+        const adManifest = `
+            <MPD><Period id="mid-roll-1-ad-1"><AdaptationSet contentType="video">
+              <Representation id="ad" width="1920" height="1080" bandwidth="9000000">
+                <SegmentTemplate media="ads/seg_$Number$.m4s" />
+              </Representation>
+            </AdaptationSet></Period></MPD>
+        `;
+        originalFetchMock.mockResolvedValue({
+            ok: true,
+            status: 200,
+            headers: { get: () => 'application/dash+xml' },
+            clone: () => ({ text: async () => adManifest })
+        });
+
+        await window.fetch('https://pubads.g.doubleclick.net/ad-break/manifest.mpd');
+
+        expect(getRepresentations()).toEqual(contentLadder);
     });
 
 });

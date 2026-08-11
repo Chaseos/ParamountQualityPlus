@@ -9,6 +9,7 @@ let currentConfig = {
     enablePrefetch: true,
     prefetchCount: 5
 };
+let activeRuntimeConfig = null;
 
 const KOFI_URL = 'https://ko-fi.com/chaseos';
 const REVIEW_STORE_URLS = Object.freeze({
@@ -224,6 +225,7 @@ function setMode(forceMax, forcedId, forcedHeight = null) {
     currentConfig.forceMax = forceMax;
     currentConfig.forcedId = forcedId;
     currentConfig.forcedHeight = forcedHeight;
+    activeRuntimeConfig = null;
 
     // Persist first so a controlled live-page reload starts with the selected
     // representation instead of briefly booting in Auto mode.
@@ -385,17 +387,18 @@ function updateSelectionUI() {
     const qList = document.getElementById('quality-list');
 
     if (!btnAuto || !btnMax || !qList) return;
+    const displayedConfig = activeRuntimeConfig || currentConfig;
 
     // Reset all
     btnAuto.classList.remove('active');
     btnMax.classList.remove('active');
 
     // Auto
-    if (!currentConfig.forceMax && !currentConfig.forcedId && !currentConfig.forcedHeight) {
+    if (!displayedConfig.forceMax && !displayedConfig.forcedId && !displayedConfig.forcedHeight) {
         btnAuto.classList.add('active');
     }
     // Max
-    else if (currentConfig.forceMax) {
+    else if (displayedConfig.forceMax) {
         btnMax.classList.add('active');
     }
 
@@ -403,17 +406,17 @@ function updateSelectionUI() {
     let isForcedSelectionInList = false;
     Array.from(qList.children).forEach(btn => {
         btn.classList.remove('active');
-        const matchesId = currentConfig.forcedId && btn.dataset.id === currentConfig.forcedId;
-        const matchesHeight = currentConfig.forcedHeight &&
-            parseInt(btn.dataset.height, 10) === parseInt(currentConfig.forcedHeight, 10);
-        if (!currentConfig.forceMax && (matchesId || matchesHeight)) {
+        const matchesId = displayedConfig.forcedId && btn.dataset.id === displayedConfig.forcedId;
+        const matchesHeight = displayedConfig.forcedHeight &&
+            parseInt(btn.dataset.height, 10) === parseInt(displayedConfig.forcedHeight, 10);
+        if (!displayedConfig.forceMax && (matchesId || matchesHeight)) {
             btn.classList.add('active');
             isForcedSelectionInList = true;
         }
     });
 
     // Fallback to Auto if the forced ID is not in the list (but we have a list loaded)
-    if (!currentConfig.forceMax && (currentConfig.forcedId || currentConfig.forcedHeight) &&
+    if (!displayedConfig.forceMax && (displayedConfig.forcedId || displayedConfig.forcedHeight) &&
         !isForcedSelectionInList && qList.children.length > 0) {
         btnAuto.classList.add('active');
     }
@@ -428,10 +431,13 @@ function startPolling() {
                     setConnectionStatus(false);
                 } else if (response) {
                     setConnectionStatus(true);
+                    activeRuntimeConfig = response.appliedConfig || null;
                     updateStats(response);
 
                     if (response.manifestQualities && response.manifestQualities.length > 0) {
                         renderQualityList(response.manifestQualities);
+                    } else {
+                        updateSelectionUI();
                     }
                 }
             });

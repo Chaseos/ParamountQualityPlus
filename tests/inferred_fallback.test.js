@@ -18,6 +18,7 @@ const NICKELODEON_HD_SEGMENT_URL = 'https://vod.pplus.paramount.tech/intl_vms/ti
 const NUMERIC_PREFIX_SEGMENT_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/title/asset_cenc_precon_dash/3478685_c24_540p_118423_2000/seg_4.m4s?CMCD=br%3D2011%2Cot%3Dv%2Ctb%3D5585';
 const SURVIVOR_SEGMENT_URL = 'https://vod.pplus.paramount.tech/intl_vms/2026/02/25/V2Qj7a_IhC8VoKNNQ9WxqGjbwF7GrBZg/3820173_cenc_precon_dash/PPUSA_SURVIVOR_5008_V1_c24_540p_3820071_2000/seg_5.m4s?CMCD=br%3D2054%2Cot%3Dv%2Ctb%3D5678';
 const TONY_ZIVA_SEGMENT_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/2025/07/01/2436849731966/3343868_cenc_precon_dash/PPUSA_NCISTONYANDZIVA_101_UHD_c24_540p_3343844_2000/seg_4.m4s?CMCD=br%3D2000%2Cot%3Dv%2Ctb%3D5400';
+const AVATAR_TLA_SEGMENT_URL = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/2020/06/05/1747188803528/3348861_cenc_precon_dash/NICKELODEON_AVATAR_105_V1_c24_540p_3347410_2000/seg_4.m4s?CMCD=br%3D1607%2Cot%3Dv%2Ctb%3D5463';
 const LEGACY_CBS_VOD_HOST = 'vod-gcs-cedexis.cbsaavideo.com';
 
 describe('Inferred Paramount VOD fallback', () => {
@@ -34,6 +35,30 @@ describe('Inferred Paramount VOD fallback', () => {
     expect(candidate.source).toBe('inferred');
     expect(candidate.url).toContain('PPUSA_MOVIE_UHD_V1_c20_1080p_4309720_5400/seg_56.m4s');
     expect(candidate.url).toContain('CMCD=br%3D1802%2Cot%3Dv%2Ctb%3D5812');
+  });
+
+  test('allows a validated video-path probe when CMCD telemetry is absent', () => {
+    const candidate = getInferredMaxCandidate(SEGMENT_URL.split('?')[0]);
+
+    expect(candidate).toEqual(expect.objectContaining({
+      action: 'inferred-probe',
+      needsValidation: true,
+      url: expect.stringContaining('_c20_1080p_4309720_5400/seg_56.m4s')
+    }));
+  });
+
+  test('uses the request planner configuration instead of stale global state', () => {
+    setConfig({ forceMax: false, forcedId: null, forcedHeight: null });
+
+    const plan = planRequest(SEGMENT_URL, {
+      config: { forceMax: true, forcedId: null, forcedHeight: null },
+      representations: []
+    });
+
+    expect(plan).toEqual(expect.objectContaining({
+      action: 'inferred-probe',
+      url: expect.stringContaining('_c20_1080p_4309720_5400/seg_56.m4s')
+    }));
   });
 
   test('uses the verified c23 ladder for the legacy CBS VOD host', () => {
@@ -99,8 +124,33 @@ describe('Inferred Paramount VOD fallback', () => {
   });
 
   test('uses the modern c20 ladder for new content on the legacy CBS host', () => {
-    expect(getInferredMaxCandidate(TONY_ZIVA_SEGMENT_URL).url)
+    const candidate = getInferredMaxCandidate(TONY_ZIVA_SEGMENT_URL);
+    expect(candidate.url)
       .toContain('PPUSA_NCISTONYANDZIVA_101_UHD_c20_1080p_3343844_5400/seg_4.m4s');
+    expect(candidate.candidates.map(item => item.url)).toEqual([
+      expect.stringContaining('_c20_1080p_3343844_5400/seg_4.m4s'),
+      expect.stringContaining('_c23_1080p_3343844_5400/seg_4.m4s')
+    ]);
+  });
+
+  test('uses the c23 ladder for the captured Avatar legacy catalog stream', () => {
+    const candidate = getInferredMaxCandidate(AVATAR_TLA_SEGMENT_URL);
+    expect(candidate).toEqual(expect.objectContaining({
+      strategy: 'paramount-vod:legacy-catalog-c23',
+      url: expect.stringContaining('NICKELODEON_AVATAR_105_V1_c23_1080p_3347410_5400/seg_4.m4s')
+    }));
+    expect(candidate.candidates[1].url)
+      .toContain('NICKELODEON_AVATAR_105_V1_c20_1080p_3347410_5400/seg_4.m4s');
+  });
+
+  test('locks future requests to the candidate that actually validated', () => {
+    const candidate = getInferredMaxCandidate(SEGMENT_URL);
+    recordInferredFallbackResult(candidate.streamKey, true, 'segment', candidate.candidates[1]);
+
+    const next = getInferredMaxCandidate(SEGMENT_URL.replace('seg_56', 'seg_57'));
+    expect(next.needsValidation).toBe(false);
+    expect(next.url).toContain('_c23_1080p_4309720_5400/seg_57.m4s');
+    expect(next.strategy).toBe('paramount-vod:validated-c23');
   });
 
   test('reuses a validated stream and suppresses a rejected stream', () => {

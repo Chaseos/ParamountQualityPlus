@@ -16,6 +16,18 @@ const INFERRED_MAX_HEIGHT = 1080;
 
 const INFERENCE_PROFILES = [
   {
+    id: 'legacy-catalog-c23',
+    matches: ({ url }) => {
+      if (url.hostname !== LEGACY_CBS_VOD_HOST) return false;
+      // Older catalog assets use c23 on this shared host; newer releases on
+      // the same host can use c20. The inferred request is still validated.
+      const year = Number.parseInt(url.pathname.match(/\/intl_vms\/(\d{4})\//i)?.[1], 10);
+      return Number.isFinite(year) && year <= 2021;
+    },
+    codecTier: '23',
+    urlTier: '5400'
+  },
+  {
     id: 'legacy-mastered-c23',
     matches: ({ url, contentPrefix }) => url.hostname === LEGACY_CBS_VOD_HOST &&
       /(?:^|_)(?:FTR|VMASTER|PRORES)(?:_|$)|WOLF_OF_WALL_STREET/i.test(contentPrefix),
@@ -42,10 +54,11 @@ const INFERENCE_PROFILES = [
   }
 ];
 
-let inferredFallbackState = {
-  streamKey: null,
-  status: 'untested'
-};
+function createInferredFallbackState(streamKey = null) {
+  return { streamKey, status: 'untested', targetDirectory: null };
+}
+
+let inferredFallbackState = createInferredFallbackState();
 const rejectedAuthoritativePlans = new Set();
 const committedRewriteStreams = new Set();
 
@@ -88,7 +101,13 @@ function getInferredRepresentationPlan(urlObj) {
       assetId,
       segmentName,
       alreadyMax: parseInt(currentHeightRaw, 10) >= INFERRED_MAX_HEIGHT,
-      targetDirectory: `${contentPrefix}_c${profile.codecTier}_${INFERRED_MAX_HEIGHT}p_${assetId}_${profile.urlTier}`
+      targetDirectory: `${contentPrefix}_c${profile.codecTier}_${INFERRED_MAX_HEIGHT}p_${assetId}_${profile.urlTier}`,
+      alternateTargets: ['20', '23']
+        .filter(codecTier => codecTier !== profile.codecTier)
+        .map(codecTier => ({
+          profileId: `validated-c${codecTier}`,
+          targetDirectory: `${contentPrefix}_c${codecTier}_${INFERRED_MAX_HEIGHT}p_${assetId}_${profile.urlTier}`
+        }))
     };
   }
 
@@ -109,15 +128,15 @@ function getInferredRepresentationPlan(urlObj) {
 }
 
 export function getInferredMaxCandidate(url, options = {}) {
-  const config = getConfig();
-  if (!config.forceMax || config.forcedId ||
+  const config = options.config || getConfig();
+  if (!config.forceMax || config.forcedId || config.forcedHeight ||
       (!options.allowWithRepresentations && getRepresentations().length > 0)) return null;
 
   const request = classifyMediaRequest(url);
   if (!request.url || request.excluded) return null;
 
   const isInitialization = request.isInitialization;
-  if (!isInitialization && request.cmcd.ot !== 'v') return null;
+  if (!isInitialization && request.cmcd.ot && request.cmcd.ot !== 'v') return null;
 
   const representationPlan = getInferredRepresentationPlan(request.url);
   if (!representationPlan) return null;
@@ -128,30 +147,56 @@ export function getInferredMaxCandidate(url, options = {}) {
   const streamKey = `${request.url.origin}${streamPrefix}/${contentPrefix}_${assetId}`;
 
   if (inferredFallbackState.streamKey !== streamKey) {
-    inferredFallbackState = { streamKey, status: 'untested' };
+    inferredFallbackState = createInferredFallbackState(streamKey);
   }
   if (inferredFallbackState.status === 'rejected') return null;
 
   const topBitrate = parseInt(request.cmcd.tb, 10);
   if (representationPlan.alreadyMax ||
       (inferredFallbackState.status !== 'validated' && !isInitialization &&
-        (!topBitrate || parseInt(estimateResolutionFromBitrate(topBitrate), 10) < INFERRED_MAX_HEIGHT))) return null;
+        topBitrate && parseInt(estimateResolutionFromBitrate(topBitrate), 10) < INFERRED_MAX_HEIGHT)) return null;
 
-  request.url.pathname = request.url.pathname.replace(`/${representationDirectory}/`, `/${targetDirectory}/`);
-  const targetUrl = request.url.toString();
-  let validationUrl = null;
-  if (isInitialization) {
-    const validation = new URL(targetUrl);
-    validation.pathname = validation.pathname.replace(/\/init\.(?:m4s|m4v|mp4)$/i, '/seg_1.m4s');
-    validationUrl = validation.toString();
+  const targets = [
+    { targetDirectory, profileId },
+    ...(representationPlan.alternateTargets || [])
+  ];
+  if (inferredFallbackState.status === 'validated' && inferredFallbackState.targetDirectory) {
+    targets.sort((left, right) =>
+      Number(right.targetDirectory === inferredFallbackState.targetDirectory) -
+      Number(left.targetDirectory === inferredFallbackState.targetDirectory));
   }
+
+  const candidates = targets
+    .filter((candidate, index, items) =>
+      items.findIndex(item => item.targetDirectory === candidate.targetDirectory) === index)
+    .map(candidate => {
+      const target = new URL(request.url);
+      target.pathname = target.pathname.replace(
+        `/${representationDirectory}/`,
+        `/${candidate.targetDirectory}/`
+      );
+      let validationUrl = null;
+      if (isInitialization) {
+        const validation = new URL(target);
+        validation.pathname = validation.pathname.replace(/\/init\.(?:m4s|m4v|mp4)$/i, '/seg_1.m4s');
+        validationUrl = validation.toString();
+      }
+      return {
+        ...candidate,
+        url: target.toString(),
+        validationUrl,
+        strategy: `paramount-vod:${candidate.profileId}`
+      };
+    });
+  const selectedCandidate = candidates[0];
   return {
     action: 'inferred-probe',
-    url: targetUrl,
-    validationUrl,
+    url: selectedCandidate.url,
+    validationUrl: selectedCandidate.validationUrl,
+    candidates,
     originalUrl: url,
     streamKey,
-    strategy: `paramount-vod:${profileId}`,
+    strategy: selectedCandidate.strategy,
     mediaRole: isInitialization ? 'initialization' : 'segment',
     targetHeight: INFERRED_MAX_HEIGHT,
     targetBitrateKbps: Number.isFinite(topBitrate) ? topBitrate : null,
@@ -161,13 +206,14 @@ export function getInferredMaxCandidate(url, options = {}) {
   };
 }
 
-export function recordInferredFallbackResult(streamKey, succeeded, mediaRole = null) {
+export function recordInferredFallbackResult(streamKey, succeeded, mediaRole = null, candidate = null) {
   if (inferredFallbackState.streamKey === streamKey) {
     if (!succeeded && committedRewriteStreams.has(streamKey)) return;
     inferredFallbackState.status = succeeded ? 'validated' : 'rejected';
-    if (succeeded && mediaRole === 'initialization') {
-      committedRewriteStreams.add(streamKey);
-    }
+    inferredFallbackState.targetDirectory = succeeded ? (candidate?.targetDirectory || null) : null;
+    // A background XHR probe validates a path but does not deliver rewritten
+    // media. Commit only after fetch/XHR reports an actual media role.
+    if (succeeded && mediaRole) committedRewriteStreams.add(streamKey);
   }
 }
 
@@ -175,7 +221,7 @@ export function recordAuthoritativeRewriteResult(plan, succeeded) {
   if (!plan?.rejectionKey) return;
   if (succeeded) {
     rejectedAuthoritativePlans.delete(plan.rejectionKey);
-    if (plan.mediaRole === 'initialization' && plan.streamKey) committedRewriteStreams.add(plan.streamKey);
+    if (plan.streamKey) committedRewriteStreams.add(plan.streamKey);
   }
   else if (!committedRewriteStreams.has(plan.streamKey)) rejectedAuthoritativePlans.add(plan.rejectionKey);
 }
@@ -185,7 +231,7 @@ export function canFallbackToOriginal(plan) {
 }
 
 export function resetInferredFallbackState() {
-  inferredFallbackState = { streamKey: null, status: 'untested' };
+  inferredFallbackState = createInferredFallbackState();
   rejectedAuthoritativePlans.clear();
   committedRewriteStreams.clear();
 }
@@ -217,12 +263,86 @@ function rewriteTieredHls(url, targetRep) {
   return null;
 }
 
-function materializeTemplate(template, targetRep, segmentNumber) {
+function getTemplatePath(template) {
   if (!template) return null;
-  return template
+  const value = String(template);
+  try {
+    if (/^[a-z][a-z\d+.-]*:\/\//i.test(value)) return new URL(value).pathname;
+  } catch {
+    // Fall back to treating malformed or relative templates as path text.
+  }
+  return value.split(/[?#]/, 1)[0];
+}
+
+function materializeTemplate(template, targetRep, segmentNumber) {
+  const templatePath = getTemplatePath(template);
+  if (!templatePath) return null;
+  return templatePath
     .replace(/\$Number(?:%0\d+d)?\$/g, segmentNumber)
     .replace(/\$RepresentationID\$/g, targetRep.rawId || targetRep.request?.rawId || targetRep.id)
     .replace(/\$Bandwidth\$/g, targetRep.bandwidth || targetRep.dashTier || targetRep.request?.dashTier || '');
+}
+
+function getRepresentationVariants(representation) {
+  return representation?.variants?.length ? representation.variants : [representation];
+}
+
+function getAllRepresentationVariants(representations) {
+  return representations.flatMap(getRepresentationVariants).filter(Boolean);
+}
+
+function matchTemplate(urlPath, template) {
+  const templatePath = getTemplatePath(template);
+  if (!templatePath) return null;
+  let pattern = templatePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  pattern = pattern
+    .replace(/\\\$Number(?:%0\d+d)?\\\$/g, '(\\d+)')
+    .replace(/\\\$RepresentationID\\\$/g, '[^/]+')
+    .replace(/\\\$Bandwidth\\\$/g, '\\d+');
+  return urlPath.match(new RegExp(`${pattern}$`));
+}
+
+function representationMatchesRequest(url, representation) {
+  const requestUrl = classifyMediaRequest(url).url;
+  if (!requestUrl || !representation) return false;
+  const urlPath = requestUrl.pathname;
+  const directory = urlPath.split('/').filter(Boolean).at(-2) || null;
+  const pathId = representation.request?.pathId || representation.pathId;
+  if (pathId && directory === pathId) return true;
+
+  const variantUrl = representation.request?.variantUrl || representation.variantUrl;
+  if (variantUrl) {
+    try {
+      const variant = new URL(variantUrl, requestUrl);
+      if (variant.origin === requestUrl.origin && variant.pathname === requestUrl.pathname) return true;
+    } catch {
+      // Fall through to template matching.
+    }
+  }
+
+  return [
+    representation.request?.initialization || representation.initialization,
+    representation.request?.template || representation.template
+  ].some(template => Boolean(matchTemplate(urlPath, template)));
+}
+
+function resolveCompatibleTarget(url, selectedRepresentation, representations) {
+  if (!selectedRepresentation) return null;
+  const allVariants = getAllRepresentationVariants(representations);
+  const selectedVariants = getRepresentationVariants(selectedRepresentation);
+  const source = allVariants.find(rep => representationMatchesRequest(url, rep));
+
+  if (source?.compatibilityKey) {
+    return selectedVariants.find(rep => rep.compatibilityKey === source.compatibilityKey) || null;
+  }
+
+  const compatibilityKeys = new Set(allVariants.map(rep => rep.compatibilityKey).filter(Boolean));
+  // Once a manifest provides compatibility metadata, an unmatched request is
+  // not safe to guess. This prevents unrelated MP4s and auxiliary media from
+  // inheriting the active video's representation directory.
+  if (!source && compatibilityKeys.size > 0) return null;
+  if (compatibilityKeys.size > 1) return null;
+  return selectedVariants[0] || selectedRepresentation;
 }
 
 export function retryRewriteUrl(url, targetRep) {
@@ -230,7 +350,7 @@ export function retryRewriteUrl(url, targetRep) {
   if (!targetRep) return url;
 
   const [urlPath, query] = url.split('?');
-  for (const rep of representations) {
+  for (const rep of getAllRepresentationVariants(representations)) {
     const templates = [
       {
         source: rep.request?.initialization || rep.initialization,
@@ -245,12 +365,7 @@ export function retryRewriteUrl(url, targetRep) {
     for (const { source: template, target: targetTemplate } of templates) {
       if (!template || !targetTemplate) continue;
 
-      let pattern = template.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      pattern = pattern
-        .replace(/\\\$Number(?:%0\d+d)?\\\$/g, '(\\d+)')
-        .replace(/\\\$RepresentationID\\\$/g, '[^/]+')
-        .replace(/\\\$Bandwidth\\\$/g, '\\d+');
-      const match = urlPath.match(new RegExp(`${pattern}$`));
+      const match = matchTemplate(urlPath, template);
       if (!match) continue;
 
       const segmentNumber = match[1] || urlPath.match(/(?:seg_|segment_)(\d+)/)?.[1] || '';
@@ -295,17 +410,32 @@ function rewriteDash(url, targetRep) {
 export function planRequest(url, options = {}) {
   const config = options.config || getConfig();
   const representations = options.representations || getRepresentations();
-  if (!url || (!config.forceMax && !config.forcedId)) return passThrough(url, 'disabled');
+  if (!url || (!config.forceMax && !config.forcedId && !config.forcedHeight)) return passThrough(url, 'disabled');
 
   const request = classifyMediaRequest(url);
   if (request.excluded || request.kind === 'unknown') return passThrough(url, 'excluded');
+  const canUseInferredFallback = config.forceMax && !config.forcedId && !config.forcedHeight &&
+    options.allowInference !== false && request.kind === 'segment';
 
-  const targetRep = selectRepresentation(representations, config);
-  if (!targetRep) {
-    if (options.allowInference !== false && request.kind === 'segment') {
-      return getInferredMaxCandidate(url) || passThrough(url, 'no-representation');
-    }
+  const selectedRep = selectRepresentation(representations, config);
+  if (!selectedRep) {
+    if (canUseInferredFallback) return getInferredMaxCandidate(url, { config }) || passThrough(url, 'no-representation');
     return passThrough(url, 'no-representation');
+  }
+
+  const targetRep = resolveCompatibleTarget(url, selectedRep, representations);
+  if (!targetRep) {
+    const incompatiblePlan = passThrough(url, 'no-compatible-representation');
+    // Some Paramount DAI manifests expose the quality ladder but omit enough
+    // request metadata that the active source representation cannot be mapped
+    // to a codec/period variant. The pre-week implementation still handled
+    // these VOD paths by rewriting their representation directory. Preserve
+    // the codec-safe default for generic streams, but let Force Max use the
+    // validated c20/c23 Paramount fallback when this exact mapping is missing.
+    if (canUseInferredFallback) {
+      return getInferredMaxCandidate(url, { allowWithRepresentations: true, config }) || incompatiblePlan;
+    }
+    return incompatiblePlan;
   }
 
   const family = targetRep.family || targetRep.request?.family ||
@@ -334,9 +464,9 @@ export function planRequest(url, options = {}) {
   // A nonempty manifest is not necessarily usable: malformed request
   // descriptors and a previously rejected authoritative rewrite should still
   // be able to use the verified Paramount VOD fallback in Force Max mode.
-  if (config.forceMax && !config.forcedId && options.allowInference !== false && request.kind === 'segment' &&
+  if (canUseInferredFallback &&
       ['rejected', 'unrecognized-family-request'].includes(authoritativePlan.reason)) {
-    return getInferredMaxCandidate(url, { allowWithRepresentations: true }) || authoritativePlan;
+    return getInferredMaxCandidate(url, { allowWithRepresentations: true, config }) || authoritativePlan;
   }
 
   return authoritativePlan;
@@ -349,11 +479,4 @@ export function maybeRewriteUrl(url) {
 
 export function resolveTargetRepresentation() {
   return selectRepresentation(getRepresentations(), getConfig());
-}
-
-export function resolveNextBestRepresentation() {
-  const representations = getRepresentations();
-  const target = resolveTargetRepresentation();
-  const index = representations.indexOf(target);
-  return index >= 0 ? representations[index + 1] : null;
 }

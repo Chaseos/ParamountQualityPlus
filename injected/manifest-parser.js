@@ -1,12 +1,28 @@
 import { estimateResolutionFromBitrate } from './constants.js';
 import { setRepresentations, getRepresentations } from './state.js';
 import {
+  classifyMediaRequest,
   deriveStreamKey,
   getDeliveryFamily,
   isAdReference,
   normalizeRepresentations,
   resolveVariantUrl
 } from './stream-model.js';
+
+function getVideoCodecFamily(codecs) {
+  const value = String(codecs || '').toLowerCase();
+  if (/\b(?:avc1|avc3)\b/.test(value)) return 'avc';
+  if (/\b(?:hev1|hvc1)\b/.test(value)) return 'hevc';
+  if (/\b(?:dvhe|dvh1)\b/.test(value)) return 'dolby-vision';
+  if (/\bav01\b/.test(value)) return 'av1';
+  if (/\bvp0?9\b/.test(value)) return 'vp9';
+  return value || 'unknown';
+}
+
+function withoutVariants(representation) {
+  const { variants, ...displayRepresentation } = representation;
+  return displayRepresentation;
+}
 
 // Parse HLS or DASH manifests, normalize the discovered representations, and
 // broadcast them to the extension UI via postMessage for display/selection.
@@ -41,6 +57,9 @@ export function parseHlsManifest(content, requestUrl) {
         const codecsMatch = attrs.match(/CODECS="([^"]+)"/);
         if (codecsMatch) codecs = codecsMatch[1];
 
+        const audioGroup = attrs.match(/(?:^|,)AUDIO="([^"]+)"/)?.[1] || null;
+        const videoRange = attrs.match(/(?:^|,)VIDEO-RANGE=([^,]+)/)?.[1]?.trim() || null;
+
         let variantUrl = null;
         for (let j = i + 1; j < lines.length; j++) {
           const nextLine = lines[j].trim();
@@ -50,7 +69,7 @@ export function parseHlsManifest(content, requestUrl) {
           }
         }
 
-          if (height || bandwidth) {
+        if (height || bandwidth) {
           if (!height && bandwidth) {
             const estimatedRes = estimateResolutionFromBitrate(bandwidth / 1000);
             height = parseInt(estimatedRes);
@@ -74,6 +93,7 @@ export function parseHlsManifest(content, requestUrl) {
           }
 
           const family = getDeliveryFamily({ variantUrl, hlsTier });
+          const request = classifyMediaRequest(variantUrl);
           qualities.push({
             id: `hls_${variantIndex}`,
             bandwidth,
@@ -81,11 +101,15 @@ export function parseHlsManifest(content, requestUrl) {
             height,
             resolution,
             codecs,
+            audioGroup,
+            videoRange,
             variantUrl,
             hlsTier,
             daiId,
             family,
             streamKey: deriveStreamKey(requestUrl || variantUrl, family),
+            compatibilityKey: `hls:${getVideoCodecFamily(codecs)}:${audioGroup || 'default'}:${videoRange || 'default'}`,
+            isAd: request.isAd,
             isHls: true,
             source: 'manifest'
           });
@@ -124,7 +148,7 @@ export function parseHlsManifest(content, requestUrl) {
     for (const q of qualities) {
       if (q.height) {
         // Use height+hlsTier as key to properly dedupe
-        const key = `${q.height}_${q.hlsTier || 'none'}`;
+        const key = `${q.height}_${q.hlsTier || 'none'}_${q.compatibilityKey}`;
         const existing = byKey.get(key);
         if (!existing || (q.bandwidth > existing.bandwidth)) {
           byKey.set(key, q);
@@ -132,15 +156,20 @@ export function parseHlsManifest(content, requestUrl) {
       }
     }
 
-    // Now dedupe by height only, keeping highest bandwidth for display
+    // Keep one display row per height while retaining codec/audio alternatives
+    // for request-time selection. A player request must stay within the same
+    // compatibility family instead of blindly taking the highest bitrate.
     const byHeight = new Map();
     for (const q of byKey.values()) {
-      const existing = byHeight.get(q.height);
-      if (!existing || (q.bandwidth > existing.bandwidth)) {
-        byHeight.set(q.height, q);
-      }
+      if (q.isAd) continue;
+      const variants = byHeight.get(q.height) || [];
+      variants.push(q);
+      byHeight.set(q.height, variants);
     }
-    let unique = normalizeRepresentations(Array.from(byHeight.values()), {
+    let unique = normalizeRepresentations(Array.from(byHeight.values()).map(variants => {
+      const preferred = variants.slice().sort((a, b) => (b.bandwidth || 0) - (a.bandwidth || 0))[0];
+      return { ...preferred, variants };
+    }), {
       manifestUrl: requestUrl,
       streamKey: deriveStreamKey(requestUrl, 'hls')
     });
@@ -155,7 +184,7 @@ export function parseHlsManifest(content, requestUrl) {
       });
       window.postMessage({
         type: 'PQI_MANIFEST_DATA',
-        payload: unique
+        payload: unique.map(withoutVariants)
       }, '*');
     }
   } catch (e) {
@@ -197,24 +226,80 @@ export function parseDashManifest(xmlString, requestUrl) {
       return node?.getElementsByTagNameNS?.('*', localName)?.[0] || null;
     }
 
+    function getAncestor(node, localName) {
+      let current = node?.parentNode || null;
+      while (current) {
+        if ((current.localName || current.tagName)?.split(':').pop() === localName) return current;
+        current = current.parentNode;
+      }
+      return null;
+    }
+
+    function getDirectBaseUrl(node) {
+      // Do not use the descendant fallback here: an AdaptationSet may contain
+      // representation-level BaseURLs for both content and ads.
+      if (!node?.children) return '';
+      return getDirectChild(node, 'BaseURL')?.textContent || '';
+    }
+
+    function isAdPeriod(period) {
+      if (!period) return false;
+      const id = period.getAttribute('id') || '';
+      const baseUrl = getDirectBaseUrl(period);
+      return /(?:^|[-_])(?:pre|mid|post)[-_]?roll(?:[-_]|$)|(?:^|[-_])ad(?:vertisement)?(?:[-_]|$)/i.test(id) ||
+        isAdReference(baseUrl);
+    }
+
+    function isPreviewAdaptation(adaptSet) {
+      const id = adaptSet.getAttribute('id') || '';
+      if (/(?:^|[-_])(?:thumbnail|thumb|trick(?:mode|play)?)(?:[-_]|$)/i.test(id)) return true;
+
+      for (const tagName of ['EssentialProperty', 'SupplementalProperty', 'Role']) {
+        const nodes = adaptSet.getElementsByTagNameNS('*', tagName);
+        for (let index = 0; index < nodes.length; index++) {
+          const scheme = (nodes[index].getAttribute('schemeIdUri') || '').toLowerCase();
+          const value = (nodes[index].getAttribute('value') || '').toLowerCase();
+          if (scheme.includes('dashif.org/guidelines/trickmode') ||
+              scheme.includes('dashif.org/guidelines/thumbnail_tile') ||
+              /^(?:thumbnail|thumb|trick(?:mode|play)?)$/.test(value)) return true;
+        }
+      }
+      return false;
+    }
+
+    function hasNonVideoMediaType(mime, contentType) {
+      return mime.includes('audio') || mime.includes('image') || mime.includes('text') ||
+        contentType.includes('audio') || contentType.includes('image') || contentType.includes('text');
+    }
+
+    function representationHasVideo(rep, adaptSet) {
+      const mime = (rep.getAttribute('mimeType') || adaptSet.getAttribute('mimeType') || '').toLowerCase();
+      const contentType = (rep.getAttribute('contentType') || adaptSet.getAttribute('contentType') || '').toLowerCase();
+      if (hasNonVideoMediaType(mime, contentType) || isPreviewAdaptation(rep)) return false;
+
+      const codecs = (rep.getAttribute('codecs') || adaptSet.getAttribute('codecs') || '').toLowerCase();
+      return mime.includes('video') || contentType.includes('video') ||
+        Boolean(rep.getAttribute('height') || rep.getAttribute('width')) ||
+        /(?:avc|hvc|hev|vp0?9|av01)/.test(codecs);
+    }
+
     function adaptationHasVideo(adaptSet) {
       const mime = (adaptSet.getAttribute('mimeType') || '').toLowerCase();
       const contentType = (adaptSet.getAttribute('contentType') || '').toLowerCase();
-      if (mime.includes('audio') || contentType.includes('audio') || contentType.includes('text')) return false;
-      if (mime.includes('video') || contentType.includes('video')) return true;
+      // Width and height also describe thumbnail sprite sheets, so explicit
+      // media type and preview signaling must win over the dimension fallback.
+      if (isPreviewAdaptation(adaptSet) || hasNonVideoMediaType(mime, contentType)) return false;
 
       // Some Paramount MPDs put the media type only on Representation nodes.
       const reps = adaptSet.getElementsByTagNameNS('*', 'Representation');
       for (let i = 0; i < reps.length; i++) {
-        const repMime = (reps[i].getAttribute('mimeType') || '').toLowerCase();
-        const codecs = (reps[i].getAttribute('codecs') || adaptSet.getAttribute('codecs') || '').toLowerCase();
-        if (repMime.includes('video') || reps[i].getAttribute('height') || reps[i].getAttribute('width') ||
-            /(?:avc|hvc|hev|vp0?9|av01)/.test(codecs)) return true;
+        if (representationHasVideo(reps[i], adaptSet)) return true;
       }
       return false;
     }
 
     const adaptSets = xmlDoc.getElementsByTagNameNS('*', 'AdaptationSet');
+    const periods = Array.from(xmlDoc.getElementsByTagNameNS('*', 'Period'));
     const videoAdaptSets = [];
 
     if (adaptSets.length > 0) {
@@ -226,6 +311,12 @@ export function parseDashManifest(xmlString, requestUrl) {
     }
 
     for (const adaptSet of videoAdaptSets) {
+      const period = getAncestor(adaptSet, 'Period');
+      const periodId = period?.getAttribute('id') || '';
+      const periodIndex = period ? periods.indexOf(period) : -1;
+      const periodKey = periodId || (periodIndex >= 0 ? `index-${periodIndex}` : 'unknown');
+      const periodIsAd = isAdPeriod(period);
+      const adaptationBaseUrl = getDirectBaseUrl(adaptSet);
       const adaptTmplNode = getDirectChild(adaptSet, 'SegmentTemplate');
       const adaptTemplate = adaptTmplNode ? adaptTmplNode.getAttribute('media') : null;
       const adaptInitialization = adaptTmplNode ? adaptTmplNode.getAttribute('initialization') : null;
@@ -233,6 +324,7 @@ export function parseDashManifest(xmlString, requestUrl) {
       const setRepresentations = adaptSet.getElementsByTagNameNS('*', 'Representation');
       for (let j = 0; j < setRepresentations.length; j++) {
         const rep = setRepresentations[j];
+        if (!representationHasVideo(rep, adaptSet)) continue;
 
         const w = rep.getAttribute('width');
         const h = rep.getAttribute('height');
@@ -301,7 +393,8 @@ export function parseDashManifest(xmlString, requestUrl) {
           const lowerBase = (baseUrl || '').toLowerCase();
           const lowerTempl = (finalTemplate || '').toLowerCase();
 
-          const isAd = [lowerBase, lowerId, lowerPath, lowerTempl].some(isAdReference);
+          const isAd = periodIsAd || isAdReference(adaptationBaseUrl) ||
+            [lowerBase, lowerId, lowerPath, lowerTempl].some(isAdReference);
 
           const hasContentMarker = !!(pathId && (
             pathId.includes('PPUSA') ||
@@ -320,7 +413,16 @@ export function parseDashManifest(xmlString, requestUrl) {
             width: w ? parseInt(w) : 0,
             height: finalHeight,
             bandwidth: parseInt(bw, 10),
-            isContent: hasContentMarker && !isAd,
+            // Google DAI numbers program periods while ad periods use names
+            // such as `pre-roll-1-ad-1`. Treat that hierarchy as authoritative
+            // when a legacy content path has no useful marker.
+            isContent: !isAd && (hasContentMarker || /^\d+$/.test(periodId)),
+            isAd,
+            // Compatible renditions may be split across multiple AdaptationSets
+            // in the same DAI program period. Keep period and codec boundaries,
+            // but do not treat the AdaptationSet index itself as a codec/DRM
+            // boundary or Force Max will silently remain on the source tier.
+            compatibilityKey: `dash:${periodKey}:${getVideoCodecFamily(rep.getAttribute('codecs') || adaptSet.getAttribute('codecs'))}`,
             family: 'dash',
             streamKey: deriveStreamKey(requestUrl, 'dash'),
             source: 'manifest'
@@ -331,27 +433,30 @@ export function parseDashManifest(xmlString, requestUrl) {
       }
     }
 
-    // Deduplication: Prioritize movie content (PPUSA) over Ads
+    // Ignore ad-only manifests rather than replacing a valid content ladder.
+    // For content, retain all same-height compatibility variants
+    // internally and expose a single representative row to the popup.
+    const nonAdQualities = qualities.filter(q => !q.isAd);
+    if (nonAdQualities.length === 0) return;
+    const markedContentQualities = nonAdQualities.filter(q => q.isContent);
+    const eligibleQualities = markedContentQualities.length > 0
+      ? markedContentQualities
+      : nonAdQualities;
+
     const byHeightMap = new Map();
-    let hasAnyTrueContent = false;
-
-    for (const q of qualities) {
-      if (q.isContent) hasAnyTrueContent = true;
-
-      const existing = byHeightMap.get(q.height);
-      const isBetter = !existing ||
-        (q.isContent && !existing.isContent) ||
-        (q.pathId && !existing.pathId && q.bandwidth >= existing.bandwidth) ||
-        (q.bandwidth > existing.bandwidth && q.isContent === existing.isContent);
-      if (isBetter) byHeightMap.set(q.height, q);
+    for (const q of eligibleQualities) {
+      const variants = byHeightMap.get(q.height) || [];
+      variants.push(q);
+      byHeightMap.set(q.height, variants);
     }
 
-    let unique = Array.from(byHeightMap.values());
-
-    // If we confidently found content, discard everything else (Ads, traps)
-    if (hasAnyTrueContent) {
-      unique = unique.filter(q => q.isContent);
-    }
+    let unique = Array.from(byHeightMap.values()).map(variants => {
+      const preferred = variants.slice().sort((a, b) =>
+        Number(Boolean(b.pathId)) - Number(Boolean(a.pathId)) ||
+        (b.bandwidth || 0) - (a.bandwidth || 0)
+      )[0];
+      return { ...preferred, variants };
+    });
 
     unique = normalizeRepresentations(unique, {
       manifestUrl: requestUrl,
@@ -367,7 +472,7 @@ export function parseDashManifest(xmlString, requestUrl) {
       const displayQualities = unique.map(q => {
         const fallbackBandwidth = q.dashTier ? parseInt(q.dashTier, 10) * 1000 : null;
         return {
-          ...q,
+          ...withoutVariants(q),
           // dashTier is a URL naming token and may be nominal. The MPD's
           // bandwidth attribute remains the authoritative display value.
           bandwidth: Number.isFinite(q.bandwidth) ? q.bandwidth : fallbackBandwidth,

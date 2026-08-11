@@ -132,6 +132,29 @@ describe('URL Rewriting', () => {
             .toContain('manifest_video_7_0_465410.mp4');
     });
 
+    test('rewrites live DASH templates with cache-busting queries', () => {
+        const template = 'manifest_video_$RepresentationID$_0_$Number$.mp4?m=1783441869';
+        setAvailableRepresentations([
+            {
+                id: 's0-7', rawId: '7', height: 1080, bandwidth: 8000000,
+                template, compatibilityKey: 'dash:period-0:avc', family: 'dash'
+            },
+            {
+                id: 's0-4', rawId: '4', height: 540, bandwidth: 1800000,
+                template, compatibilityKey: 'dash:period-0:avc', family: 'dash'
+            }
+        ]);
+        setConfig({ forceMax: true, forcedId: null });
+
+        const input = 'https://airspace-cdn.cbsivideo.com/out/v1/live/' +
+            'manifest_video_4_0_465410.mp4?m=1783441869&CMCD=br%3D1800%2Cot%3Dv%2Ctb%3D8000';
+
+        expect(maybeRewriteUrl(input)).toBe(
+            'https://airspace-cdn.cbsivideo.com/out/v1/live/' +
+            'manifest_video_7_0_465410.mp4?m=1783441869&CMCD=br%3D1800%2Cot%3Dv%2Ctb%3D8000'
+        );
+    });
+
     test('never rewrites a DASH manifest URL', () => {
         setAvailableRepresentations([
             {
@@ -146,5 +169,30 @@ describe('URL Rewriting', () => {
 
         const manifestUrl = 'https://host/out/v1/live/manifest.mpd?m=1';
         expect(maybeRewriteUrl(manifestUrl)).toBe(manifestUrl);
+    });
+
+    test('does not apply the active DASH ladder to unrelated media', () => {
+        setAvailableRepresentations([
+            {
+                id: 'content-1080',
+                pathId: 'SHOW_c20_1080p_asset_5400',
+                height: 1080,
+                bandwidth: 5800000,
+                compatibilityKey: 'dash:period-0:avc',
+                family: 'dash'
+            },
+            {
+                id: 'content-540',
+                pathId: 'SHOW_c24_540p_asset_2000',
+                height: 540,
+                bandwidth: 1800000,
+                compatibilityKey: 'dash:period-0:avc',
+                family: 'dash'
+            }
+        ]);
+        setConfig({ forceMax: true, forcedId: null });
+
+        const trailer = 'https://www.paramountplus.com/trailers/preview.mp4';
+        expect(maybeRewriteUrl(trailer)).toBe(trailer);
     });
 });

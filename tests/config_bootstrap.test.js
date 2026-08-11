@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { consumePendingConfig, PENDING_CONFIG_KEY } from '../injected/config.js';
 import { getConfig, setConfig } from '../injected/state.js';
 
-describe('Live quality configuration bootstrap', () => {
+describe('Quality configuration bootstrap', () => {
   beforeEach(() => {
     setConfig({ forceMax: false, forcedId: null, forcedHeight: null });
   });

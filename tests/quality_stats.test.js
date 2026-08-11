@@ -80,7 +80,7 @@ describe('Quality Stats & Bitrate Reporting', () => {
         expect(payload.source).toBe('manifest');
     });
 
-    test('Should prefer manifest bitrate match over path when they disagree', () => {
+    test('Should prefer the requested representation path over stale CMCD when they disagree', () => {
         const reps = [
             { id: '1080p', height: 1080, bandwidth: 5880000 },
             { id: 540, height: 540, bandwidth: 2738000 }
@@ -90,8 +90,8 @@ describe('Quality Stats & Bitrate Reporting', () => {
         analyzeUrl('https://host/video/_540p_/_2738/seg_1.m4s?CMCD=br%3D5880%2Cot%3Dv');
 
         const payload = window.postMessage.mock.calls[0][0].payload;
-        expect(payload.resolution).toBe('1080p');
-        expect(payload.bitrate).toBe(5880);
+        expect(payload.resolution).toBe('540p');
+        expect(payload.bitrate).toBe(2738);
         expect(payload.source).toBe('manifest');
     });
 

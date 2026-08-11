@@ -14,7 +14,7 @@ export function consumePendingConfig(storage = null) {
     setConfig(config);
     return config;
   } catch (error) {
-    console.warn('[PQI] Unable to restore pending live quality configuration.', error);
+    console.warn('[PQI] Unable to restore pending quality configuration.', error);
     return null;
   }
 }
