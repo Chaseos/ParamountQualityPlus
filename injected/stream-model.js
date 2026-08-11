@@ -56,7 +56,10 @@ export function classifyMediaRequest(url) {
   const filename = urlObj.pathname.slice(urlObj.pathname.lastIndexOf('/') + 1);
   const isInitialization = /(?:^|[_-])init(?:[_-][^.]*)?\.(?:m4s|m4v|mp4)$/i.test(filename);
   const isLive = cmcd.st === 'l' ||
-    /\/out\/v1\/|\/linear\/hls\/pa\/event\//i.test(urlObj.pathname);
+    /\/out\/v1\/|\/linear\/hls\/pa\/event\//i.test(urlObj.pathname) ||
+    // Google DAI media segments are served from a different CDN than the
+    // event playlist and frequently omit CMCD's `st=l` marker.
+    /\/index-[^/]*video=\d+-\d+\.(?:ts|m4s|mp4)$/i.test(urlObj.pathname);
 
   return {
     url: urlObj,
@@ -120,6 +123,7 @@ export function normalizeRepresentations(representations, context = {}) {
           daiId: rep.daiId || null,
           hlsTier: rep.hlsTier || null,
           template: rep.template || null,
+          initialization: rep.initialization || null,
           baseUrl: rep.baseUrl || null,
           rawId: rep.rawId || null,
           pathId: rep.pathId || null,

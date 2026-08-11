@@ -108,7 +108,8 @@ export function parseHlsManifest(content, requestUrl) {
             payload: {
               resolution: match.height + 'p',
               bitrate: match.bandwidth ? Math.round(match.bandwidth / 1000) : null,
-              daiId: match.daiId
+              daiId: match.daiId,
+              streamKey: match.streamKey || null
             }
           }, '*');
         }
@@ -167,7 +168,6 @@ export function parseDashManifest(xmlString, requestUrl) {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
 
-    const representations = xmlDoc.getElementsByTagNameNS('*', 'Representation');
     const qualities = [];
 
     function getBandwidthKbps(bandwidth) {
@@ -186,16 +186,32 @@ export function parseDashManifest(xmlString, requestUrl) {
       return ratio >= 0.35 && ratio <= 2.5;
     }
 
-    function isVideoAdaptation(node) {
-      const adaptSet = node.parentNode;
-      if (!adaptSet) return true;
-      const ln = adaptSet.localName || adaptSet.tagName;
-      if (ln !== 'AdaptationSet') return true;
-      const mime = adaptSet.getAttribute('mimeType');
-      const contentType = adaptSet.getAttribute('contentType');
-      if (mime && !mime.includes('video')) return false;
-      if (contentType && contentType !== 'video') return false;
-      return true;
+    function getDirectChild(node, localName) {
+      if (node?.children) {
+        return Array.from(node.children).find(child =>
+          (child.localName || child.tagName)?.split(':').pop() === localName
+        ) || null;
+      }
+      // The test DOM shim does not expose children. Its descendant lookup is
+      // an adequate fallback for the simple fixtures used there.
+      return node?.getElementsByTagNameNS?.('*', localName)?.[0] || null;
+    }
+
+    function adaptationHasVideo(adaptSet) {
+      const mime = (adaptSet.getAttribute('mimeType') || '').toLowerCase();
+      const contentType = (adaptSet.getAttribute('contentType') || '').toLowerCase();
+      if (mime.includes('audio') || contentType.includes('audio') || contentType.includes('text')) return false;
+      if (mime.includes('video') || contentType.includes('video')) return true;
+
+      // Some Paramount MPDs put the media type only on Representation nodes.
+      const reps = adaptSet.getElementsByTagNameNS('*', 'Representation');
+      for (let i = 0; i < reps.length; i++) {
+        const repMime = (reps[i].getAttribute('mimeType') || '').toLowerCase();
+        const codecs = (reps[i].getAttribute('codecs') || adaptSet.getAttribute('codecs') || '').toLowerCase();
+        if (repMime.includes('video') || reps[i].getAttribute('height') || reps[i].getAttribute('width') ||
+            /(?:avc|hvc|hev|vp0?9|av01)/.test(codecs)) return true;
+      }
+      return false;
     }
 
     const adaptSets = xmlDoc.getElementsByTagNameNS('*', 'AdaptationSet');
@@ -203,19 +219,16 @@ export function parseDashManifest(xmlString, requestUrl) {
 
     if (adaptSets.length > 0) {
       for (let i = 0; i < adaptSets.length; i++) {
-        const mime = adaptSets[i].getAttribute('mimeType');
-        const contentType = adaptSets[i].getAttribute('contentType');
-        const isVideo = (mime && mime.toLowerCase().includes('video')) ||
-          (contentType && contentType.toLowerCase().includes('video'));
-        if (isVideo) {
+        if (adaptationHasVideo(adaptSets[i])) {
           videoAdaptSets.push(adaptSets[i]);
         }
       }
     }
 
     for (const adaptSet of videoAdaptSets) {
-      const adaptTmplNode = adaptSet.getElementsByTagNameNS('*', 'SegmentTemplate')[0];
+      const adaptTmplNode = getDirectChild(adaptSet, 'SegmentTemplate');
       const adaptTemplate = adaptTmplNode ? adaptTmplNode.getAttribute('media') : null;
+      const adaptInitialization = adaptTmplNode ? adaptTmplNode.getAttribute('initialization') : null;
 
       const setRepresentations = adaptSet.getElementsByTagNameNS('*', 'Representation');
       for (let j = 0; j < setRepresentations.length; j++) {
@@ -228,13 +241,15 @@ export function parseDashManifest(xmlString, requestUrl) {
         const setIndex = videoAdaptSets.indexOf(adaptSet);
         const id = `s${setIndex}-${rawId}`;
 
-        const baseUrlNode = rep.getElementsByTagNameNS('*', 'BaseURL')[0];
+        const baseUrlNode = getDirectChild(rep, 'BaseURL');
         const baseUrl = baseUrlNode ? baseUrlNode.textContent.trim() : null;
 
-        const repTmplNode = rep.getElementsByTagNameNS('*', 'SegmentTemplate')[0];
+        const repTmplNode = getDirectChild(rep, 'SegmentTemplate');
         const repTemplate = repTmplNode ? repTmplNode.getAttribute('media') : null;
+        const repInitialization = repTmplNode ? repTmplNode.getAttribute('initialization') : null;
 
         const finalTemplate = repTemplate || adaptTemplate;
+        const finalInitialization = repInitialization || adaptInitialization;
 
         let dashTier = null;
         let pathId = rawId;
@@ -299,6 +314,8 @@ export function parseDashManifest(xmlString, requestUrl) {
             pathId: (pathId && pathId !== rawId) ? pathId : null,
             baseUrl,
             template: finalTemplate,
+            initialization: finalInitialization,
+            codecs: rep.getAttribute('codecs') || adaptSet.getAttribute('codecs') || null,
             dashTier,
             width: w ? parseInt(w) : 0,
             height: finalHeight,

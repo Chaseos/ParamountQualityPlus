@@ -81,23 +81,65 @@ describe('Inferred fallback network validation', () => {
     await window.fetch(LEGACY_CBS_PLAIN_INIT_URL);
     await window.fetch(LEGACY_CBS_PLAIN_TIER_URL);
 
-    expect(originalFetch).toHaveBeenCalledTimes(2);
+    expect(originalFetch).toHaveBeenCalledTimes(3);
     expect(originalFetch.mock.calls[0][0]).toContain('_2725014_4500/init.m4v');
-    expect(originalFetch.mock.calls[1][0]).toContain('_2725014_4500/seg_6.m4s');
+    expect(originalFetch.mock.calls[1][0]).toContain('_2725014_4500/seg_1.m4s');
+    expect(originalFetch.mock.calls[1][1]).toEqual({ headers: { Range: 'bytes=0-1' } });
+    expect(originalFetch.mock.calls[2][0]).toContain('_2725014_4500/seg_6.m4s');
   });
 
-  test('does not mix a lower segment after committing the inferred initialization', async () => {
+  test('does not mix original media after a rewritten initialization is committed', async () => {
     const failedSegment = { ok: false, status: 404, headers: { get: () => 'video/mp4' } };
     originalFetch
       .mockResolvedValueOnce(successResponse())
-      .mockResolvedValueOnce(failedSegment);
+      .mockResolvedValueOnce(successResponse())
+      .mockResolvedValueOnce(failedSegment)
+      .mockResolvedValueOnce(successResponse());
 
     await window.fetch(LEGACY_CBS_PLAIN_INIT_URL);
     const response = await window.fetch(LEGACY_CBS_PLAIN_TIER_URL);
 
     expect(response).toBe(failedSegment);
+    expect(originalFetch).toHaveBeenCalledTimes(3);
+    expect(originalFetch.mock.calls[1][0]).toContain('_2725014_4500/seg_1.m4s');
+    expect(originalFetch.mock.calls[2][0]).toContain('_2725014_4500/seg_6.m4s');
+
+    await window.fetch(LEGACY_CBS_PLAIN_TIER_URL.replace('seg_6', 'seg_7'));
+    expect(originalFetch.mock.calls[3][0]).toContain('_2725014_4500/seg_7.m4s');
+  });
+
+  test('falls back to the original rendition from a bad manifest descriptor', async () => {
+    setRepresentations([
+      {
+        id: 'bad-1080',
+        rawId: 'bad-1080',
+        pathId: 'BAD_MANIFEST_DIRECTORY',
+        height: 1080,
+        bandwidth: 5880000,
+        family: 'dash',
+        source: 'manifest'
+      },
+      {
+        id: '576p',
+        pathId: 'Sleepy_Hollow_FTR_VMASTER_2725014_2100',
+        height: 576,
+        bandwidth: 2738000,
+        family: 'dash',
+        source: 'manifest'
+      }
+    ]);
+    const rejectedManifestPath = { ok: false, status: 404, headers: { get: () => 'video/mp4' } };
+    const originalResponse = successResponse();
+    originalFetch
+      .mockResolvedValueOnce(rejectedManifestPath)
+      .mockResolvedValueOnce(originalResponse);
+
+    const response = await window.fetch(LEGACY_CBS_PLAIN_INIT_URL);
+
+    expect(response).toBe(originalResponse);
     expect(originalFetch).toHaveBeenCalledTimes(2);
-    expect(originalFetch.mock.calls[1][0]).toContain('_2725014_4500/seg_6.m4s');
+    expect(originalFetch.mock.calls[0][0]).toContain('/BAD_MANIFEST_DIRECTORY/init.m4v');
+    expect(originalFetch.mock.calls[1][0]).toBe(LEGACY_CBS_PLAIN_INIT_URL);
   });
 
   test('validates the plain 4500 tier on the Paramount CDN', async () => {
@@ -121,6 +163,19 @@ describe('Inferred fallback network validation', () => {
     expect(originalFetch.mock.calls[0][0]).toContain('_c20_1080p_4309720_5400/seg_56.m4s');
     expect(originalFetch.mock.calls[1][0]).toBe(SEGMENT_URL);
     expect(originalFetch.mock.calls[2][0]).toContain('_c24_540p_4309720_2000/seg_57.m4s');
+  });
+
+  test('does not turn a cancelled inferred request into a fallback request', async () => {
+    const controller = new AbortController();
+    const cancelled = Object.assign(new Error('request cancelled'), { name: 'AbortError' });
+    originalFetch.mockRejectedValue(cancelled);
+
+    const request = window.fetch(SEGMENT_URL, { signal: controller.signal });
+    controller.abort();
+
+    await expect(request).rejects.toBe(cancelled);
+    expect(originalFetch).toHaveBeenCalledTimes(1);
+    expect(originalFetch.mock.calls[0][0]).toContain('_c20_1080p_4309720_5400/seg_56.m4s');
   });
 
   test('normalizes URL and Request fetch inputs when rewriting', async () => {

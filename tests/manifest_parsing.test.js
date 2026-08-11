@@ -229,6 +229,19 @@ describe('Manifest Parsing', () => {
         }));
     });
 
+    test('detects video metadata declared only on Representation nodes', () => {
+        parseManifest(`
+          <MPD><Period><AdaptationSet id="video-track">
+            <Representation id="low" mimeType="video/mp4" codecs="avc1.4d401f"
+              width="960" height="540" bandwidth="1800000"></Representation>
+            <Representation id="max" mimeType="video/mp4" codecs="avc1.640028"
+              width="1920" height="1080" bandwidth="5800000"></Representation>
+          </AdaptationSet></Period></MPD>
+        `, 'https://host/out/v1/live/manifest.mpd');
+
+        expect(getAvailableRepresentations().map(rep => rep.height)).toEqual([1080, 540]);
+    });
+
     test('Should prioritize Movie content over Ads (Path Collision)', () => {
         const manifest = `
             <MPD>

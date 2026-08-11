@@ -14,7 +14,18 @@ let streamState = {
     initializedAt: Date.now()
 };
 
+function resetDisplayedQuality() {
+    streamState.resolution = null;
+    streamState.bitrate = null;
+    streamState.maxBitrate = null;
+    streamState.timestamp = null;
+    streamState.isEstimated = false;
+    streamState.hasActiveStream = false;
+}
+
 const PENDING_CONFIG_KEY = 'pqiPendingQualityConfig';
+const ORIGINAL_STREAM_RECOVERY_KEY = 'pqiOriginalStreamRecovery';
+let recoveryReloadRequested = false;
 
 function detectPlaybackContext() {
     const player = document.querySelector('video, [class*="player"], [id*="player"], [data-testid*="player"]');
@@ -50,18 +61,42 @@ window.addEventListener('message', (event) => {
         return;
     }
 
-    let { resolution, bitrate, maxBitrate, timestamp, isEstimated, source } = event.data.payload;
+    let {
+        resolution,
+        bitrate,
+        maxBitrate,
+        timestamp,
+        isEstimated,
+        source,
+        streamKey,
+        observationSequence
+    } = event.data.payload;
+
+    if (Number.isFinite(observationSequence)) {
+        if (observationSequence < (streamState.lastObservationSequence || 0)) return;
+    }
+
+    if (streamKey && streamState.requestStreamKey && streamKey !== streamState.requestStreamKey) {
+        resetDisplayedQuality();
+    }
+    if (streamKey) streamState.requestStreamKey = streamKey;
+    if (Number.isFinite(observationSequence)) streamState.lastObservationSequence = observationSequence;
 
     // Mark that we have an active stream
     streamState.hasActiveStream = true;
 
-    // Attempt to derive resolution from bitrate if missing
-    if (!resolution && bitrate && streamState.manifestQualities) {
+    // Replace a coarse bitrate estimate with an exact manifest match whenever
+    // possible. Paramount ladders vary by title, so 2.74 Mbps may be 576p and
+    // 1.59 Mbps may be 540p even when the global heuristic says otherwise.
+    if ((!resolution || isEstimated) && bitrate && streamState.manifestQualities) {
         const bitrateBps = bitrate * 1000;
-        const match = streamState.manifestQualities.find(q => {
-            const diff = Math.abs(q.bandwidth - bitrateBps);
-            return diff < 50000; // tolerance of 50kbps
-        });
+        const candidates = streamState.manifestQualities
+            .filter(q => Number.isFinite(q.bandwidth) && q.bandwidth > 0)
+            .map(q => ({ quality: q, difference: Math.abs(q.bandwidth - bitrateBps) }))
+            .sort((a, b) => a.difference - b.difference);
+        const closest = candidates[0];
+        const tolerance = closest ? Math.max(75000, closest.quality.bandwidth * 0.05) : 0;
+        const match = closest && closest.difference <= tolerance ? closest.quality : null;
 
         if (match) {
             resolution = match.height + 'p';
@@ -69,26 +104,14 @@ window.addEventListener('message', (event) => {
         }
     }
 
-    // Parse numeric height from resolution string (e.g., "1080p" -> 1080)
-    const getHeight = (res) => {
-        if (!res) return 0;
-        const match = res.match(/(\d+)p?/i);
-        return match ? parseInt(match[1], 10) : 0;
-    };
-
-    const newHeight = getHeight(resolution);
-    const currentHeight = getHeight(streamState.resolution);
-    const timeSinceLastUpdate = Date.now() - (streamState.timestamp || 0);
-
-    // Prefer higher resolution if multiple segments are buffering at once.
-    // Allow downgrades only after a short delay (3s) to avoid UI flickering 
-    // during transient buffering or initial playback ramps.
+    // Network hooks only emit successful media responses and attach request
+    // ordering, so a lower representation is just as authoritative as a
+    // higher one. Artificially delaying downgrades made manual 234p appear as
+    // the player's original 540p request indefinitely.
     if (resolution) {
-        if (newHeight >= currentHeight || timeSinceLastUpdate > 3000 || streamState.isEstimated) {
-            streamState.resolution = resolution;
-            streamState.isEstimated = isEstimated || false;
-            streamState.timestamp = timestamp;
-        }
+        streamState.resolution = resolution;
+        streamState.isEstimated = isEstimated || false;
+        streamState.timestamp = timestamp;
     }
 
     // Always update bitrate to show current segment rate
@@ -100,12 +123,19 @@ window.addEventListener('message', (event) => {
 window.addEventListener('message', (event) => {
     if (event.source === window && event.data) {
         if (event.data.type === 'PQI_MANIFEST_DATA') {
+            const manifestStreamKey = event.data.payload?.[0]?.streamKey || null;
+            if (manifestStreamKey && streamState.manifestStreamKey &&
+                manifestStreamKey !== streamState.manifestStreamKey) {
+                resetDisplayedQuality();
+                streamState.requestStreamKey = null;
+            }
+            if (manifestStreamKey) streamState.manifestStreamKey = manifestStreamKey;
             streamState.manifestQualities = event.data.payload;
             streamState.qualitySource = 'manifest';
             reconcileStoredQuality(event.data.payload);
         } else if (event.data.type === 'PQI_ACTIVE_QUALITY') {
             // Update live stats from DAI variant playlist match
-            const { resolution, bitrate, daiId } = event.data.payload;
+            const { resolution, bitrate } = event.data.payload;
             if (resolution) streamState.resolution = resolution;
             if (bitrate) streamState.bitrate = bitrate;
             streamState.isEstimated = false; // Known from playlist URL match
@@ -113,6 +143,14 @@ window.addEventListener('message', (event) => {
             streamState.timestamp = Date.now();
         } else if (event.data.type === 'PQI_GEOLOCATION_PERMISSION') {
             streamState.geolocationPermission = event.data.payload?.state || 'unknown';
+        } else if (event.data.type === 'PQI_ORIGINAL_STREAM_RECOVERY' && !recoveryReloadRequested) {
+            recoveryReloadRequested = true;
+            try {
+                window.sessionStorage.setItem(ORIGINAL_STREAM_RECOVERY_KEY, '1');
+            } catch (error) {
+                console.warn('[PQI] Unable to stage original-stream recovery.', error);
+            }
+            window.location.reload();
         }
     }
 });
@@ -189,10 +227,18 @@ injectScript();
 // --- Config Sync ---
 function syncConfig() {
     chrome.storage.sync.get(['forceMax', 'forcedId', 'forcedHeight', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount'], (res) => {
+        let recoverOriginalStream = false;
+        try {
+            recoverOriginalStream = window.sessionStorage.getItem(ORIGINAL_STREAM_RECOVERY_KEY) === '1';
+            if (recoverOriginalStream) window.sessionStorage.removeItem(ORIGINAL_STREAM_RECOVERY_KEY);
+        } catch (error) {
+            console.warn('[PQI] Unable to restore original-stream recovery.', error);
+        }
+
         const config = {
-            forceMax: !!res.forceMax,
-            forcedId: res.forcedId || null,
-            forcedHeight: res.forcedHeight || null,
+            forceMax: recoverOriginalStream ? false : !!res.forceMax,
+            forcedId: recoverOriginalStream ? null : (res.forcedId || null),
+            forcedHeight: recoverOriginalStream ? null : (res.forcedHeight || null),
             enableRetries: res.enableRetries !== false, // default true
             maxRetries: res.maxRetries !== undefined ? res.maxRetries : 3,
             enablePrefetch: res.enablePrefetch !== false, // default true

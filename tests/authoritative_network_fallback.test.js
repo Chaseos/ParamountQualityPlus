@@ -60,7 +60,9 @@ describe('Authoritative rewrite network fallback', () => {
     expect(requested).toContain('/variant/51dee42484fe2a2135500e11874015a5/bandwidth/8940798.m3u8');
     expect(requested).toContain('token=signed');
     expect(requested).toContain('CMCD=br%3D635%2Cot%3Dv%2Ctb%3D8941');
-    expect(analyzeUrl.mock.calls.map(call => call[0])).toEqual([LOW, expect.stringContaining('/bandwidth/8940798.m3u8')]);
+    expect(analyzeUrl.mock.calls.map(call => call[0])).toEqual([
+      expect.stringContaining('/bandwidth/8940798.m3u8')
+    ]);
   });
 
   test('falls back immediately and suppresses the rejected DAI plan for the stream', async () => {

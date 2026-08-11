@@ -44,10 +44,10 @@ const INFERENCE_PROFILES = [
 
 let inferredFallbackState = {
   streamKey: null,
-  status: 'untested',
-  initializationCommitted: false
+  status: 'untested'
 };
 const rejectedAuthoritativePlans = new Set();
+const committedRewriteStreams = new Set();
 
 function passThrough(url, reason = 'unsupported') {
   return { action: 'pass-through', url, originalUrl: url, source: null, reason };
@@ -68,6 +68,7 @@ function buildPlan(originalUrl, targetUrl, targetRep, strategy, source = 'manife
     streamKey,
     strategy,
     rejectionKey,
+    mediaRole: classifyMediaRequest(originalUrl).isInitialization ? 'initialization' : 'segment',
     source
   };
 }
@@ -127,7 +128,7 @@ export function getInferredMaxCandidate(url, options = {}) {
   const streamKey = `${request.url.origin}${streamPrefix}/${contentPrefix}_${assetId}`;
 
   if (inferredFallbackState.streamKey !== streamKey) {
-    inferredFallbackState = { streamKey, status: 'untested', initializationCommitted: false };
+    inferredFallbackState = { streamKey, status: 'untested' };
   }
   if (inferredFallbackState.status === 'rejected') return null;
 
@@ -137,37 +138,56 @@ export function getInferredMaxCandidate(url, options = {}) {
         (!topBitrate || parseInt(estimateResolutionFromBitrate(topBitrate), 10) < INFERRED_MAX_HEIGHT))) return null;
 
   request.url.pathname = request.url.pathname.replace(`/${representationDirectory}/`, `/${targetDirectory}/`);
+  const targetUrl = request.url.toString();
+  let validationUrl = null;
+  if (isInitialization) {
+    const validation = new URL(targetUrl);
+    validation.pathname = validation.pathname.replace(/\/init\.(?:m4s|m4v|mp4)$/i, '/seg_1.m4s');
+    validationUrl = validation.toString();
+  }
   return {
     action: 'inferred-probe',
-    url: request.url.toString(),
+    url: targetUrl,
+    validationUrl,
     originalUrl: url,
     streamKey,
     strategy: `paramount-vod:${profileId}`,
     mediaRole: isInitialization ? 'initialization' : 'segment',
-    fallbackAllowed: isInitialization || !inferredFallbackState.initializationCommitted,
+    targetHeight: INFERRED_MAX_HEIGHT,
+    targetBitrateKbps: Number.isFinite(topBitrate) ? topBitrate : null,
+    targetSource: 'inferred',
     needsValidation: inferredFallbackState.status !== 'validated',
     source: 'inferred'
   };
 }
 
-export function recordInferredFallbackResult(streamKey, succeeded, mediaRole = 'segment') {
+export function recordInferredFallbackResult(streamKey, succeeded, mediaRole = null) {
   if (inferredFallbackState.streamKey === streamKey) {
+    if (!succeeded && committedRewriteStreams.has(streamKey)) return;
     inferredFallbackState.status = succeeded ? 'validated' : 'rejected';
     if (succeeded && mediaRole === 'initialization') {
-      inferredFallbackState.initializationCommitted = true;
+      committedRewriteStreams.add(streamKey);
     }
   }
 }
 
 export function recordAuthoritativeRewriteResult(plan, succeeded) {
   if (!plan?.rejectionKey) return;
-  if (succeeded) rejectedAuthoritativePlans.delete(plan.rejectionKey);
-  else rejectedAuthoritativePlans.add(plan.rejectionKey);
+  if (succeeded) {
+    rejectedAuthoritativePlans.delete(plan.rejectionKey);
+    if (plan.mediaRole === 'initialization' && plan.streamKey) committedRewriteStreams.add(plan.streamKey);
+  }
+  else if (!committedRewriteStreams.has(plan.streamKey)) rejectedAuthoritativePlans.add(plan.rejectionKey);
+}
+
+export function canFallbackToOriginal(plan) {
+  return !plan?.streamKey || !committedRewriteStreams.has(plan.streamKey);
 }
 
 export function resetInferredFallbackState() {
-  inferredFallbackState = { streamKey: null, status: 'untested', initializationCommitted: false };
+  inferredFallbackState = { streamKey: null, status: 'untested' };
   rejectedAuthoritativePlans.clear();
+  committedRewriteStreams.clear();
 }
 
 function rewriteDaiPlaylist(url, targetRep) {
@@ -207,25 +227,36 @@ function materializeTemplate(template, targetRep, segmentNumber) {
 
 export function retryRewriteUrl(url, targetRep) {
   const representations = getRepresentations();
-  const targetTemplate = targetRep?.request?.template || targetRep?.template;
-  if (!targetRep || !targetTemplate) return url;
+  if (!targetRep) return url;
 
   const [urlPath, query] = url.split('?');
   for (const rep of representations) {
-    const template = rep.request?.template || rep.template;
-    if (!template) continue;
+    const templates = [
+      {
+        source: rep.request?.initialization || rep.initialization,
+        target: targetRep.request?.initialization || targetRep.initialization
+      },
+      {
+        source: rep.request?.template || rep.template,
+        target: targetRep.request?.template || targetRep.template
+      }
+    ];
 
-    let pattern = template.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    pattern = pattern
-      .replace(/\\\$Number(?:%0\d+d)?\\\$/g, '(\\d+)')
-      .replace(/\\\$RepresentationID\\\$/g, '[^/]+')
-      .replace(/\\\$Bandwidth\\\$/g, '\\d+');
-    const match = urlPath.match(new RegExp(`${pattern}$`));
-    if (!match) continue;
+    for (const { source: template, target: targetTemplate } of templates) {
+      if (!template || !targetTemplate) continue;
 
-    const segmentNumber = match[1] || urlPath.match(/(?:seg_|segment_)(\d+)/)?.[1];
-    const suffix = materializeTemplate(targetTemplate, targetRep, segmentNumber);
-    return urlPath.slice(0, match.index) + suffix + (query ? `?${query}` : '');
+      let pattern = template.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      pattern = pattern
+        .replace(/\\\$Number(?:%0\d+d)?\\\$/g, '(\\d+)')
+        .replace(/\\\$RepresentationID\\\$/g, '[^/]+')
+        .replace(/\\\$Bandwidth\\\$/g, '\\d+');
+      const match = urlPath.match(new RegExp(`${pattern}$`));
+      if (!match) continue;
+
+      const segmentNumber = match[1] || urlPath.match(/(?:seg_|segment_)(\d+)/)?.[1] || '';
+      const suffix = materializeTemplate(targetTemplate, targetRep, segmentNumber);
+      return urlPath.slice(0, match.index) + suffix + (query ? `?${query}` : '');
+    }
   }
   return url;
 }

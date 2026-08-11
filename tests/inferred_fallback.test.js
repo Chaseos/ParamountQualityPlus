@@ -62,8 +62,8 @@ describe('Inferred Paramount VOD fallback', () => {
     }));
     expect(candidate.url).toContain('Sleepy_Hollow_FTR_VMASTER_2725014_4500/init.m4v');
 
-    recordInferredFallbackResult(candidate.streamKey, true, candidate.mediaRole);
-    expect(getInferredMaxCandidate(LEGACY_CBS_PLAIN_TIER_URL).fallbackAllowed).toBe(false);
+    recordInferredFallbackResult(candidate.streamKey, true);
+    expect(getInferredMaxCandidate(LEGACY_CBS_PLAIN_TIER_URL).needsValidation).toBe(false);
   });
 
   test('supports DASH initialization files using the m4s extension', () => {

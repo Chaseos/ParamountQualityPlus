@@ -77,6 +77,7 @@ describe('Media request classification', () => {
   test.each([
     'https://host/out/v1/event/manifest_video_7_0_123.mp4',
     'https://dai.google.com/linear/hls/pa/event/E1/stream/S1/segment.ts',
+    'https://news.example/index-english=128000-video=5000000-446155803.ts?CMCD=br%3D5980%2Cot%3Dv',
     'https://host/video/seg_1.m4s?CMCD=st%3Dl%2Cot%3Dv'
   ])('recognizes live request %s', url => {
     expect(classifyMediaRequest(url).isLive).toBe(true);

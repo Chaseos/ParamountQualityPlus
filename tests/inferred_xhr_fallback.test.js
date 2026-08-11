@@ -70,12 +70,15 @@ describe('Inferred XHR fallback validation', () => {
     expect(second.openCalls[0][1]).toContain('_c20_1080p_4309720_5400/seg_57.m4s');
 
     const rewrittenUrl = second.openCalls[0][1];
-    expect(analyzeUrl).toHaveBeenLastCalledWith(SEGMENT_URL.replace('seg_56', 'seg_57'));
+    expect(analyzeUrl).not.toHaveBeenCalled();
 
     second.status = 206;
     second.readyState = 4;
     second.dispatchEvent(new Event('readystatechange'));
-    expect(analyzeUrl).toHaveBeenLastCalledWith(rewrittenUrl, { rewritten: true });
+    expect(analyzeUrl).toHaveBeenLastCalledWith(rewrittenUrl, expect.objectContaining({
+      rewritten: true,
+      observationSequence: expect.any(Number)
+    }));
   });
 
   test('probes only once and keeps later segments original after rejection', async () => {

@@ -1,6 +1,7 @@
 import { clearRepresentations, getConfig, getRepresentations, getStreamSession } from './state.js';
 import { isManifestUrl, isSegmentUrl, stripCMCD } from './url-utils.js';
 import {
+  canFallbackToOriginal,
   planRequest,
   recordAuthoritativeRewriteResult,
   recordInferredFallbackResult,
@@ -17,7 +18,22 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
   const ORIGINAL_XHR_OPEN = XMLHttpRequest.prototype.open;
   const ORIGINAL_XHR_SEND = XMLHttpRequest.prototype.send;
   let activeStreamKey = null;
+  let recoveryRequested = false;
+  let observationSequence = 0;
   const xhrInferenceProbes = new Map();
+
+  function requestOriginalStreamRecovery(plan, detail = null) {
+    if (recoveryRequested || canFallbackToOriginal(plan)) return;
+    recoveryRequested = true;
+    window.postMessage({
+      type: 'PQI_ORIGINAL_STREAM_RECOVERY',
+      payload: {
+        streamKey: plan?.streamKey || null,
+        strategy: plan?.strategy || null,
+        detail
+      }
+    }, '*');
+  }
 
   function resetForNewContent(url) {
     if (!isManifestUrl(url)) return;
@@ -52,6 +68,32 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     return typeof resource?.url === 'string' ? resource.url : '';
   }
 
+  function rewriteAnalyzeOptions(rewritePlan = {}, sequence = null) {
+    if (!rewritePlan || rewritePlan.action === 'pass-through') return {};
+
+    const targetHeight = Number.isFinite(Number.parseInt(rewritePlan.targetHeight, 10))
+      ? Number.parseInt(rewritePlan.targetHeight, 10)
+      : Number.parseInt(rewritePlan.target?.height, 10);
+
+    const targetBitrateKbps = Number.isFinite(Number.parseInt(rewritePlan.targetBitrateKbps, 10))
+      ? Number.parseInt(rewritePlan.targetBitrateKbps, 10)
+      : Number.parseInt(
+          (Number.isFinite(Number.parseInt(rewritePlan.target?.bandwidth, 10))
+            ? rewritePlan.target.bandwidth / 1000
+            : NaN),
+          10
+        );
+
+    return {
+      rewritten: true,
+      targetHeight: Number.isFinite(targetHeight) ? targetHeight : undefined,
+      targetBitrateKbps: Number.isFinite(targetBitrateKbps) ? targetBitrateKbps : undefined,
+      targetSource: rewritePlan.targetSource || rewritePlan.source || 'inferred',
+      source: rewritePlan.targetSource || rewritePlan.source || 'inferred',
+      observationSequence: sequence
+    };
+  }
+
   function replaceResource(args, resource, newUrl) {
     if (typeof resource === 'string') {
       args[0] = newUrl;
@@ -69,7 +111,10 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
 
   function shouldPrefetch(url) {
     const request = classifyMediaRequest(url);
-    return isSegmentUrl(url) && !request.excluded && !request.isInitialization && !request.isLive;
+    const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+    const isEncryptedParamountVod = request.url?.pathname.toLowerCase().includes('_cenc_precon_dash/');
+    return isSegmentUrl(url) && !request.excluded && !request.isInitialization && !request.isLive &&
+      !isHidden && !isEncryptedParamountVod;
   }
 
   async function inspectManifestResponse(response, url) {
@@ -93,13 +138,13 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       headers: { Range: 'bytes=0-1' }
     })
       .then(response => {
-        recordInferredFallbackResult(candidate.streamKey, response.ok, candidate.mediaRole);
+        recordInferredFallbackResult(candidate.streamKey, response.ok);
         if (!response.ok) {
           console.warn(`[PQI] Inferred XHR max-quality path failed (${response.status}); keeping the original stream.`);
         }
       })
       .catch(error => {
-        recordInferredFallbackResult(candidate.streamKey, false, candidate.mediaRole);
+        recordInferredFallbackResult(candidate.streamKey, false);
         console.warn('[PQI] Inferred XHR max-quality probe failed; keeping the original stream.', error);
       })
       .finally(() => xhrInferenceProbes.delete(candidate.streamKey));
@@ -150,10 +195,16 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     }
   }
 
+  function isCancelledRequest(args, error) {
+    const requestSignal = args[0]?.signal || args[1]?.signal;
+    return error?.name === 'AbortError' || requestSignal?.aborted;
+  }
+
   window.fetch = async function (...args) {
     let [resource] = args;
     const originalResource = resource;
     const url = getResourceUrl(resource);
+    const requestObservationSequence = ++observationSequence;
     resetForNewContent(url);
 
     let newUrl = url;
@@ -169,14 +220,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
         if (rewritePlan && rewritePlan.action !== 'pass-through') {
           newUrl = rewritePlan.url;
           replaceResource(args, resource, newUrl);
-          // A planned URL is not an observed quality. Keep reporting the
-          // player's original request until the rewritten response succeeds.
-          analyzeUrl(url);
-        } else {
-          analyzeUrl(url);
         }
-      } else if (url) {
-        analyzeUrl(url);
       }
 
       if (rewritePlan && rewritePlan.action !== 'pass-through') {
@@ -190,49 +234,72 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
             ? await ORIGINAL_FETCH.apply(this, args)
             : await fetchWithRetry(this, args, true, newUrl);
 
-          if (response.ok) {
+          let inferredValidationSucceeded = true;
+          if (response.ok && isInferredAttempt && rewritePlan.needsValidation && rewritePlan.validationUrl) {
+            try {
+              const validationResponse = await ORIGINAL_FETCH(rewritePlan.validationUrl, {
+                headers: { Range: 'bytes=0-1' }
+              });
+              inferredValidationSucceeded = validationResponse.ok;
+            } catch (error) {
+              if (isCancelledRequest(args, error)) throw error;
+              inferredValidationSucceeded = false;
+            }
+          }
+
+          if (response.ok && inferredValidationSucceeded) {
             if (isInferredAttempt) {
               recordInferredFallbackResult(rewritePlan.streamKey, true, rewritePlan.mediaRole);
             } else {
               recordAuthoritativeRewriteResult(rewritePlan, true);
             }
-            analyzeUrl(newUrl, { rewritten: true });
+            analyzeUrl(newUrl, rewriteAnalyzeOptions(rewritePlan, requestObservationSequence));
             return inspectManifestResponse(response, newUrl);
           }
 
           if (isInferredAttempt) {
             recordInferredFallbackResult(rewritePlan.streamKey, false, rewritePlan.mediaRole);
-            const outcome = rewritePlan.fallbackAllowed === false
-              ? 'not mixing it with the original representation.'
-              : 'using the original stream.';
-            console.warn(`[PQI] Inferred max-quality path failed (${response.status}); ${outcome}`);
+            const failure = inferredValidationSucceeded ? response.status : 'companion media validation';
+            console.warn(`[PQI] Inferred max-quality path failed (${failure}); using the original stream.`);
           } else {
             recordAuthoritativeRewriteResult(rewritePlan, false);
             console.warn(`[PQI] Authoritative ${rewritePlan.strategy} rewrite failed (${response.status}); using the original stream.`);
           }
 
-          if (isInferredAttempt && rewritePlan.fallbackAllowed === false) return response;
+          // Once a rewritten initialization has reached MediaSource, returning
+          // a segment from the original rendition can mix codec/encryption
+          // state and trigger Paramount's generic playback error. Preserve the
+          // failed response so the player can retry/reload coherently.
+          if (!canFallbackToOriginal(rewritePlan)) {
+            requestOriginalStreamRecovery(rewritePlan, response.status || 'validation-failed');
+            return response;
+          }
 
           args[0] = originalResource;
-          analyzeUrl(url);
-          return fetchWithRetry(this, args, true, url);
+          const fallbackResponse = await fetchWithRetry(this, args, true, url);
+          if (fallbackResponse.ok) analyzeUrl(url, { observationSequence: requestObservationSequence });
+          return fallbackResponse;
 
         } catch (err) {
+          if (isCancelledRequest(args, err)) throw err;
+
           if (rewritePlan?.action === 'inferred-probe') {
             recordInferredFallbackResult(rewritePlan.streamKey, false, rewritePlan.mediaRole);
           } else if (rewritePlan) {
             recordAuthoritativeRewriteResult(rewritePlan, false);
           }
-          if (rewritePlan?.action === 'inferred-probe' && rewritePlan.fallbackAllowed === false) {
-            console.warn('[PQI] Network error after committing the inferred initialization; not mixing representations.', err);
+
+          if (!canFallbackToOriginal(rewritePlan)) {
+            requestOriginalStreamRecovery(rewritePlan, err?.name || 'network-error');
             throw err;
           }
 
           console.warn('[PQI] Network error during rewrite, reverting.', err);
 
           args[0] = originalResource;
-          analyzeUrl(url);
-          return fetchWithRetry(this, args, true, url);
+          const fallbackResponse = await fetchWithRetry(this, args, true, url);
+          if (fallbackResponse.ok) analyzeUrl(url, { observationSequence: requestObservationSequence });
+          return fallbackResponse;
         }
       }
 
@@ -241,6 +308,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       if (shouldPrefetch(url)) maybePrefetchSegments(stripCMCD(url), ORIGINAL_FETCH);
       const isRetryable = isSegmentUrl(url) || isManifestUrl(url);
       const response = await fetchWithRetry(this, args, isRetryable, url);
+      if (response.ok) analyzeUrl(url, { observationSequence: requestObservationSequence });
       return inspectManifestResponse(response, url);
     }
 
@@ -248,16 +316,25 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     // didn't match any criteria for rewriting, simply perform the request
     // and observe the response for manifests.
     const isRetryable = url && (isSegmentUrl(url) || isManifestUrl(url));
-    if (url && isSegmentUrl(url)) {
-      analyzeUrl(url);
-      if (shouldPrefetch(url)) maybePrefetchSegments(stripCMCD(url), ORIGINAL_FETCH);
+    if (url && isSegmentUrl(url) && shouldPrefetch(url)) {
+      maybePrefetchSegments(stripCMCD(url), ORIGINAL_FETCH);
     }
 
     const response = await fetchWithRetry(this, args, isRetryable, url);
+    if (response.ok) analyzeUrl(url, { observationSequence: requestObservationSequence });
     return inspectManifestResponse(response, url);
   };
 
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+    // XMLHttpRequest instances can be reused. Do not let a prior rewrite or
+    // completion suppress analysis for the next open/send cycle.
+    this._pqi_rewritePlan = null;
+    this._pqi_rewriteRecorded = false;
+    this._pqi_originalUrl = null;
+    this._pqi_plannedUrl = null;
+    this._pqi_manifestParsed = false;
+    this._pqi_observationSequence = ++observationSequence;
+
     let finalUrl = url instanceof URL ? url.toString() : url;
     if (finalUrl && typeof finalUrl === 'string') {
       resetForNewContent(finalUrl);
@@ -269,7 +346,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
             // XHR cannot be redirected after an asynchronous probe without
             // losing request headers. Keep both initialization and media on
             // the original representation for this stream.
-            recordInferredFallbackResult(rewritePlan.streamKey, false, rewritePlan.mediaRole);
+            recordInferredFallbackResult(rewritePlan.streamKey, false);
           } else {
             validateInferredCandidate(rewritePlan);
           }
@@ -280,7 +357,6 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
 
         this._pqi_originalUrl = originalUrl;
         this._pqi_plannedUrl = finalUrl;
-        analyzeUrl(originalUrl);
       }
       if (shouldPrefetch(finalUrl)) {
         maybePrefetchSegments(stripCMCD(finalUrl), ORIGINAL_FETCH);
@@ -289,9 +365,17 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       this._pqi_manifestParsed = false;
       this.addEventListener('readystatechange', inspectXhrManifest);
       this.addEventListener('readystatechange', function () {
-        if (this.readyState !== 4 || !this._pqi_rewritePlan || this._pqi_rewriteRecorded) return;
+        if (this.readyState !== 4 || this._pqi_rewriteRecorded) return;
         this._pqi_rewriteRecorded = true;
         const succeeded = this.status >= 200 && this.status < 400;
+        if (!this._pqi_rewritePlan) {
+          if (succeeded) {
+            analyzeUrl(this._pqi_originalUrl, {
+              observationSequence: this._pqi_observationSequence
+            });
+          }
+          return;
+        }
         if (this._pqi_rewritePlan.action === 'inferred-probe') {
           recordInferredFallbackResult(
             this._pqi_rewritePlan.streamKey,
@@ -301,10 +385,15 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
         } else {
           recordAuthoritativeRewriteResult(this._pqi_rewritePlan, succeeded);
         }
-        analyzeUrl(
-          succeeded ? this._pqi_plannedUrl : this._pqi_originalUrl,
-          { rewritten: succeeded }
-        );
+        if (!succeeded) {
+          requestOriginalStreamRecovery(this._pqi_rewritePlan, this.status || 'xhr-failed');
+        }
+        if (succeeded) {
+          analyzeUrl(
+            this._pqi_plannedUrl,
+            rewriteAnalyzeOptions(this._pqi_rewritePlan, this._pqi_observationSequence)
+          );
+        }
       });
     }
     return ORIGINAL_XHR_OPEN.apply(this, [method, finalUrl, ...rest]);

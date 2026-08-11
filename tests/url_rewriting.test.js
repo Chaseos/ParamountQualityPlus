@@ -74,6 +74,25 @@ describe('URL Rewriting', () => {
             .toContain('/Sleepy_Hollow_FTR_VMASTER_2725014_4500/init.m4v');
     });
 
+    test('rewrites initialization URLs from the manifest initialization template', () => {
+        setAvailableRepresentations([
+            {
+                id: 's0-7', rawId: '7', height: 1080, bandwidth: 8000000,
+                template: 'manifest_video_$RepresentationID$_0_$Number$.mp4',
+                initialization: 'manifest_video_$RepresentationID$_0_init.mp4'
+            },
+            {
+                id: 's0-4', rawId: '4', height: 540, bandwidth: 1800000,
+                template: 'manifest_video_$RepresentationID$_0_$Number$.mp4',
+                initialization: 'manifest_video_$RepresentationID$_0_init.mp4'
+            }
+        ]);
+        setConfig({ forceMax: true });
+
+        expect(maybeRewriteUrl('https://host/out/v1/live/manifest_video_4_0_init.mp4?m=1'))
+            .toBe('https://host/out/v1/live/manifest_video_7_0_init.mp4?m=1');
+    });
+
     test('Should NOT rewrite audio segments', () => {
         setAvailableRepresentations(repsTypeB);
         setConfig({ forceMax: true });

@@ -176,6 +176,44 @@ describe('Fetch Retries for Segments', () => {
             .toContain('/manifest_video_7_0_init.mp4?m=1');
     });
 
+    test('does not prefetch Google DAI live segments when CMCD omits st=l', async () => {
+        const url = 'https://news.example/index-english=128000-video=5000000-446155803.ts?CMCD=br%3D5980%2Cot%3Dv%2Ctb%3D5980';
+        const response = { ok: true, status: 200, headers: { get: () => 'video/mp2t' } };
+        originalFetchMock.mockResolvedValue(response);
+
+        await expect(window.fetch(url)).resolves.toBe(response);
+
+        expect(originalFetchMock).toHaveBeenCalledTimes(1);
+        expect(originalFetchMock).toHaveBeenCalledWith(url);
+    });
+
+    test('does not prefetch encrypted Paramount VOD segments', async () => {
+        const url = 'https://vod.pplus.paramount.tech/path/asset_cenc_precon_dash/title_2100/seg_10.m4s?token=1';
+        const response = { ok: true, status: 200, headers: { get: () => 'video/mp4' } };
+        originalFetchMock.mockResolvedValue(response);
+
+        await expect(window.fetch(url)).resolves.toBe(response);
+
+        expect(originalFetchMock).toHaveBeenCalledTimes(1);
+        expect(originalFetchMock).toHaveBeenCalledWith(url);
+    });
+
+    test('does not start speculative prefetches while the tab is hidden', async () => {
+        const visibility = jest.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+        const url = 'https://host/video/seg_10.m4s';
+        const response = { ok: true, status: 200, headers: { get: () => 'video/mp4' } };
+        originalFetchMock.mockResolvedValue(response);
+
+        try {
+            await expect(window.fetch(url)).resolves.toBe(response);
+        } finally {
+            visibility.mockRestore();
+        }
+
+        expect(originalFetchMock).toHaveBeenCalledTimes(1);
+        expect(originalFetchMock).toHaveBeenCalledWith(url);
+    });
+
     test('keeps live DASH refreshes authoritative and continues rewriting later media', async () => {
         const manifestUrl = 'https://host/out/v1/live/manifest.mpd?m=1';
         const segmentUrl = 'https://host/out/v1/live/manifest_video_4_0_123.mp4?m=1';
