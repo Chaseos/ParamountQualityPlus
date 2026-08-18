@@ -74,6 +74,32 @@ describe('Review routing', () => {
 
         expect(context.determineStoreUrl()).toBe('https://addons.opera.com/en/extensions/details/paramount-quality/#feedback-container');
     });
+
+    test('routes known Whale installs to the Whale Store listing', () => {
+        const context = loadPopupContext({
+            extensionId: 'lgkdongnlhpcjjopojpoabfkhcoenolg',
+            userAgent: 'Mozilla/5.0 Chrome/126.0.0.0 Safari/537.36'
+        });
+
+        expect(context.determineStoreUrl()).toBe('https://store.whale.naver.com/detail/lgkdongnlhpcjjopojpoabfkhcoenolg');
+    });
+
+    test('routes Whale from its Chromium user agent token', () => {
+        const context = loadPopupContext({
+            userAgent: 'Mozilla/5.0 Chrome/126.0.0.0 Safari/537.36 Whale/3.27.254.15'
+        });
+
+        expect(context.determineStoreUrl()).toBe('https://store.whale.naver.com/detail/lgkdongnlhpcjjopojpoabfkhcoenolg');
+    });
+
+    test('routes Whale from user-agent client hints when available', () => {
+        const context = loadPopupContext({
+            userAgent: 'Mozilla/5.0 Chrome/126.0.0.0 Safari/537.36',
+            brands: [{ brand: 'Chromium' }, { brand: 'Whale' }]
+        });
+
+        expect(context.determineStoreUrl()).toBe('https://store.whale.naver.com/detail/lgkdongnlhpcjjopojpoabfkhcoenolg');
+    });
 });
 
 describe('Simple Video Speed Controller promotion', () => {
@@ -93,6 +119,24 @@ describe('Simple Video Speed Controller promotion', () => {
 
         expect(context.determineSimpleVideoSpeedControllerStoreUrl()).toBe('https://addons.mozilla.org/en-US/firefox/addon/simple-video-speed-controller/');
     });
+
+    test('routes promoted extension links to the Edge listing for Edge users', () => {
+        const context = loadPopupContext({ extensionId: 'cpaekgjghoegidknadojliokbcldohjb' });
+
+        expect(context.determineSimpleVideoSpeedControllerStoreUrl()).toBe('https://microsoftedge.microsoft.com/addons/detail/simple-video-speed-contro/mnmagmdfgdjhbfkdnonnhkfnbnjpehja');
+    });
+
+    test('routes promoted extension links to the Opera listing for Opera users', () => {
+        const context = loadPopupContext({ userAgent: 'Mozilla/5.0 OPR/112.0.0.0' });
+
+        expect(context.determineSimpleVideoSpeedControllerStoreUrl()).toBe('https://addons.opera.com/en/extensions/details/simple-video-speed-controller/');
+    });
+
+    test('routes promoted extension links to the Whale listing for Whale users', () => {
+        const context = loadPopupContext({ extensionId: 'lgkdongnlhpcjjopojpoabfkhcoenolg' });
+
+        expect(context.determineSimpleVideoSpeedControllerStoreUrl()).toBe('https://store.whale.naver.com/detail/fkcbnblnjclbfnkkhnmoaelklgfiigbc');
+    });
 });
 
 describe('YouTube UI Cleaner promotion', () => {
@@ -111,6 +155,24 @@ describe('YouTube UI Cleaner promotion', () => {
         });
 
         expect(context.determineYouTubeUiCleanerStoreUrl()).toBe('https://addons.mozilla.org/en-US/firefox/addon/youtube-ui-cleaner/');
+    });
+
+    test('routes promoted extension links to the Edge listing for Edge users', () => {
+        const context = loadPopupContext({ extensionId: 'cpaekgjghoegidknadojliokbcldohjb' });
+
+        expect(context.determineYouTubeUiCleanerStoreUrl()).toBe('https://microsoftedge.microsoft.com/addons/detail/youtube-ui-cleaner/dmfgeiiikimggajkkdefmngleooclhci');
+    });
+
+    test('routes promoted extension links to the Opera listing for Opera users', () => {
+        const context = loadPopupContext({ userAgent: 'Mozilla/5.0 OPR/112.0.0.0' });
+
+        expect(context.determineYouTubeUiCleanerStoreUrl()).toBe('https://addons.opera.com/en/extensions/details/youtube-ui-cleaner/');
+    });
+
+    test('routes promoted extension links to the Whale listing for Whale users', () => {
+        const context = loadPopupContext({ extensionId: 'lgkdongnlhpcjjopojpoabfkhcoenolg' });
+
+        expect(context.determineYouTubeUiCleanerStoreUrl()).toBe('https://store.whale.naver.com/detail/nkiaddacajkdagoaajbjdlfglidkedlk');
     });
 });
 

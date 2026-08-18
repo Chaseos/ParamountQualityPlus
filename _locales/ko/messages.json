@@ -1,0 +1,118 @@
+{
+  "appName": {
+    "message": "Paramount Quality+",
+    "description": "확장 프로그램의 이름"
+  },
+  "appDesc": {
+    "message": "간편한 조작과 명확한 피드백으로 Paramount+ 주문형 동영상과 라이브 스트림의 재생 해상도를 설정하고 관리하세요.",
+    "description": "웹 스토어 및 브라우저 확장 프로그램 페이지에 표시되는 설명"
+  },
+  "notConnected": {
+    "message": "연결되지 않음",
+    "description": "확장 프로그램이 동영상 스트림에 연결되지 않았음을 나타내는 상태"
+  },
+  "resolution": {
+    "message": "해상도",
+    "description": "동영상 해상도 정보의 레이블"
+  },
+  "bitrate": {
+    "message": "비트레이트",
+    "description": "동영상 비트레이트 정보의 레이블"
+  },
+  "qualityControl": {
+    "message": "화질 제어",
+    "description": "사용자가 동영상 화질을 제어하는 섹션의 제목"
+  },
+  "autoDefault": {
+    "message": "자동(기본값)",
+    "description": "자동 동영상 화질로 전환하는 버튼의 레이블"
+  },
+  "forceMaxQuality": {
+    "message": "최고 화질 강제",
+    "description": "사용 가능한 최고 동영상 화질을 강제로 적용하는 버튼의 레이블"
+  },
+  "prefers1080p": {
+    "message": "1080p 이상 우선",
+    "description": "최고 화질 강제 모드가 1080p 이상을 우선함을 나타내는 보조 레이블"
+  },
+  "availableQualities": {
+    "message": "사용 가능한 화질",
+    "description": "사용자가 선택할 수 있는 동영상 화질 목록의 제목"
+  },
+  "settingsSaved": {
+    "message": "설정이 저장되었습니다. 변경 사항이 적용되는 데 몇 초 정도 걸릴 수 있습니다...",
+    "description": "사용자가 설정을 변경했을 때 표시되는 알림 메시지"
+  },
+  "updatingQuality": {
+    "message": "화질을 업데이트하는 중입니다... 버퍼가 비워지는 데 10~20초 정도 걸릴 수 있습니다.",
+    "description": "동영상 화질 업데이트에 시간이 걸릴 수 있음을 설명하는 알림 메시지"
+  },
+  "leaveReview": {
+    "message": "유용하셨나요? 리뷰를 남겨 주세요",
+    "description": "사용자에게 확장 프로그램 리뷰를 요청하는 문구"
+  },
+  "simpleVideoSpeedControllerAdLineOne": {
+    "message": "재생 속도를 조절하고 싶으신가요?",
+    "description": "개발자의 Simple Video Speed Controller 확장 프로그램을 홍보하는 문구의 첫 번째 줄"
+  },
+  "simpleVideoSpeedControllerAdLineTwo": {
+    "message": "Simple Video Speed Controller를 사용해 보세요.",
+    "description": "개발자의 Simple Video Speed Controller 확장 프로그램을 홍보하는 문구의 두 번째 줄"
+  },
+  "youtubeUiCleanerAdLineOne": {
+    "message": "YouTube 스포일러와 경기 결과를 숨기고 싶으신가요?",
+    "description": "개발자의 YouTube UI Cleaner 확장 프로그램을 홍보하는 문구의 첫 번째 줄"
+  },
+  "youtubeUiCleanerAdLineTwo": {
+    "message": "YouTube UI Cleaner의 맞춤 필터를 사용해 보세요.",
+    "description": "개발자의 YouTube UI Cleaner 확장 프로그램을 홍보하는 문구의 두 번째 줄"
+  },
+  "supportMyWork": {
+    "message": "개발 활동 후원하기",
+    "description": "Ko-Fi 후원 링크의 제목 및 접근성 레이블"
+  },
+  "supportMyWorkCta": {
+    "message": "후원하기",
+    "description": "팝업 헤더에 표시되는 짧은 Ko-Fi 후원 레이블"
+  },
+  "advanced": {
+    "message": "고급 설정",
+    "description": "고급 네트워크 설정 섹션의 제목"
+  },
+  "enableRetries": {
+    "message": "네트워크 재시도",
+    "description": "네트워크 재시도 토글의 레이블"
+  },
+  "enablePrefetch": {
+    "message": "버퍼 미리 불러오기",
+    "description": "버퍼 미리 불러오기 토글의 레이블"
+  },
+  "advancedRetriesDesc": {
+    "message": "실패한 네트워크 요청 재시도",
+    "description": "네트워크 재시도 기능에 대한 설명"
+  },
+  "advancedPrefetchDesc": {
+    "message": "버퍼링을 줄이도록 세그먼트 미리 불러오기",
+    "description": "버퍼 미리 불러오기 기능에 대한 설명"
+  },
+  "locationNoticeTitle": {
+    "message": "화질 옵션을 사용할 수 없음",
+    "description": "위치 권한이 거부되어 Paramount+에서 화질 옵션을 숨길 수 있을 때 표시되는 경고 제목"
+  },
+  "locationNoticeBody": {
+    "message": "사이트의 위치 접근이 차단되면 Paramount+에서 일부 콘텐츠나 라이브 이벤트의 해상도 옵션을 숨길 수 있습니다. 여기에서 접근 권한을 요청한 후 재생 화면을 새로고침하세요.",
+    "description": "화질 옵션을 사용할 수 없고 위치 권한이 거부되었을 때 표시되는 경고"
+  },
+  "requestLocationAccess": {
+    "message": "위치 접근 권한 요청",
+    "description": "Paramount+에서 브라우저의 위치 권한 요청 메시지를 표시하도록 하는 버튼의 레이블"
+  },
+  "locationAccessGranted": {
+    "message": "위치 접근이 허용되었습니다. 화질 옵션이 나타나지 않으면 재생 화면을 새로고침하세요.",
+    "description": "사용자가 위치 접근을 허용한 후 표시되는 알림"
+  },
+  "locationPromptUnavailable": {
+    "message": "Paramount+ 사이트 설정을 열어 위치 접근을 허용한 후 재생 화면을 새로고침하세요.",
+    "description": "브라우저에서 위치 권한 요청 메시지를 표시할 수 없을 때 나타나는 알림"
+  }
+}

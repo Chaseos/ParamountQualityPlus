@@ -16,24 +16,28 @@ const REVIEW_STORE_URLS = Object.freeze({
     chrome: "https://chromewebstore.google.com/detail/paramount-quality+/jdhjjddhdmhphkfgcfclekdngihnoann/reviews",
     edge: "https://microsoftedge.microsoft.com/addons/detail/paramount-quality/cpaekgjghoegidknadojliokbcldohjb",
     firefox: "https://addons.mozilla.org/en-US/firefox/addon/paramount-quality/reviews/",
-    opera: "https://addons.opera.com/en/extensions/details/paramount-quality/#feedback-container"
+    opera: "https://addons.opera.com/en/extensions/details/paramount-quality/#feedback-container",
+    whale: "https://store.whale.naver.com/detail/lgkdongnlhpcjjopojpoabfkhcoenolg"
 });
 const SIMPLE_VIDEO_SPEED_CONTROLLER_STORE_URLS = Object.freeze({
     chrome: "https://chromewebstore.google.com/detail/simple-video-speed-contro/kcjfpmjkbkhgojilpihplkedadndnked",
     edge: "https://microsoftedge.microsoft.com/addons/detail/simple-video-speed-contro/mnmagmdfgdjhbfkdnonnhkfnbnjpehja",
     firefox: "https://addons.mozilla.org/en-US/firefox/addon/simple-video-speed-controller/",
-    opera: "https://addons.opera.com/en/extensions/details/simple-video-speed-controller/"
+    opera: "https://addons.opera.com/en/extensions/details/simple-video-speed-controller/",
+    whale: "https://store.whale.naver.com/detail/fkcbnblnjclbfnkkhnmoaelklgfiigbc"
 });
 const YOUTUBE_UI_CLEANER_STORE_URLS = Object.freeze({
     chrome: "https://chromewebstore.google.com/detail/youtube-ui-cleaner/blnbifjnjgpgfigcpkhcfkiiepokhkdf",
     edge: "https://microsoftedge.microsoft.com/addons/detail/youtube-ui-cleaner/dmfgeiiikimggajkkdefmngleooclhci",
     firefox: "https://addons.mozilla.org/en-US/firefox/addon/youtube-ui-cleaner/",
-    opera: "https://addons.opera.com/en/extensions/details/youtube-ui-cleaner/"
+    opera: "https://addons.opera.com/en/extensions/details/youtube-ui-cleaner/",
+    whale: "https://store.whale.naver.com/detail/nkiaddacajkdagoaajbjdlfglidkedlk"
 });
 const REVIEW_STORE_EXTENSION_IDS = Object.freeze({
     chrome: "jdhjjddhdmhphkfgcfclekdngihnoann",
     edge: "cpaekgjghoegidknadojliokbcldohjb",
-    firefox: "@paramount-quality-plus"
+    firefox: "@paramount-quality-plus",
+    whale: "lgkdongnlhpcjjopojpoabfkhcoenolg"
 });
 const PROMOTED_EXTENSION_ADS = Object.freeze([
     {
@@ -208,6 +212,10 @@ function detectReviewStore(env = getReviewRoutingEnvironment()) {
 
     if (/\bOpera\b/.test(brandText) || ua.includes("OPR/") || ua.includes("Opera")) {
         return "opera";
+    }
+
+    if (extensionId === REVIEW_STORE_EXTENSION_IDS.whale || /\bWhale\b/.test(brandText) || ua.includes("Whale/")) {
+        return "whale";
     }
 
     return "chrome";
