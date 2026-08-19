@@ -22,6 +22,9 @@ Brave and other Chromium-based browsers can install the extension from the Chrom
 
 ## Features
 
+<img width="371" height="598" alt="Paramount Quality+ Main Popup" src="https://github.com/user-attachments/assets/0d543e8c-9fb6-4270-993a-0519645f6119" />
+
+
 - **Real-time playback details:** See the active resolution and bitrate instead of relying on the player's quality label.
 - **Three quality modes:** Leave Paramount+ on Auto, select an available resolution, or use Force Max Quality to prefer the highest representation (1080p or higher when offered by Paramount+).
 - **Available-quality list:** Inspect the resolution and bitrate ladder exposed for the current title or live stream.
