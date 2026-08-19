@@ -114,4 +114,14 @@ Paramount Quality+ requests only extension storage and access to `*.paramountplu
 
 ## Support
 
-If Paramount Quality+ is useful to you, you can [support continued development on Ko-fi](https://ko-fi.com/chaseos). Bugs and compatibility reports are welcome in [GitHub Issues](https://github.com/Chaseos/ParamountQualityPlus/issues).
+<p align="center">
+<a href="https://chaseos.app">🌐 Explore my work</a>
+</p>
+
+<p align="center">
+<a href="https://ko-fi.com/chaseos" target="_blank">
+<img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" />
+</a>
+</p>
+
+Bugs and compatibility reports are welcome in [GitHub Issues](https://github.com/Chaseos/ParamountQualityPlus/issues).
