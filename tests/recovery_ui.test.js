@@ -6,6 +6,7 @@ const popupSource = readFileSync(new URL('../popup.js', import.meta.url), 'utf8'
 
 function makeElement() {
   const classes = new Set();
+  const attributes = new Map();
   return {
     children: [],
     dataset: {},
@@ -14,7 +15,9 @@ function makeElement() {
       remove: value => classes.delete(value),
       toggle: (value, enabled) => enabled ? classes.add(value) : classes.delete(value),
       contains: value => classes.has(value)
-    }
+    },
+    setAttribute: (name, value) => attributes.set(name, String(value)),
+    getAttribute: name => attributes.get(name)
   };
 }
 
@@ -61,4 +64,7 @@ test('popup renders the recovery Auto mode instead of the saved Force Max prefer
 
   expect(elements['btn-auto'].classList.contains('active')).toBe(true);
   expect(elements['btn-max'].classList.contains('active')).toBe(false);
+  expect(elements['connection-dot'].classList.contains('active')).toBe(true);
+  expect(elements['connection-dot'].title).toBe('Connected');
+  expect(elements['connection-dot'].getAttribute('aria-label')).toBe('Connected');
 });

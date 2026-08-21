@@ -4,12 +4,16 @@
     "description": "O nome da extensão"
   },
   "appDesc": {
-    "message": "Defina e gerencie a resolução de reprodução no Paramount+ para vídeos sob demanda e transmissões ao vivo, com controles simples e feedback claro.",
+    "message": "Gerencie a resolução de vídeos sob demanda e transmissões ao vivo no Paramount+ com controles simples e informações claras.",
     "description": "A descrição da extensão exibida na web store e na página de extensões do navegador"
   },
   "notConnected": {
     "message": "Não conectado",
     "description": "Status indicando que a extensão não está conectada a uma transmissão de vídeo"
+  },
+  "connected": {
+    "message": "Conectado",
+    "description": "Status indicando que a extensão está conectada a uma transmissão de vídeo"
   },
   "resolution": {
     "message": "Resolução",
@@ -20,7 +24,7 @@
     "description": "Rótulo para a estatística de taxa de bits de vídeo"
   },
   "qualityControl": {
-    "message": "Controle de qualidade",
+    "message": "Qualidade do vídeo",
     "description": "Cabeçalho da seção onde os usuários controlam a qualidade do vídeo"
   },
   "autoDefault": {
@@ -28,23 +32,23 @@
     "description": "Rótulo do botão para mudar para a qualidade de vídeo automática"
   },
   "forceMaxQuality": {
-    "message": "Forçar qualidade máxima",
+    "message": "Forçar a qualidade máxima",
     "description": "Rótulo do botão para forçar a maior qualidade de vídeo disponível"
   },
   "prefers1080p": {
-    "message": "Prefere 1080p+",
+    "message": "Prioriza 1080p ou superior",
     "description": "Sub-rótulo indicando que forçar a qualidade máxima prefere 1080p ou superior"
   },
   "availableQualities": {
-    "message": "Qualidades disponíveis",
+    "message": "Opções de qualidade",
     "description": "Cabeçalho para a lista de qualidades de vídeo específicas que um usuário pode escolher"
   },
   "settingsSaved": {
-    "message": "Configurações salvas. As alterações podem levar alguns segundos...",
+    "message": "Configurações salvas. As alterações podem levar alguns segundos para entrar em vigor…",
     "description": "Mensagem de notificação mostrada quando o usuário altera as configurações"
   },
   "updatingQuality": {
-    "message": "Atualizando a qualidade... o buffer pode levar de 10 a 20 segundos para esvaziar.",
+    "message": "Atualizando a qualidade… O buffer pode levar de 10 a 20 segundos para esvaziar.",
     "description": "Mensagem de notificação mais longa explicando que as atualizações de qualidade de vídeo levam tempo"
   },
   "leaveReview": {
@@ -52,7 +56,7 @@
     "description": "Aviso pedindo ao usuário para avaliar a extensão"
   },
   "simpleVideoSpeedControllerAdLineOne": {
-    "message": "Precisa controlar a velocidade?",
+    "message": "Quer controlar a velocidade de reprodução?",
     "description": "Primeira linha de um aviso promovendo a extensão Simple Video Speed Controller do desenvolvedor"
   },
   "simpleVideoSpeedControllerAdLineTwo": {
@@ -60,7 +64,7 @@
     "description": "Segunda linha de um aviso promovendo a extensão Simple Video Speed Controller do desenvolvedor"
   },
   "youtubeUiCleanerAdLineOne": {
-    "message": "Ocultar spoilers e resultados no YouTube?",
+    "message": "Quer ocultar spoilers e resultados esportivos no YouTube?",
     "description": "Primeira linha de um aviso promovendo a extensão YouTube UI Cleaner do desenvolvedor"
   },
   "youtubeUiCleanerAdLineTwo": {
@@ -76,31 +80,39 @@
     "description": "Rótulo visível compacto de apoio do Ko-Fi. Mantenha curto o suficiente para o cabeçalho do popup."
   },
   "advanced": {
-    "message": "Avançado",
+    "message": "Configurações avançadas",
     "description": "Cabeçalho da seção de configurações avançadas de rede"
   },
   "enableRetries": {
-    "message": "Repetições de rede",
-    "description": "Rótulo do controle de repetições de rede"
+    "message": "Repetir solicitações de rede",
+    "description": "Rótulo do controle de novas tentativas de rede"
   },
   "enablePrefetch": {
-    "message": "Buffer de pré-carregamento",
+    "message": "Pré-carregamento do buffer",
     "description": "Rótulo do controle do buffer de pré-carregamento"
   },
   "advancedRetriesDesc": {
-    "message": "Repetir chamadas de rede que falharem",
-    "description": "Descrição explicando o que as repetições de rede fazem"
+    "message": "Repetir automaticamente solicitações que falharem",
+    "description": "Descrição explicando o que as novas tentativas de rede fazem"
   },
   "advancedPrefetchDesc": {
-    "message": "Pré-carregar segmentos para reduzir pausas no carregamento",
+    "message": "Pré-carregar segmentos para reduzir interrupções",
     "description": "Descrição explicando o que o buffer de pré-carregamento faz"
+  },
+  "maxLabel": {
+    "message": "máx.",
+    "description": "Rótulo compacto após o número máximo de novas tentativas de rede"
+  },
+  "segmentsLabel": {
+    "message": "seg.",
+    "description": "Abreviação compacta após o número de segmentos a pré-carregar"
   },
   "locationNoticeTitle": {
     "message": "Opções de qualidade indisponíveis",
     "description": "Título de um aviso mostrado quando o Paramount+ pode ocultar opções de qualidade porque a permissão de localização foi negada"
   },
   "locationNoticeBody": {
-    "message": "O Paramount+ pode ocultar opções de resolução em alguns títulos ou eventos ao vivo quando a localização do site está bloqueada. Solicite o acesso aqui e recarregue a reprodução.",
+    "message": "O Paramount+ pode ocultar as opções de resolução de alguns títulos ou eventos ao vivo quando o site não tem acesso à sua localização. Solicite a permissão aqui e recarregue a página de reprodução.",
     "description": "Aviso mostrado quando as opções de qualidade estão indisponíveis e a permissão de localização foi negada"
   },
   "requestLocationAccess": {
@@ -108,11 +120,11 @@
     "description": "Rótulo do botão que pede ao Paramount+ para mostrar o aviso de permissão de localização do navegador"
   },
   "locationAccessGranted": {
-    "message": "Localização permitida. Recarregue a reprodução se as opções de qualidade não aparecerem.",
+    "message": "Acesso à localização permitido. Recarregue a página de reprodução se as opções de qualidade não aparecerem.",
     "description": "Notificação mostrada depois que o usuário permite o acesso à localização"
   },
   "locationPromptUnavailable": {
-    "message": "Abra as configurações do site Paramount+, permita a localização e recarregue a reprodução.",
+    "message": "Abra as configurações do site Paramount+, permita o acesso à localização e recarregue a página de reprodução.",
     "description": "Notificação mostrada quando o navegador não consegue mostrar o aviso de permissão de localização"
   }
 }

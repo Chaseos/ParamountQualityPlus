@@ -4,12 +4,16 @@
     "description": "Il nome dell'estensione"
   },
   "appDesc": {
-    "message": "Imposta e gestisci la risoluzione di riproduzione su Paramount+ per i video su richiesta e i live streaming, con controlli semplici e un feedback chiaro.",
+    "message": "Gestisci la risoluzione dei video on demand e delle dirette su Paramount+ con comandi semplici e indicazioni chiare.",
     "description": "La descrizione dell'estensione mostrata nel web store e nella pagina delle estensioni del browser"
   },
   "notConnected": {
     "message": "Non connesso",
     "description": "Stato che indica che l'estensione non è connessa a un flusso video"
+  },
+  "connected": {
+    "message": "Connesso",
+    "description": "Stato che indica che l'estensione è connessa a un flusso video"
   },
   "resolution": {
     "message": "Risoluzione",
@@ -20,7 +24,7 @@
     "description": "Etichetta per la statistica del bitrate video"
   },
   "qualityControl": {
-    "message": "Controllo qualità",
+    "message": "Qualità video",
     "description": "Intestazione per la sezione in cui gli utenti controllano la qualità del video"
   },
   "autoDefault": {
@@ -28,23 +32,23 @@
     "description": "Etichetta del pulsante per passare alla qualità video automatica"
   },
   "forceMaxQuality": {
-    "message": "Forza qualità massima",
+    "message": "Forza la qualità massima",
     "description": "Etichetta del pulsante per forzare la massima qualità video disponibile"
   },
   "prefers1080p": {
-    "message": "Dà priorità a 1080p+",
+    "message": "Dà priorità a 1080p o superiore",
     "description": "Sotto-etichetta che indica che forzare la qualità massima preferisce 1080p o superiore"
   },
   "availableQualities": {
-    "message": "Qualità disponibili",
+    "message": "Opzioni di qualità",
     "description": "Intestazione per l'elenco delle qualità video specifiche tra cui un utente può scegliere"
   },
   "settingsSaved": {
-    "message": "Impostazioni salvate. Le modifiche potrebbero richiedere alcuni secondi...",
+    "message": "Impostazioni salvate. Le modifiche potrebbero richiedere alcuni secondi per essere applicate…",
     "description": "Messaggio di notifica mostrato quando l'utente modifica le impostazioni"
   },
   "updatingQuality": {
-    "message": "Aggiornamento qualità... lo svuotamento del buffer potrebbe richiedere 10-20 secondi.",
+    "message": "Aggiornamento della qualità… Lo svuotamento del buffer potrebbe richiedere 10–20 secondi.",
     "description": "Messaggio di notifica più lungo che spiega che gli aggiornamenti della qualità del video richiedono tempo"
   },
   "leaveReview": {
@@ -52,7 +56,7 @@
     "description": "Richiesta all'utente di recensire l'estensione"
   },
   "simpleVideoSpeedControllerAdLineOne": {
-    "message": "Vuoi controllare la velocità?",
+    "message": "Vuoi controllare la velocità di riproduzione?",
     "description": "Prima riga di una richiesta che promuove l'estensione Simple Video Speed Controller dello sviluppatore"
   },
   "simpleVideoSpeedControllerAdLineTwo": {
@@ -60,7 +64,7 @@
     "description": "Seconda riga di una richiesta che promuove l'estensione Simple Video Speed Controller dello sviluppatore"
   },
   "youtubeUiCleanerAdLineOne": {
-    "message": "Nascondere spoiler e risultati su YouTube?",
+    "message": "Vuoi nascondere spoiler e risultati sportivi su YouTube?",
     "description": "Prima riga di una richiesta che promuove l'estensione YouTube UI Cleaner dello sviluppatore"
   },
   "youtubeUiCleanerAdLineTwo": {
@@ -72,47 +76,55 @@
     "description": "Titolo ed etichetta accessibile del link di supporto Ko-Fi"
   },
   "supportMyWorkCta": {
-    "message": "Sostieni il lavoro",
+    "message": "Sostienimi",
     "description": "Etichetta visibile compatta del supporto Ko-Fi. Mantenerla abbastanza breve per l'intestazione del popup."
   },
   "advanced": {
-    "message": "Avanzate",
+    "message": "Impostazioni avanzate",
     "description": "Intestazione della sezione delle impostazioni di rete avanzate"
   },
   "enableRetries": {
-    "message": "Tentativi di rete",
+    "message": "Riprova le richieste di rete",
     "description": "Etichetta dell'interruttore per i tentativi di rete"
   },
   "enablePrefetch": {
-    "message": "Buffer di precaricamento",
+    "message": "Precaricamento del buffer",
     "description": "Etichetta dell'interruttore per il buffer di precaricamento"
   },
   "advancedRetriesDesc": {
-    "message": "Riprova chiamate di rete non riuscite",
+    "message": "Riprova le richieste di rete non riuscite",
     "description": "Descrizione di cosa fanno i tentativi di rete"
   },
   "advancedPrefetchDesc": {
-    "message": "Precarica i segmenti per ridurre il buffering",
+    "message": "Precarica i segmenti per ridurre le interruzioni",
     "description": "Descrizione di cosa fa il buffer di precaricamento"
   },
+  "maxLabel": {
+    "message": "max",
+    "description": "Etichetta compatta dopo il numero massimo di nuovi tentativi di rete"
+  },
+  "segmentsLabel": {
+    "message": "segm.",
+    "description": "Abbreviazione compatta dopo il numero di segmenti da precaricare"
+  },
   "locationNoticeTitle": {
-    "message": "Opzioni qualità non disponibili",
+    "message": "Opzioni di qualità non disponibili",
     "description": "Titolo di un avviso mostrato quando Paramount+ potrebbe nascondere le opzioni di qualità perché l'autorizzazione alla posizione è negata"
   },
   "locationNoticeBody": {
-    "message": "Paramount+ potrebbe nascondere le opzioni di risoluzione per alcuni titoli o eventi live quando la posizione del sito è bloccata. Richiedi l'accesso qui, quindi aggiorna la riproduzione.",
+    "message": "Paramount+ potrebbe nascondere le opzioni di risoluzione di alcuni titoli o eventi in diretta se al sito viene negato l’accesso alla tua posizione. Richiedi l’autorizzazione qui, quindi ricarica la pagina di riproduzione.",
     "description": "Avviso mostrato quando le opzioni di qualità non sono disponibili e l'autorizzazione alla posizione è negata"
   },
   "requestLocationAccess": {
-    "message": "Richiedi accesso alla posizione",
+    "message": "Richiedi l’accesso alla posizione",
     "description": "Etichetta del pulsante che chiede a Paramount+ di mostrare la richiesta di autorizzazione alla posizione del browser"
   },
   "locationAccessGranted": {
-    "message": "Posizione consentita. Aggiorna la riproduzione se le opzioni di qualità non appaiono.",
+    "message": "Accesso alla posizione consentito. Ricarica la pagina di riproduzione se le opzioni di qualità non compaiono.",
     "description": "Notifica mostrata dopo che l'utente concede l'accesso alla posizione"
   },
   "locationPromptUnavailable": {
-    "message": "Apri le impostazioni del sito Paramount+, consenti la posizione e aggiorna la riproduzione.",
+    "message": "Apri le impostazioni sito di Paramount+, consenti l’accesso alla posizione e ricarica la pagina di riproduzione.",
     "description": "Notifica mostrata quando il browser non può mostrare la richiesta di autorizzazione alla posizione"
   }
 }

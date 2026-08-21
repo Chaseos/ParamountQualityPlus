@@ -256,7 +256,7 @@ function setMode(forceMax, forcedId, forcedHeight = null) {
     updateSelectionUI();
 
     // Show feedback
-    showToast(chrome.i18n.getMessage("updatingQuality") || "Updating quality... buffer may take 10-20 seconds to clear.");
+    showToast(chrome.i18n.getMessage("updatingQuality") || "Updating quality… The buffer may take 10–20 seconds to clear.");
 }
 
 function initNetworkControlsUI() {
@@ -293,8 +293,11 @@ function initNetworkControlsUI() {
     
     if (advancedToggle && advancedContent) {
         advancedToggle.addEventListener('click', () => {
-            advancedToggle.classList.toggle('expanded');
-            advancedContent.classList.toggle('expanded');
+            const expanded = advancedToggle.getAttribute('aria-expanded') === 'true';
+            advancedToggle.setAttribute('aria-expanded', String(!expanded));
+            advancedToggle.classList.toggle('expanded', !expanded);
+            advancedContent.classList.toggle('expanded', !expanded);
+            advancedContent.hidden = expanded;
         });
     }
 
@@ -338,7 +341,7 @@ function initNetworkControlsUI() {
 function saveNetworkConfig() {
     const { enableRetries, maxRetries, enablePrefetch, prefetchCount } = currentConfig;
     chrome.storage.sync.set({ enableRetries, maxRetries, enablePrefetch, prefetchCount });
-    showToast(chrome.i18n.getMessage("settingsSaved") || "Settings saved. Changes may take a few seconds...");
+    showToast(chrome.i18n.getMessage("settingsSaved") || "Settings saved. Changes may take a few seconds to apply…");
 }
 
 function requestLocationAccess() {
@@ -347,14 +350,14 @@ function requestLocationAccess() {
 
         chrome.tabs.sendMessage(tabs[0].id, { type: 'REQUEST_GEOLOCATION_PERMISSION' }, (response) => {
             if (chrome.runtime.lastError || !response) {
-                showToast(chrome.i18n.getMessage("locationPromptUnavailable") || "Open Paramount+ site settings and allow location, then refresh playback.");
+                showToast(chrome.i18n.getMessage("locationPromptUnavailable") || "Open Paramount+ site settings, allow location access, then reload the playback page.");
                 return;
             }
 
             if (response.outcome === 'granted') {
-                showToast(chrome.i18n.getMessage("locationAccessGranted") || "Location allowed. Refresh playback if quality options do not appear.");
+                showToast(chrome.i18n.getMessage("locationAccessGranted") || "Location access allowed. Reload the playback page if quality options do not appear.");
             } else {
-                showToast(chrome.i18n.getMessage("locationPromptUnavailable") || "Open Paramount+ site settings and allow location, then refresh playback.");
+                showToast(chrome.i18n.getMessage("locationPromptUnavailable") || "Open Paramount+ site settings, allow location access, then reload the playback page.");
             }
         });
     });
@@ -461,6 +464,12 @@ function setConnectionStatus(connected) {
     if (dot) {
         if (connected) dot.classList.add('active');
         else dot.classList.remove('active');
+
+        const statusKey = connected ? 'connected' : 'notConnected';
+        const fallback = connected ? 'Connected' : 'Not connected';
+        const statusLabel = chrome.i18n.getMessage(statusKey) || fallback;
+        dot.title = statusLabel;
+        dot.setAttribute('aria-label', statusLabel);
     }
 }
 

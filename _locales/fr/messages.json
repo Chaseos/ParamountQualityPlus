@@ -4,23 +4,27 @@
     "description": "Le nom de l'extension"
   },
   "appDesc": {
-    "message": "Définissez et gérez la résolution de lecture sur Paramount+ pour les vidéos à la demande et les diffusions en direct, avec des commandes simples et des indications claires.",
+    "message": "Gérez la résolution des vidéos à la demande et des directs sur Paramount+ avec des commandes simples et des indications claires.",
     "description": "La description de l'extension affichée dans la boutique web et la page des extensions du navigateur"
   },
   "notConnected": {
     "message": "Non connecté",
     "description": "Statut indiquant que l'extension n'est pas connectée à un flux vidéo"
   },
+  "connected": {
+    "message": "Connecté",
+    "description": "Statut indiquant que l'extension est connectée à un flux vidéo"
+  },
   "resolution": {
     "message": "Résolution",
     "description": "Étiquette pour la statistique de résolution vidéo"
   },
   "bitrate": {
-    "message": "Débit binaire",
+    "message": "Débit",
     "description": "Étiquette pour la statistique de débit vidéo"
   },
   "qualityControl": {
-    "message": "Contrôle qualité",
+    "message": "Qualité vidéo",
     "description": "En-tête de la section où les utilisateurs contrôlent la qualité vidéo"
   },
   "autoDefault": {
@@ -32,39 +36,39 @@
     "description": "Étiquette du bouton pour forcer la qualité vidéo la plus élevée disponible"
   },
   "prefers1080p": {
-    "message": "Privilégie le 1080p+",
+    "message": "Privilégie le 1080p ou plus",
     "description": "Sous-étiquette indiquant que forcer la qualité maximale préfère 1080p ou plus"
   },
   "availableQualities": {
-    "message": "Qualités disponibles",
+    "message": "Options de qualité",
     "description": "En-tête pour la liste des qualités vidéo spécifiques qu'un utilisateur peut choisir"
   },
   "settingsSaved": {
-    "message": "Paramètres enregistrés. Les modifications peuvent prendre quelques secondes...",
+    "message": "Paramètres enregistrés. Les modifications peuvent prendre quelques secondes…",
     "description": "Message de notification affiché lorsque l'utilisateur modifie les paramètres"
   },
   "updatingQuality": {
-    "message": "Mise à jour de la qualité... le tampon peut prendre 10 à 20 secondes pour se vider.",
+    "message": "Mise à jour de la qualité… La mémoire tampon peut mettre 10 à 20 secondes à se vider.",
     "description": "Message de notification plus long expliquant que les mises à jour de qualité vidéo prennent du temps"
   },
   "leaveReview": {
-    "message": "C'est utile ? Laissez un avis",
+    "message": "Cette extension vous est utile ? Laissez un avis",
     "description": "Invite demandant à l'utilisateur d'évaluer l'extension"
   },
   "simpleVideoSpeedControllerAdLineOne": {
-    "message": "Besoin de contrôler la vitesse ?",
+    "message": "Vous souhaitez contrôler la vitesse de lecture ?",
     "description": "Première ligne d'une invite faisant la promotion de l'extension Simple Video Speed Controller du développeur"
   },
   "simpleVideoSpeedControllerAdLineTwo": {
-    "message": "Essayez Simple Video Speed Controller.",
+    "message": "Découvrez Simple Video Speed Controller.",
     "description": "Deuxième ligne d'une invite faisant la promotion de l'extension Simple Video Speed Controller du développeur"
   },
   "youtubeUiCleanerAdLineOne": {
-    "message": "Masquer les spoilers et résultats sur YouTube ?",
+    "message": "Vous souhaitez masquer les spoilers et les résultats sportifs sur YouTube ?",
     "description": "Première ligne d'une invite faisant la promotion de l'extension YouTube UI Cleaner du développeur"
   },
   "youtubeUiCleanerAdLineTwo": {
-    "message": "Essayez les filtres personnalisés de YouTube UI Cleaner.",
+    "message": "Découvrez les filtres personnalisés de YouTube UI Cleaner.",
     "description": "Deuxième ligne d'une invite faisant la promotion de l'extension YouTube UI Cleaner du développeur"
   },
   "supportMyWork": {
@@ -76,43 +80,51 @@
     "description": "Libellé visible compact du soutien Ko-Fi. À garder assez court pour l'en-tête du popup."
   },
   "advanced": {
-    "message": "Avancé",
+    "message": "Paramètres avancés",
     "description": "En-tête de la section des paramètres réseau avancés"
   },
   "enableRetries": {
-    "message": "Relances réseau",
-    "description": "Libellé du bouton des relances réseau"
+    "message": "Réessayer les requêtes réseau",
+    "description": "Libellé du bouton des nouvelles tentatives réseau"
   },
   "enablePrefetch": {
-    "message": "Tampon de préchargement",
+    "message": "Préchargement des segments",
     "description": "Libellé du bouton du tampon de préchargement"
   },
   "advancedRetriesDesc": {
-    "message": "Réessayer les appels réseau échoués",
-    "description": "Description expliquant le rôle des relances réseau"
+    "message": "Réessayer les requêtes réseau ayant échoué",
+    "description": "Description expliquant le rôle des nouvelles tentatives réseau"
   },
   "advancedPrefetchDesc": {
-    "message": "Précharger les segments pour réduire la mise en mémoire tampon",
+    "message": "Précharger des segments pour limiter les interruptions",
     "description": "Description expliquant le rôle du tampon de préchargement"
+  },
+  "maxLabel": {
+    "message": "max.",
+    "description": "Libellé compact après le nombre maximal de nouvelles tentatives réseau"
+  },
+  "segmentsLabel": {
+    "message": "seg.",
+    "description": "Abréviation compacte après le nombre de segments à précharger"
   },
   "locationNoticeTitle": {
     "message": "Options de qualité indisponibles",
     "description": "Titre d'un avertissement affiché lorsque Paramount+ peut masquer les options de qualité parce que l'autorisation de localisation est refusée"
   },
   "locationNoticeBody": {
-    "message": "Paramount+ peut masquer les options de résolution pour certains titres ou événements en direct lorsque la localisation du site est bloquée. Demandez l'accès ici, puis actualisez la lecture.",
+    "message": "Paramount+ peut masquer les options de résolution de certains titres ou événements en direct lorsque l’accès du site à votre position est bloqué. Demandez l’autorisation ici, puis rechargez la page de lecture.",
     "description": "Avertissement affiché lorsque les options de qualité sont indisponibles et que l'autorisation de localisation est refusée"
   },
   "requestLocationAccess": {
-    "message": "Demander l'accès à la localisation",
+    "message": "Demander l’accès à la position",
     "description": "Libellé du bouton qui demande à Paramount+ d'afficher l'invite d'autorisation de localisation du navigateur"
   },
   "locationAccessGranted": {
-    "message": "Localisation autorisée. Actualisez la lecture si les options de qualité n'apparaissent pas.",
+    "message": "Accès à la position autorisé. Rechargez la page de lecture si les options de qualité n’apparaissent pas.",
     "description": "Notification affichée lorsque l'utilisateur autorise l'accès à la localisation"
   },
   "locationPromptUnavailable": {
-    "message": "Ouvrez les paramètres du site Paramount+, autorisez la localisation, puis actualisez la lecture.",
+    "message": "Ouvrez les paramètres du site Paramount+, autorisez l’accès à la position, puis rechargez la page de lecture.",
     "description": "Notification affichée lorsque le navigateur ne peut pas afficher l'invite d'autorisation de localisation"
   }
 }

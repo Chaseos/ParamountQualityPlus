@@ -1,0 +1,130 @@
+{
+  "appName": {
+    "message": "Paramount Quality+",
+    "description": "El nombre de la extensión"
+  },
+  "appDesc": {
+    "message": "Configura la resolución de videos bajo demanda y transmisiones en vivo en Paramount+ con controles sencillos e información clara.",
+    "description": "La descripción de la extensión que aparece en la tienda web y en la página de extensiones del navegador"
+  },
+  "notConnected": {
+    "message": "Sin conexión",
+    "description": "Estado que indica que la extensión no está conectada a una transmisión de video"
+  },
+  "connected": {
+    "message": "Conectado",
+    "description": "Estado que indica que la extensión está conectada a una transmisión de video"
+  },
+  "resolution": {
+    "message": "Resolución",
+    "description": "Etiqueta para la estadística de resolución de video"
+  },
+  "bitrate": {
+    "message": "Tasa de bits",
+    "description": "Etiqueta para la estadística de tasa de bits de video"
+  },
+  "qualityControl": {
+    "message": "Calidad del video",
+    "description": "Encabezado de la sección donde los usuarios controlan la calidad del video"
+  },
+  "autoDefault": {
+    "message": "Automático (predeterminado)",
+    "description": "Etiqueta del botón para cambiar a la calidad de video automática"
+  },
+  "forceMaxQuality": {
+    "message": "Forzar la máxima calidad",
+    "description": "Etiqueta del botón para forzar la calidad de video más alta disponible"
+  },
+  "prefers1080p": {
+    "message": "Prioriza 1080p o superior",
+    "description": "Subetiqueta que indica que el modo de máxima calidad prioriza 1080p o una resolución superior"
+  },
+  "availableQualities": {
+    "message": "Opciones de calidad",
+    "description": "Encabezado de la lista de opciones de calidad de video disponibles"
+  },
+  "settingsSaved": {
+    "message": "Configuración guardada. Los cambios pueden tardar unos segundos en aplicarse…",
+    "description": "Mensaje de notificación que aparece cuando el usuario cambia la configuración"
+  },
+  "updatingQuality": {
+    "message": "Actualizando la calidad… El búfer puede tardar entre 10 y 20 segundos en vaciarse.",
+    "description": "Mensaje que explica que los cambios de calidad de video pueden tardar en aplicarse"
+  },
+  "leaveReview": {
+    "message": "¿Te resulta útil? Deja una reseña",
+    "description": "Invitación a dejar una reseña de la extensión"
+  },
+  "simpleVideoSpeedControllerAdLineOne": {
+    "message": "¿Quieres controlar la velocidad de reproducción?",
+    "description": "Primera línea de la promoción de la extensión Simple Video Speed Controller"
+  },
+  "simpleVideoSpeedControllerAdLineTwo": {
+    "message": "Prueba Simple Video Speed Controller.",
+    "description": "Segunda línea de la promoción de la extensión Simple Video Speed Controller"
+  },
+  "youtubeUiCleanerAdLineOne": {
+    "message": "¿Quieres ocultar spoilers y resultados deportivos en YouTube?",
+    "description": "Primera línea de la promoción de la extensión YouTube UI Cleaner"
+  },
+  "youtubeUiCleanerAdLineTwo": {
+    "message": "Prueba los filtros personalizados de YouTube UI Cleaner.",
+    "description": "Segunda línea de la promoción de la extensión YouTube UI Cleaner"
+  },
+  "supportMyWork": {
+    "message": "Apoya mi trabajo",
+    "description": "Título y etiqueta accesible del enlace de apoyo de Ko-Fi"
+  },
+  "supportMyWorkCta": {
+    "message": "Apóyame",
+    "description": "Etiqueta breve del enlace de apoyo de Ko-Fi que aparece en el encabezado"
+  },
+  "advanced": {
+    "message": "Opciones avanzadas",
+    "description": "Encabezado de la sección de configuración avanzada de red"
+  },
+  "enableRetries": {
+    "message": "Reintentos de red",
+    "description": "Etiqueta del control de reintentos de red"
+  },
+  "enablePrefetch": {
+    "message": "Precarga del búfer",
+    "description": "Etiqueta del control de precarga del búfer"
+  },
+  "advancedRetriesDesc": {
+    "message": "Reintentar solicitudes de red fallidas",
+    "description": "Descripción de los reintentos de solicitudes de red"
+  },
+  "advancedPrefetchDesc": {
+    "message": "Precargar segmentos para reducir las interrupciones",
+    "description": "Descripción de la precarga de segmentos de video"
+  },
+  "maxLabel": {
+    "message": "máx.",
+    "description": "Etiqueta breve después del número máximo de reintentos de red"
+  },
+  "segmentsLabel": {
+    "message": "segm.",
+    "description": "Abreviatura breve después del número de segmentos que se precargarán"
+  },
+  "locationNoticeTitle": {
+    "message": "Opciones de calidad no disponibles",
+    "description": "Título de la advertencia que aparece cuando se niega el permiso de ubicación"
+  },
+  "locationNoticeBody": {
+    "message": "Paramount+ puede ocultar las opciones de resolución de algunos títulos o eventos en vivo si el sitio no tiene acceso a tu ubicación. Solicita el permiso aquí y recarga la página de reproducción.",
+    "description": "Advertencia que explica por qué el permiso de ubicación puede afectar las opciones de calidad"
+  },
+  "requestLocationAccess": {
+    "message": "Solicitar acceso a la ubicación",
+    "description": "Etiqueta del botón que solicita el permiso de ubicación del navegador"
+  },
+  "locationAccessGranted": {
+    "message": "Acceso a la ubicación permitido. Recarga la página de reproducción si no aparecen las opciones de calidad.",
+    "description": "Notificación que aparece después de permitir el acceso a la ubicación"
+  },
+  "locationPromptUnavailable": {
+    "message": "Abre la configuración del sitio de Paramount+, permite el acceso a la ubicación y recarga la página de reproducción.",
+    "description": "Notificación que aparece cuando el navegador no puede mostrar la solicitud de ubicación"
+  }
+}

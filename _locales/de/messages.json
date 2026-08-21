@@ -4,12 +4,16 @@
     "description": "Der Name der Erweiterung"
   },
   "appDesc": {
-    "message": "Legen Sie die Wiedergabeauflösung auf Paramount+ für On-Demand-Videos und Livestreams fest und verwalten Sie sie mit einfachen Steuerelementen und klaren Rückmeldungen.",
+    "message": "Steuern Sie die Wiedergabeauflösung von On-Demand-Videos und Livestreams auf Paramount+ – einfach und mit klaren Statusmeldungen.",
     "description": "Die Beschreibung der Erweiterung, die im Web Store und auf der Browser-Erweiterungsseite angezeigt wird"
   },
   "notConnected": {
     "message": "Nicht verbunden",
     "description": "Status, der anzeigt, dass die Erweiterung nicht mit einem Videostream verbunden ist"
+  },
+  "connected": {
+    "message": "Verbunden",
+    "description": "Status, der anzeigt, dass die Erweiterung mit einem Videostream verbunden ist"
   },
   "resolution": {
     "message": "Auflösung",
@@ -28,31 +32,31 @@
     "description": "Schaltflächenbezeichnung zum Umschalten auf automatische Videoqualität"
   },
   "forceMaxQuality": {
-    "message": "Maximale Qualität erzwingen",
+    "message": "Höchste Qualität erzwingen",
     "description": "Schaltflächenbezeichnung zum Erzwingen der höchsten verfügbaren Videoqualität"
   },
   "prefers1080p": {
-    "message": "Priorisiert 1080p+",
+    "message": "Bevorzugt 1080p oder höher",
     "description": "Zusatzlabel, das anzeigt, dass die erzwungene maximale Qualität 1080p oder höher bevorzugt"
   },
   "availableQualities": {
-    "message": "Verfügbare Qualitäten",
+    "message": "Verfügbare Qualitätsstufen",
     "description": "Kopfzeile für die Liste bestimmter Videoqualitäten, aus denen ein Benutzer auswählen kann"
   },
   "settingsSaved": {
-    "message": "Einstellungen gespeichert. Änderungen können einige Sekunden dauern...",
+    "message": "Einstellungen gespeichert. Änderungen werden möglicherweise erst nach einigen Sekunden wirksam …",
     "description": "Benachrichtigung, die angezeigt wird, wenn der Benutzer Einstellungen ändert"
   },
   "updatingQuality": {
-    "message": "Qualität wird aktualisiert... es kann 10-20 Sekunden dauern, bis der Puffer geleert ist.",
+    "message": "Qualität wird aktualisiert … Das Leeren des Puffers kann 10–20 Sekunden dauern.",
     "description": "Längere Benachrichtigung, die erklärt, dass Aktualisierungen der Videoqualität Zeit in Anspruch nehmen"
   },
   "leaveReview": {
-    "message": "Nützlich? Hinterlassen Sie eine Bewertung",
+    "message": "Nützlich? Bewertung abgeben",
     "description": "Aufforderung an den Benutzer, die Erweiterung zu bewerten"
   },
   "simpleVideoSpeedControllerAdLineOne": {
-    "message": "Möchten Sie die Videogeschwindigkeit steuern?",
+    "message": "Wiedergabegeschwindigkeit steuern?",
     "description": "Erste Zeile einer Aufforderung, die Simple Video Speed Controller-Erweiterung des Entwicklers zu bewerben"
   },
   "simpleVideoSpeedControllerAdLineTwo": {
@@ -60,7 +64,7 @@
     "description": "Zweite Zeile einer Aufforderung, die Simple Video Speed Controller-Erweiterung des Entwicklers zu bewerben"
   },
   "youtubeUiCleanerAdLineOne": {
-    "message": "YouTube-Spoiler und Spielergebnisse ausblenden?",
+    "message": "Spoiler und Spielergebnisse auf YouTube ausblenden?",
     "description": "Erste Zeile einer Aufforderung, die YouTube UI Cleaner-Erweiterung des Entwicklers zu bewerben"
   },
   "youtubeUiCleanerAdLineTwo": {
@@ -76,31 +80,39 @@
     "description": "Kompakte sichtbare Ko-Fi-Unterstützungsbeschriftung. Kurz genug für die Popup-Kopfzeile halten."
   },
   "advanced": {
-    "message": "Erweitert",
+    "message": "Erweiterte Einstellungen",
     "description": "Überschrift für den Abschnitt mit erweiterten Netzwerkeinstellungen"
   },
   "enableRetries": {
-    "message": "Netzwerk-Wiederholungen",
-    "description": "Beschriftung für den Schalter für Netzwerk-Wiederholungen"
+    "message": "Netzwerkanfragen wiederholen",
+    "description": "Beschriftung für den Schalter zum Wiederholen von Netzwerkanfragen"
   },
   "enablePrefetch": {
-    "message": "Vorladepuffer",
-    "description": "Beschriftung für den Schalter für den Vorladepuffer"
+    "message": "Puffer vorladen",
+    "description": "Beschriftung für den Schalter zum Vorladen des Puffers"
   },
   "advancedRetriesDesc": {
-    "message": "Fehlgeschlagene Netzwerkaufrufe wiederholen",
-    "description": "Beschreibung der Netzwerk-Wiederholungen"
+    "message": "Fehlgeschlagene Netzwerkanfragen erneut senden",
+    "description": "Beschreibung der wiederholten Netzwerkanfragen"
   },
   "advancedPrefetchDesc": {
-    "message": "Segmente vorladen, um Pufferung zu reduzieren",
-    "description": "Beschreibung des Vorladepuffers"
+    "message": "Segmente vorab laden, um Wiedergabeunterbrechungen zu reduzieren",
+    "description": "Beschreibung des vorab geladenen Puffers"
+  },
+  "maxLabel": {
+    "message": "max.",
+    "description": "Kompakte Beschriftung hinter der maximalen Anzahl von Netzwerkwiederholungen"
+  },
+  "segmentsLabel": {
+    "message": "Seg.",
+    "description": "Kompakte Abkürzung hinter der Anzahl der vorab zu ladenden Segmente"
   },
   "locationNoticeTitle": {
     "message": "Qualitätsoptionen nicht verfügbar",
     "description": "Titel einer Warnung, die angezeigt wird, wenn Paramount+ Qualitätsoptionen ausblenden kann, weil die Standortberechtigung verweigert wurde"
   },
   "locationNoticeBody": {
-    "message": "Paramount+ kann Auflösungsoptionen für einige Titel oder Live-Events ausblenden, wenn der Standortzugriff der Website blockiert ist. Fordern Sie den Zugriff hier an und aktualisieren Sie dann die Wiedergabe.",
+    "message": "Paramount+ kann bei einigen Titeln oder Live-Events Auflösungsoptionen ausblenden, wenn der Standortzugriff für die Website blockiert ist. Fordern Sie die Berechtigung hier an und laden Sie anschließend die Wiedergabeseite neu.",
     "description": "Warnung, die angezeigt wird, wenn Qualitätsoptionen nicht verfügbar sind und die Standortberechtigung verweigert wurde"
   },
   "requestLocationAccess": {
@@ -108,11 +120,11 @@
     "description": "Beschriftung der Schaltfläche, mit der Paramount+ die Standortberechtigungsabfrage des Browsers anzeigen soll"
   },
   "locationAccessGranted": {
-    "message": "Standort erlaubt. Aktualisieren Sie die Wiedergabe, wenn keine Qualitätsoptionen erscheinen.",
+    "message": "Standortzugriff erlaubt. Laden Sie die Wiedergabeseite neu, falls keine Qualitätsoptionen angezeigt werden.",
     "description": "Toast, der angezeigt wird, nachdem der Benutzer Standortzugriff erlaubt hat"
   },
   "locationPromptUnavailable": {
-    "message": "Öffnen Sie die Website-Einstellungen von Paramount+, erlauben Sie Standortzugriff und aktualisieren Sie die Wiedergabe.",
+    "message": "Öffnen Sie die Website-Einstellungen für Paramount+, erlauben Sie den Standortzugriff und laden Sie die Wiedergabeseite neu.",
     "description": "Toast, der angezeigt wird, wenn der Browser die Standortberechtigungsabfrage nicht anzeigen kann"
   }
 }

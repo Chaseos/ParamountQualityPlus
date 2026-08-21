@@ -43,13 +43,14 @@ Quality availability still depends on the title, subscription, region, device, D
 
 ## Languages
 
-The extension popup and store-facing extension metadata are localized in seven languages:
+The extension popup and store-facing extension metadata are localized in seven languages across eight locale catalogs:
 
 | Language | Locale |
 | --- | --- |
 | Deutsch | `de` |
 | English | `en` |
-| Español | `es` |
+| Español (España) | `es` |
+| Español (Latinoamérica y el Caribe) | `es_419` |
 | Français | `fr` |
 | Italiano | `it` |
 | 한국어 | `ko` |
