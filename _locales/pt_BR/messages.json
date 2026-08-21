@@ -44,7 +44,7 @@
     "description": "Cabeçalho para a lista de qualidades de vídeo específicas que um usuário pode escolher"
   },
   "settingsSaved": {
-    "message": "Configurações salvas. As alterações podem levar alguns segundos para entrar em vigor…",
+    "message": "Configurações salvas. As alterações podem levar alguns segundos para serem aplicadas…",
     "description": "Mensagem de notificação mostrada quando o usuário altera as configurações"
   },
   "updatingQuality": {

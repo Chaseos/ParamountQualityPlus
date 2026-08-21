@@ -124,7 +124,7 @@
     "description": "Notifica mostrata dopo che l'utente concede l'accesso alla posizione"
   },
   "locationPromptUnavailable": {
-    "message": "Apri le impostazioni sito di Paramount+, consenti l’accesso alla posizione e ricarica la pagina di riproduzione.",
+    "message": "Apri le impostazioni del sito Paramount+, consenti l’accesso alla posizione e ricarica la pagina di riproduzione.",
     "description": "Notifica mostrata quando il browser non può mostrare la richiesta di autorizzazione alla posizione"
   }
 }

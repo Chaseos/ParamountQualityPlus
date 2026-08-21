@@ -80,6 +80,15 @@ test('Spain and Latin American Spanish preserve regional terminology', async () 
   expect(latinAmerica.locationNoticeBody.message).toContain('en vivo');
 });
 
+test('native-reviewed Korean terminology stays unchanged', async () => {
+  const korean = await readMessages('ko');
+
+  expect(korean.appDesc.message).toBe(
+    'Paramount+ 온디맨드 서비스/콘탠츠과 라이브 스트림의 재생 해상도를 간편하게 컨트롤 할 수 있습니다'
+  );
+  expect(korean.enablePrefetch.message).toBe('Prefetch 버퍼');
+});
+
 test('README documents every packaged locale', async () => {
   const localeEntries = await readdir(localesRoot, { withFileTypes: true });
   const locales = localeEntries.filter(entry => entry.isDirectory()).map(entry => entry.name);
@@ -139,4 +148,39 @@ test('advanced settings disclosure exposes accessible state and keyboard semanti
   expect(status).toContain('aria-live="polite"');
   expect(status).toContain('data-i18n-aria-label="notConnected"');
   expect(popupScript).toContain("const statusKey = connected ? 'connected' : 'notConnected'");
+});
+
+test('localized popup controls and dynamic feedback expose accessible purpose', async () => {
+  const popupHtml = await readFile(path.join(projectRoot, 'popup.html'), 'utf8');
+  const retriesInput = popupHtml.match(/<input\b[^>]*\bid="num-retries"[^>]*>/)?.[0];
+  const prefetchInput = popupHtml.match(/<input\b[^>]*\bid="num-prefetch"[^>]*>/)?.[0];
+  const geoNotice = popupHtml.match(/<div\b[^>]*\bid="geo-notice"[^>]*>/)?.[0];
+  const toast = popupHtml.match(/<div\b[^>]*\bid="toast"[^>]*>/)?.[0];
+  const logo = popupHtml.match(/<img\b[^>]*\bsrc="icon\.png"[^>]*>/)?.[0];
+  const decorativeSvgs = [...popupHtml.matchAll(/<svg\b[^>]*>/g)].map(match => match[0]);
+
+  expect(retriesInput).toContain('aria-labelledby="label-retries"');
+  expect(retriesInput).toContain('aria-describedby="desc-retries"');
+  expect(prefetchInput).toContain('aria-labelledby="label-prefetch"');
+  expect(prefetchInput).toContain('aria-describedby="desc-prefetch"');
+  expect(geoNotice).toContain('role="status"');
+  expect(geoNotice).toContain('aria-live="polite"');
+  expect(toast).toContain('role="status"');
+  expect(toast).toContain('aria-live="polite"');
+  expect(toast).toContain('aria-atomic="true"');
+  expect(logo).toContain('alt=""');
+  expect(decorativeSvgs.length).toBeGreaterThan(0);
+  for (const svg of decorativeSvgs) {
+    expect(svg).toContain('aria-hidden="true"');
+    expect(svg).toContain('focusable="false"');
+  }
+});
+
+test('localized toast stays within the fixed popup viewport', async () => {
+  const popupHtml = await readFile(path.join(projectRoot, 'popup.html'), 'utf8');
+  const toastStyles = popupHtml.match(/\.toast\s*\{([^}]*)\}/)?.[1] ?? '';
+
+  expect(toastStyles).toContain('box-sizing: border-box');
+  expect(toastStyles).toContain('width: calc(100% - 32px)');
+  expect(toastStyles).toContain('max-width: 340px');
 });

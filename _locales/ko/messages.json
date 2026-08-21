@@ -4,7 +4,7 @@
     "description": "확장 프로그램의 이름"
   },
   "appDesc": {
-    "message": "Paramount+ 주문형 동영상과 라이브 스트림의 재생 해상도를 간편하게 제어하고 상태를 명확히 확인하세요.",
+    "message": "Paramount+ 온디맨드 서비스/콘탠츠과 라이브 스트림의 재생 해상도를 간편하게 컨트롤 할 수 있습니다",
     "description": "웹 스토어 및 브라우저 확장 프로그램 페이지에 표시되는 설명"
   },
   "notConnected": {
@@ -88,7 +88,7 @@
     "description": "네트워크 재시도 토글의 레이블"
   },
   "enablePrefetch": {
-    "message": "버퍼 미리 채우기",
+    "message": "Prefetch 버퍼",
     "description": "버퍼 미리 채우기 토글의 레이블"
   },
   "advancedRetriesDesc": {

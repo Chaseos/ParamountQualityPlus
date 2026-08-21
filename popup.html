@@ -388,6 +388,7 @@
       position: fixed;
       top: 20px;
       left: 50%;
+      box-sizing: border-box;
       transform: translateX(-50%) translateY(-20px);
       background-color: var(--card-bg);
       color: var(--text-main);
@@ -400,8 +401,8 @@
       opacity: 0;
       transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
       pointer-events: none;
-      width: max-content;
-      max-width: 90%;
+      width: calc(100% - 32px);
+      max-width: 340px;
       text-align: center;
     }
 
@@ -548,7 +549,7 @@
 <body>
   <div class="header">
     <div class="brand">
-      <img src="icon.png" class="logo-img">
+      <img src="icon.png" alt="" class="logo-img">
       <span class="brand-title">Paramount Quality<sup class="brand-plus">+</sup></span>
     </div>
     <div class="header-actions">
@@ -575,7 +576,7 @@
     </div>
   </div>
 
-  <div id="geo-notice" class="notice">
+  <div id="geo-notice" class="notice" role="status" aria-live="polite">
     <span class="notice-title" data-i18n="locationNoticeTitle">Quality options unavailable</span>
     <span data-i18n="locationNoticeBody">Paramount+ may hide resolution options for some titles or live events when the site cannot access your location. Request permission here, then reload the playback page.</span>
     <button type="button" id="request-location-btn" class="notice-action" data-i18n="requestLocationAccess">Request Location Permission</button>
@@ -588,7 +589,7 @@
       <!-- Auto Mode -->
       <button class="btn active" id="btn-auto">
         <span data-i18n="autoDefault">Auto (Default)</span>
-        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true" focusable="false">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
       </button>
@@ -599,7 +600,7 @@
           <span data-i18n="forceMaxQuality">Force Highest Quality</span>
           <div style="font-size:10px; opacity:0.7; font-weight:400; margin-top:2px;" data-i18n="prefers1080p">Prefers 1080p or higher</div>
         </div>
-        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true" focusable="false">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
       </button>
@@ -616,7 +617,7 @@
     <!-- Advanced Network -->
     <button type="button" class="advanced-header" id="advanced-toggle" aria-expanded="false" aria-controls="advanced-content">
       <span class="section-title" data-i18n="advanced">Advanced Settings</span>
-      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
         <polyline points="6 9 12 15 18 9"></polyline>
       </svg>
     </button>
@@ -634,7 +635,7 @@
             </div>
           </label>
           <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-             <input type="number" id="num-retries" min="1" max="10" value="3" style="width: 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 4px; font-size: 12px; text-align: center;">
+             <input type="number" id="num-retries" min="1" max="10" value="3" aria-labelledby="label-retries" aria-describedby="desc-retries" style="width: 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 4px; font-size: 12px; text-align: center;">
              <span style="font-size: 11px; color: var(--text-muted); width: 36px;" data-i18n="maxLabel">max</span>
           </div>
         </div>
@@ -651,7 +652,7 @@
             </div>
           </label>
           <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-             <input type="number" id="num-prefetch" min="1" max="20" value="5" style="width: 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 4px; font-size: 12px; text-align: center;">
+             <input type="number" id="num-prefetch" min="1" max="20" value="5" aria-labelledby="label-prefetch" aria-describedby="desc-prefetch" style="width: 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; padding: 4px; font-size: 12px; text-align: center;">
              <span style="font-size: 11px; color: var(--text-muted); width: 36px;" data-i18n="segmentsLabel">segs</span>
           </div>
         </div>
@@ -661,17 +662,17 @@
 
 
     <!-- Toast Notification -->
-    <div id="toast" class="toast" data-i18n="settingsSaved">
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" data-i18n="settingsSaved">
       Settings saved. Changes may take a few seconds to apply…
     </div>
 
     <div id="review-card" class="review-card">
       <a id="review-link" href="https://chromewebstore.google.com/detail/paramount-quality+/jdhjjddhdmhphkfgcfclekdngihnoann/reviews" target="_blank" class="review-link">
-        <svg class="star-icon" viewBox="0 0 24 24">
+        <svg class="star-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
         </svg>
         <span data-i18n="leaveReview">Finding it useful? Leave a review</span>
-        <svg class="prompt-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="prompt-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
           <polyline points="15 3 21 3 21 9"></polyline>
           <line x1="10" y1="14" x2="21" y2="3"></line>
@@ -686,7 +687,7 @@
           <span data-i18n="simpleVideoSpeedControllerAdLineOne">Want playback speed controls?</span>
           <span data-i18n="simpleVideoSpeedControllerAdLineTwo">Try Simple Video Speed Controller.</span>
         </span>
-        <svg class="prompt-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="prompt-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
           <polyline points="15 3 21 3 21 9"></polyline>
           <line x1="10" y1="14" x2="21" y2="3"></line>
@@ -701,7 +702,7 @@
           <span data-i18n="youtubeUiCleanerAdLineOne">Want to hide YouTube spoilers and match results?</span>
           <span data-i18n="youtubeUiCleanerAdLineTwo">Try YouTube UI Cleaner's custom filters.</span>
         </span>
-        <svg class="prompt-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="prompt-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
           <polyline points="15 3 21 3 21 9"></polyline>
           <line x1="10" y1="14" x2="21" y2="3"></line>
