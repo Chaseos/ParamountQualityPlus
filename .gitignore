@@ -4,3 +4,18 @@ extension.zip
 
 # Generated extension packages
 dist/
+build/
+**/xcuserdata/
+*.xcarchive/
+*.mobileprovision
+*.provisionprofile
+*.p12
+*.cer
+
+# SwiftPM/Xcode local state and sensitive Apple artifacts
+apple/.build/
+apple/.swiftpm/
+*.xcresult/
+*.dSYM/
+*.pem
+*.key

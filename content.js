@@ -1,3 +1,10 @@
+(() => {
+// Reopening/reinjecting an extension must not duplicate listeners or bootstrap.
+if (globalThis.__PQP_CONTENT__) {
+    globalThis.__PQP_CONTENT__.retryInjection();
+    return;
+}
+let injectionFailed = false;
 // ParamountPlusQualityController - Content Script
 
 // State
@@ -45,6 +52,7 @@ function isLivePlaybackPath(path = window.location.pathname) {
 
 // --- Injection Logic ---
 function injectScript(initialConfig) {
+    injectionFailed = false;
     const script = document.createElement('script');
     script.type = 'module';
     script.src = chrome.runtime.getURL('injected/index.js');
@@ -55,6 +63,7 @@ function injectScript(initialConfig) {
         // unavailable without reintroducing a startup Auto/Force Max race.
         window.postMessage({ type: 'PQI_CONFIG', payload: initialConfig }, '*');
     };
+    script.onerror = () => { injectionFailed = true; script.remove(); };
     (document.head || document.documentElement).appendChild(script);
 
 }
@@ -197,6 +206,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         timeoutId = setTimeout(() => respondOnce({ outcome: 'timeout' }), 12000);
 
         return true;
+
     } else if (request.type === 'APPLY_QUALITY_CHANGE') {
         streamState.recoveryActive = false;
         streamState.appliedConfig = request.payload;
@@ -278,6 +288,9 @@ function syncConfig({ bootstrap = false } = {}) {
 
 // Read the saved selection before the main-world hooks are installed. This
 // prevents an original initialization segment from racing ahead of Force Max.
+globalThis.__PQP_CONTENT__ = {
+    retryInjection: () => { if (injectionFailed) syncConfig({ bootstrap: true }); }
+};
 syncConfig({ bootstrap: true });
 
 // Listen for storage changes
@@ -287,3 +300,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
         syncConfig();
     }
 });
+
+/* PLATFORM_CONTENT */
+})();

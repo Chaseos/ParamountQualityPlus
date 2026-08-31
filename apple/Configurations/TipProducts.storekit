@@ -1,0 +1,62 @@
+{
+  "identifier": "F847C747-A4DC-2F5E-5787-FC3BBD0457D9",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "0.99",
+      "familyShareable": false,
+      "internalID": "C76D33F4-D1C9-EF57-E053-F87E156DE947",
+      "localizations": [
+        {
+          "description": "A small optional tip to support development.",
+          "displayName": "Small Tip",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "app.chaseos.ParamountQualityPlus.tip.small",
+      "referenceName": "Small Tip",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "2.99",
+      "familyShareable": false,
+      "internalID": "648703A6-4193-3933-7718-113AAAB8ABDA",
+      "localizations": [
+        {
+          "description": "An optional tip to support continued development.",
+          "displayName": "Standard Tip",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "app.chaseos.ParamountQualityPlus.tip.standard",
+      "referenceName": "Standard Tip",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "4.99",
+      "familyShareable": false,
+      "internalID": "FC9AC5A9-2F44-B2BF-B25E-B114E8B64B3E",
+      "localizations": [
+        {
+          "description": "A generous optional tip supporting ongoing development.",
+          "displayName": "Generous Tip",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "app.chaseos.ParamountQualityPlus.tip.generous",
+      "referenceName": "Generous Tip",
+      "type": "Consumable"
+    }
+  ],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

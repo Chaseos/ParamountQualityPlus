@@ -356,3 +356,14 @@ describe('Fetch Retries for Segments', () => {
     });
 
 });
+
+test('shared DAI program classification leaves master requests intact and retryable without segment prefetch', async () => {
+    const url='https://pubads.g.doubleclick.net/ondemand/hls/content/fixture/vid/program/CHS/streams/session/master.m3u8';
+    setConfig({forceMax:true,forcedId:null,forcedHeight:null,enableRetries:true,maxRetries:3,enablePrefetch:true});
+    originalFetchMock.mockResolvedValue({ok:false,status:503});
+    const request=window.fetch(url);
+    await jest.advanceTimersByTimeAsync(2000);
+    expect((await request).status).toBe(503);
+    expect(originalFetchMock).toHaveBeenCalledTimes(3);
+    expect(originalFetchMock.mock.calls.every(([resource])=>resource===url)).toBe(true);
+});

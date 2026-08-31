@@ -5,7 +5,12 @@
   "main": "content.js",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "prepare:apple": "node scripts/prepare-apple.mjs",
+    "build:apple:debug": "node scripts/build-apple.mjs",
+    "build:apple:release": "node scripts/build-apple.mjs --release",
+    "test:apple": "npm test -- --runInBand --silent && swift test --jobs 2 --package-path apple --scratch-path build/apple-tests",
+    "validate:apple:release": "node scripts/validate-apple.mjs --release"
   },
   "keywords": [],
   "author": "",

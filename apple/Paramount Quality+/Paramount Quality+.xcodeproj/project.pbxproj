@@ -1,0 +1,769 @@
+// !$*UTF8*$!
+{
+	"classes" = {
+	};
+	"objectVersion" = "77";
+	"archiveVersion" = "1";
+	"objects" = {
+		"AB2F68DA30451FEF00A1B7D4" = {
+			"isa" = "PBXTargetDependency";
+			"target" = "AB2F68D630451FEF00A1B7D4";
+			"targetProxy" = "AB2F68D930451FEF00A1B7D4";
+		};
+		"AB2F68D730451FEF00A1B7D4" = {
+			"path" = "Paramount Quality+ Extension.appex";
+			"isa" = "PBXFileReference";
+			"includeInIndex" = "0";
+			"explicitFileType" = "wrapper.app-extension";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"AB2F68EA30451FEF00A1B7D4" = {
+			"path" = "../../../dist/safari/icon.png";
+			"isa" = "PBXFileReference";
+			"name" = "icon.png";
+			"lastKnownFileType" = "image.png";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68BE30451FEE00A1B7D4" = {
+			"path" = "Paramount Quality+";
+			"isa" = "PBXGroup";
+			"children" = (
+				"AB2F68D030451FEE00A1B7D4",
+				"AB2F68D230451FEE00A1B7D4",
+			);
+			"sourceTree" = "<group>";
+		};
+		"AB2F68FA30451FEF00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68F030451FEF00A1B7D4";
+		};
+		"AB2F68F730451FEF00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68ED30451FEF00A1B7D4";
+		};
+		"AB2F68D130451FEE00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68D030451FEE00A1B7D4";
+		};
+		"AB2F68E730451FEF00A1B7D4" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"INFOPLIST_KEY_NSPrincipalClass" = "NSApplication";
+				"COMBINE_HIDPI_IMAGES" = "YES";
+				"SWIFT_EMIT_LOC_STRINGS" = "YES";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "$(PQP_APP_BUNDLE_ID)";
+				"ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME" = "AccentColor";
+				"STRING_CATALOG_GENERATE_SYMBOLS" = "YES";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Paramount Quality+";
+				"OTHER_LDFLAGS" = (
+					"-framework",
+					"SafariServices",
+					"-framework",
+					"WebKit",
+				);
+				"CODE_SIGN_STYLE" = "Automatic";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				"SWIFT_VERSION" = "5.0";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"SWIFT_APPROACHABLE_CONCURRENCY" = "YES";
+				"ENABLE_OUTGOING_NETWORK_CONNECTIONS" = "YES";
+				"SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY" = "YES";
+				"ENABLE_APP_SANDBOX" = "YES";
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"INFOPLIST_FILE" = "Paramount Quality+/Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+			};
+			"name" = "Release";
+			"baseConfigurationReference" = "2DC9A411000D2BDA1D62165F";
+		};
+		"AB2F68D430451FEF00A1B7D4" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"AB2F68E430451FEF00A1B7D4" = {
+			"buildActionMask" = "2147483647";
+			"dstSubfolderSpec" = "13";
+			"isa" = "PBXCopyFilesBuildPhase";
+			"runOnlyForDeploymentPostprocessing" = "0";
+			"dstPath" = "";
+			"files" = (
+				"AB2F68D830451FEF00A1B7D4",
+			);
+			"name" = "Embed Foundation Extensions";
+		};
+		"AB2F68BB30451FEE00A1B7D4" = {
+			"buildConfigurationList" = "AB2F68E530451FEF00A1B7D4";
+			"productReference" = "AB2F68BC30451FEE00A1B7D4";
+			"productType" = "com.apple.product-type.application";
+			"packageProductDependencies" = (
+			);
+			"productName" = "Paramount Quality+";
+			"isa" = "PBXNativeTarget";
+			"buildPhases" = (
+				"AB2F68B830451FEE00A1B7D4",
+				"AB2F68B930451FEE00A1B7D4",
+				"AB2F68BA30451FEE00A1B7D4",
+				"AB2F68E430451FEF00A1B7D4",
+			);
+			"dependencies" = (
+				"AB2F68DA30451FEF00A1B7D4",
+			);
+			"name" = "Paramount Quality+";
+			"buildRules" = (
+			);
+		};
+		"AB2F68F430451FEF00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68EA30451FEF00A1B7D4";
+		};
+		"AB2F68B830451FEE00A1B7D4" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"5538422DB24312AEBC1C4CA3",
+				"B4B4D5122CF66E365F65601A",
+				"A4237FADCCB704F1AB36CAF6",
+				"AC0BC2EE0D5C6D91087C01D5",
+				"E0DF2F6002E58135201DB121",
+				"A3DAB879943A282C5015D098",
+				"FACED0000000000000000004",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"AB2F68DE30451FEF00A1B7D4" = {
+			"path" = "Info.plist";
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.plist.xml";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68EE30451FEF00A1B7D4" = {
+			"path" = "../../../dist/safari/manifest.json";
+			"isa" = "PBXFileReference";
+			"name" = "manifest.json";
+			"lastKnownFileType" = "text.json";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68E130451FEF00A1B7D4" = {
+			"isa" = "XCConfigurationList";
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+			"buildConfigurations" = (
+				"AB2F68E230451FEF00A1B7D4",
+				"AB2F68E330451FEF00A1B7D4",
+			);
+		};
+		"AB2F68F130451FEF00A1B7D4" = {
+			"path" = "../../../dist/safari/PRIVACYPOLICY.md";
+			"isa" = "PBXFileReference";
+			"name" = "PRIVACYPOLICY.md";
+			"lastKnownFileType" = "net.daringfireball.markdown";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68D830451FEF00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68D730451FEF00A1B7D4";
+			"settings" = {
+				"ATTRIBUTES" = (
+					"RemoveHeadersOnCopy",
+				);
+			};
+		};
+		"AB2F68DB30451FEF00A1B7D4" = {
+			"path" = "Paramount Quality+ Extension";
+			"isa" = "PBXGroup";
+			"children" = (
+				"AB2F68E830451FEF00A1B7D4",
+				"AB2F68DC30451FEF00A1B7D4",
+				"AB2F68DE30451FEF00A1B7D4",
+			);
+			"sourceTree" = "<group>";
+		};
+		"AB2F68E830451FEF00A1B7D4" = {
+			"path" = "Paramount Quality+ Extension";
+			"isa" = "PBXGroup";
+			"name" = "Resources";
+			"children" = (
+				"AB2F68E930451FEF00A1B7D4",
+				"AB2F68EA30451FEF00A1B7D4",
+				"AB2F68EB30451FEF00A1B7D4",
+				"AB2F68EC30451FEF00A1B7D4",
+				"AB2F68ED30451FEF00A1B7D4",
+				"AB2F68EE30451FEF00A1B7D4",
+				"AB2F68EF30451FEF00A1B7D4",
+				"AB2F68F030451FEF00A1B7D4",
+				"AB2F68F130451FEF00A1B7D4",
+				"AB2F68F230451FEF00A1B7D4",
+			);
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"AB2F68EB30451FEF00A1B7D4" = {
+			"path" = "../../../dist/safari/popup.js";
+			"isa" = "PBXFileReference";
+			"name" = "popup.js";
+			"lastKnownFileType" = "sourcecode.javascript";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68F830451FEF00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68EE30451FEF00A1B7D4";
+		};
+		"AB2F68FB30451FEF00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68F130451FEF00A1B7D4";
+		};
+		"AB2F68D230451FEE00A1B7D4" = {
+			"path" = "Info.plist";
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.plist.xml";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68D530451FEF00A1B7D4" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"AB2F68FA30451FEF00A1B7D4",
+				"AB2F68F430451FEF00A1B7D4",
+				"AB2F68FC30451FEF00A1B7D4",
+				"AB2F68F630451FEF00A1B7D4",
+				"AB2F68F530451FEF00A1B7D4",
+				"AB2F68FB30451FEF00A1B7D4",
+				"AB2F68F330451FEF00A1B7D4",
+				"AB2F68F830451FEF00A1B7D4",
+				"AB2F68F930451FEF00A1B7D4",
+				"AB2F68F730451FEF00A1B7D4",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"AB2F68BC30451FEE00A1B7D4" = {
+			"path" = "Paramount Quality+.app";
+			"isa" = "PBXFileReference";
+			"includeInIndex" = "0";
+			"explicitFileType" = "wrapper.application";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"AB2F68B930451FEE00A1B7D4" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"AB2F68F530451FEF00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68EB30451FEF00A1B7D4";
+		};
+		"AB2F68E530451FEF00A1B7D4" = {
+			"isa" = "XCConfigurationList";
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+			"buildConfigurations" = (
+				"AB2F68E630451FEF00A1B7D4",
+				"AB2F68E730451FEF00A1B7D4",
+			);
+		};
+		"AB2F68DF30451FEF00A1B7D4" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"CLANG_WARN_RANGE_LOOP_ANALYSIS" = "YES";
+				"ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS" = "YES";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"CLANG_WARN_INFINITE_RECURSION" = "YES";
+				"ONLY_ACTIVE_ARCH" = "YES";
+				"GCC_WARN_UNUSED_VARIABLE" = "YES";
+				"CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING" = "YES";
+				"CLANG_WARN_UNGUARDED_AVAILABILITY" = "YES_AGGRESSIVE";
+				"COPY_PHASE_STRIP" = "NO";
+				"CLANG_WARN_BOOL_CONVERSION" = "YES";
+				"CLANG_WARN_ENUM_CONVERSION" = "YES";
+				"CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS" = "YES";
+				"CLANG_WARN_COMMA" = "YES";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+				"MACOSX_DEPLOYMENT_TARGET" = "26.5";
+				"CLANG_WARN_INT_CONVERSION" = "YES";
+				"ENABLE_STRICT_OBJC_MSGSEND" = "YES";
+				"CLANG_WARN_DOCUMENTATION_COMMENTS" = "YES";
+				"CLANG_WARN_SUSPICIOUS_MOVE" = "YES";
+				"SDKROOT" = "macosx";
+				"CLANG_WARN_EMPTY_BODY" = "YES";
+				"MTL_ENABLE_DEBUG_INFO" = "INCLUDE_SOURCE";
+				"MTL_FAST_MATH" = "YES";
+				"CLANG_ENABLE_OBJC_ARC" = "YES";
+				"GCC_WARN_UNINITIALIZED_AUTOS" = "YES_AGGRESSIVE";
+				"GCC_C_LANGUAGE_STANDARD" = "gnu17";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"ALWAYS_SEARCH_USER_PATHS" = "NO";
+				"ENABLE_TESTABILITY" = "YES";
+				"CLANG_WARN_DIRECT_OBJC_ISA_USAGE" = "YES_ERROR";
+				"CLANG_WARN_CONSTANT_CONVERSION" = "YES";
+				"GCC_NO_COMMON_BLOCKS" = "YES";
+				"CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF" = "YES";
+				"CLANG_WARN_OBJC_ROOT_CLASS" = "YES_ERROR";
+				"LOCALIZATION_PREFERS_STRING_CATALOGS" = "YES";
+				"CLANG_CXX_LANGUAGE_STANDARD" = "gnu++20";
+				"GCC_WARN_64_TO_32_BIT_CONVERSION" = "YES";
+				"CLANG_WARN__DUPLICATE_METHOD_MATCH" = "YES";
+				"GCC_DYNAMIC_NO_PIC" = "NO";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"GCC_WARN_UNDECLARED_SELECTOR" = "YES";
+				"CLANG_ANALYZER_NONNULL" = "YES";
+				"CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION" = "YES_AGGRESSIVE";
+				"CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER" = "YES";
+				"CLANG_ENABLE_OBJC_WEAK" = "YES";
+				"CLANG_WARN_STRICT_PROTOTYPES" = "YES";
+				"GCC_OPTIMIZATION_LEVEL" = "0";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+				"GCC_WARN_ABOUT_RETURN_TYPE" = "YES_ERROR";
+				"GCC_WARN_UNUSED_FUNCTION" = "YES";
+				"CLANG_WARN_UNREACHABLE_CODE" = "YES";
+				"CLANG_WARN_NON_LITERAL_NULL_CONVERSION" = "YES";
+				"GCC_PREPROCESSOR_DEFINITIONS" = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				"CLANG_WARN_OBJC_LITERAL_CONVERSION" = "YES";
+			};
+			"name" = "Debug";
+		};
+		"AB2F68EF30451FEF00A1B7D4" = {
+			"path" = "../../../dist/safari/_locales";
+			"isa" = "PBXFileReference";
+			"name" = "_locales";
+			"lastKnownFileType" = "folder";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68E230451FEF00A1B7D4" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "$(PQP_EXTENSION_BUNDLE_ID)";
+				"STRING_CATALOG_GENERATE_SYMBOLS" = "YES";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Paramount Quality+ Extension";
+				"OTHER_LDFLAGS" = (
+					"-framework",
+					"SafariServices",
+				);
+				"CODE_SIGN_STYLE" = "Automatic";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				"SWIFT_VERSION" = "5.0";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"SWIFT_APPROACHABLE_CONCURRENCY" = "YES";
+				"SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY" = "YES";
+				"SKIP_INSTALL" = "YES";
+				"ENABLE_APP_SANDBOX" = "YES";
+				"SWIFT_EMIT_LOC_STRINGS" = "YES";
+				"INFOPLIST_FILE" = "Paramount Quality+ Extension/Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+			};
+			"name" = "Debug";
+			"baseConfigurationReference" = "2DC9A411000D2BDA1D62165F";
+		};
+		"AB2F68F230451FEF00A1B7D4" = {
+			"path" = "../../../dist/safari/safari-actions.js";
+			"isa" = "PBXFileReference";
+			"name" = "safari-actions.js";
+			"lastKnownFileType" = "sourcecode.javascript";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68DC30451FEF00A1B7D4" = {
+			"path" = "SafariWebExtensionHandler.swift";
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68D930451FEF00A1B7D4" = {
+			"isa" = "PBXContainerItemProxy";
+			"containerPortal" = "AB2F68B430451FEE00A1B7D4";
+			"remoteGlobalIDString" = "AB2F68D630451FEF00A1B7D4";
+			"remoteInfo" = "Paramount Quality+ Extension";
+			"proxyType" = "1";
+		};
+		"AB2F68EC30451FEF00A1B7D4" = {
+			"path" = "../../../dist/safari/popup.html";
+			"isa" = "PBXFileReference";
+			"name" = "popup.html";
+			"lastKnownFileType" = "text.html";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68E930451FEF00A1B7D4" = {
+			"path" = "../../../dist/safari/safari-popup.css";
+			"isa" = "PBXFileReference";
+			"name" = "safari-popup.css";
+			"lastKnownFileType" = "text.css";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68B330451FEE00A1B7D4" = {
+			"isa" = "PBXGroup";
+			"sourceTree" = "<group>";
+			"children" = (
+				"AB2F68BE30451FEE00A1B7D4",
+				"AB2F68DB30451FEF00A1B7D4",
+				"AB2F68BD30451FEE00A1B7D4",
+				"FD378012CA2AEE7CCA996876",
+			);
+		};
+		"AB2F68FC30451FEF00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68F230451FEF00A1B7D4";
+		};
+		"AB2F68F930451FEF00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68EF30451FEF00A1B7D4";
+		};
+		"AB2F68D630451FEF00A1B7D4" = {
+			"buildConfigurationList" = "AB2F68E130451FEF00A1B7D4";
+			"productReference" = "AB2F68D730451FEF00A1B7D4";
+			"productType" = "com.apple.product-type.app-extension";
+			"packageProductDependencies" = (
+			);
+			"productName" = "Paramount Quality+ Extension";
+			"isa" = "PBXNativeTarget";
+			"buildPhases" = (
+				"AB2F68D330451FEF00A1B7D4",
+				"AB2F68D430451FEF00A1B7D4",
+				"AB2F68D530451FEF00A1B7D4",
+			);
+			"dependencies" = (
+			);
+			"name" = "Paramount Quality+ Extension";
+			"buildRules" = (
+			);
+		};
+		"AB2F68E630451FEF00A1B7D4" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"INFOPLIST_KEY_NSPrincipalClass" = "NSApplication";
+				"COMBINE_HIDPI_IMAGES" = "YES";
+				"SWIFT_EMIT_LOC_STRINGS" = "YES";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "$(PQP_APP_BUNDLE_ID)";
+				"ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME" = "AccentColor";
+				"STRING_CATALOG_GENERATE_SYMBOLS" = "YES";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Paramount Quality+";
+				"OTHER_LDFLAGS" = (
+					"-framework",
+					"SafariServices",
+					"-framework",
+					"WebKit",
+				);
+				"CODE_SIGN_STYLE" = "Automatic";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				"SWIFT_VERSION" = "5.0";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"SWIFT_APPROACHABLE_CONCURRENCY" = "YES";
+				"ENABLE_OUTGOING_NETWORK_CONNECTIONS" = "YES";
+				"SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY" = "YES";
+				"ENABLE_APP_SANDBOX" = "YES";
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"INFOPLIST_FILE" = "Paramount Quality+/Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+			};
+			"name" = "Debug";
+			"baseConfigurationReference" = "2DC9A411000D2BDA1D62165F";
+		};
+		"AB2F68BD30451FEE00A1B7D4" = {
+			"isa" = "PBXGroup";
+			"name" = "Products";
+			"children" = (
+				"AB2F68BC30451FEE00A1B7D4",
+				"AB2F68D730451FEF00A1B7D4",
+			);
+			"sourceTree" = "<group>";
+		};
+		"AB2F68F630451FEF00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68EC30451FEF00A1B7D4";
+		};
+		"AB2F68D030451FEE00A1B7D4" = {
+			"path" = "Assets.xcassets";
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "folder.assetcatalog";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68D330451FEF00A1B7D4" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"AB2F68DD30451FEF00A1B7D4",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"AB2F68BA30451FEE00A1B7D4" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"AB2F68D130451FEE00A1B7D4",
+				"921C3738F4006AFCD07425FD",
+				"FACED0000000000000000002",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		"AB2F68E330451FEF00A1B7D4" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "$(PQP_EXTENSION_BUNDLE_ID)";
+				"STRING_CATALOG_GENERATE_SYMBOLS" = "YES";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Paramount Quality+ Extension";
+				"OTHER_LDFLAGS" = (
+					"-framework",
+					"SafariServices",
+				);
+				"CODE_SIGN_STYLE" = "Automatic";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				"SWIFT_VERSION" = "5.0";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"SWIFT_APPROACHABLE_CONCURRENCY" = "YES";
+				"SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY" = "YES";
+				"SKIP_INSTALL" = "YES";
+				"ENABLE_APP_SANDBOX" = "YES";
+				"SWIFT_EMIT_LOC_STRINGS" = "YES";
+				"INFOPLIST_FILE" = "Paramount Quality+ Extension/Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+			};
+			"name" = "Release";
+			"baseConfigurationReference" = "2DC9A411000D2BDA1D62165F";
+		};
+		"AB2F68F330451FEF00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68E930451FEF00A1B7D4";
+		};
+		"AB2F68B730451FEE00A1B7D4" = {
+			"isa" = "XCConfigurationList";
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+			"buildConfigurations" = (
+				"AB2F68DF30451FEF00A1B7D4",
+				"AB2F68E030451FEF00A1B7D4",
+			);
+		};
+		"AB2F68DD30451FEF00A1B7D4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB2F68DC30451FEF00A1B7D4";
+		};
+		"AB2F68ED30451FEF00A1B7D4" = {
+			"path" = "../../../dist/safari/injected";
+			"isa" = "PBXFileReference";
+			"name" = "injected";
+			"lastKnownFileType" = "folder";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68B430451FEE00A1B7D4" = {
+			"buildConfigurationList" = "AB2F68B730451FEE00A1B7D4";
+			"targets" = (
+				"AB2F68BB30451FEE00A1B7D4",
+				"AB2F68D630451FEF00A1B7D4",
+			);
+			"minimizedProjectReferenceProxies" = "1";
+			"developmentRegion" = "en";
+			"knownRegions" = (
+				"en",
+				"Base",
+			);
+			"isa" = "PBXProject";
+			"productRefGroup" = "AB2F68BD30451FEE00A1B7D4";
+			"projectDirPath" = "";
+			"attributes" = {
+				"LastSwiftUpdateCheck" = "2660";
+				"BuildIndependentTargetsInParallel" = "1";
+				"LastUpgradeCheck" = "2660";
+				"TargetAttributes" = {
+					"AB2F68D630451FEF00A1B7D4" = {
+						"CreatedOnToolsVersion" = "26.6";
+					};
+					"AB2F68BB30451FEE00A1B7D4" = {
+						"CreatedOnToolsVersion" = "26.6";
+					};
+				};
+			};
+			"hasScannedForEncodings" = "0";
+			"projectRoot" = "";
+			"preferredProjectObjectVersion" = "77";
+			"mainGroup" = "AB2F68B330451FEE00A1B7D4";
+		};
+		"AB2F68F030451FEF00A1B7D4" = {
+			"path" = "../../../dist/safari/content.js";
+			"isa" = "PBXFileReference";
+			"name" = "content.js";
+			"lastKnownFileType" = "sourcecode.javascript";
+			"sourceTree" = "<group>";
+		};
+		"AB2F68E030451FEF00A1B7D4" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"CLANG_WARN_DOCUMENTATION_COMMENTS" = "YES";
+				"CLANG_WARN_UNGUARDED_AVAILABILITY" = "YES_AGGRESSIVE";
+				"CLANG_WARN_DIRECT_OBJC_ISA_USAGE" = "YES_ERROR";
+				"CLANG_ENABLE_OBJC_ARC" = "YES";
+				"CLANG_WARN_SUSPICIOUS_MOVE" = "YES";
+				"CLANG_WARN__DUPLICATE_METHOD_MATCH" = "YES";
+				"CLANG_ENABLE_OBJC_WEAK" = "YES";
+				"ENABLE_NS_ASSERTIONS" = "NO";
+				"CLANG_WARN_INFINITE_RECURSION" = "YES";
+				"GCC_WARN_UNDECLARED_SELECTOR" = "YES";
+				"MACOSX_DEPLOYMENT_TARGET" = "26.5";
+				"SWIFT_COMPILATION_MODE" = "wholemodule";
+				"CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION" = "YES_AGGRESSIVE";
+				"SDKROOT" = "macosx";
+				"CLANG_CXX_LANGUAGE_STANDARD" = "gnu++20";
+				"LOCALIZATION_PREFERS_STRING_CATALOGS" = "YES";
+				"CLANG_WARN_BOOL_CONVERSION" = "YES";
+				"CLANG_WARN_UNREACHABLE_CODE" = "YES";
+				"ENABLE_STRICT_OBJC_MSGSEND" = "YES";
+				"CLANG_ANALYZER_NONNULL" = "YES";
+				"CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING" = "YES";
+				"CLANG_WARN_STRICT_PROTOTYPES" = "YES";
+				"CLANG_WARN_ENUM_CONVERSION" = "YES";
+				"CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER" = "YES";
+				"GCC_WARN_64_TO_32_BIT_CONVERSION" = "YES";
+				"ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS" = "YES";
+				"CLANG_WARN_EMPTY_BODY" = "YES";
+				"GCC_WARN_ABOUT_RETURN_TYPE" = "YES_ERROR";
+				"GCC_WARN_UNINITIALIZED_AUTOS" = "YES_AGGRESSIVE";
+				"CLANG_WARN_COMMA" = "YES";
+				"GCC_C_LANGUAGE_STANDARD" = "gnu17";
+				"GCC_WARN_UNUSED_VARIABLE" = "YES";
+				"CLANG_WARN_RANGE_LOOP_ANALYSIS" = "YES";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"CLANG_WARN_INT_CONVERSION" = "YES";
+				"ALWAYS_SEARCH_USER_PATHS" = "NO";
+				"CLANG_WARN_OBJC_ROOT_CLASS" = "YES_ERROR";
+				"CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS" = "YES";
+				"COPY_PHASE_STRIP" = "NO";
+				"CLANG_WARN_CONSTANT_CONVERSION" = "YES";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+				"GCC_NO_COMMON_BLOCKS" = "YES";
+				"MTL_ENABLE_DEBUG_INFO" = "NO";
+				"CLANG_WARN_NON_LITERAL_NULL_CONVERSION" = "YES";
+				"MTL_FAST_MATH" = "YES";
+				"GCC_WARN_UNUSED_FUNCTION" = "YES";
+				"CLANG_WARN_OBJC_LITERAL_CONVERSION" = "YES";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+				"CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF" = "YES";
+			};
+			"name" = "Release";
+		};
+		"DA9AD81D7F383800F9291DA1" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "../Core/AppleConfiguration.swift";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"5538422DB24312AEBC1C4CA3" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "DA9AD81D7F383800F9291DA1";
+		};
+		"4D781A4F26CB51F129DBC729" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "../Core/TipStore.swift";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"B4B4D5122CF66E365F65601A" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "4D781A4F26CB51F129DBC729";
+		};
+		"5C719113DF8AD1AEA3563645" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "../Native/AppDelegate.swift";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"A4237FADCCB704F1AB36CAF6" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "5C719113DF8AD1AEA3563645";
+		};
+		"059C4F9BDC0E1E0D59B0F289" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "../Native/SetupView.swift";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"AC0BC2EE0D5C6D91087C01D5" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "059C4F9BDC0E1E0D59B0F289";
+		};
+		"847F05D7EAE6D24207FB1DC8" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "../Native/StoreKitCommerce.swift";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"E0DF2F6002E58135201DB121" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "847F05D7EAE6D24207FB1DC8";
+		};
+		"C5EA468EB6079677AFFED76C" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "../Native/SupportViews.swift";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"A3DAB879943A282C5015D098" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "C5EA468EB6079677AFFED76C";
+		};
+		"F6ABED62D1A1879DF431BA9E" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.json";
+			"path" = "../Configuration.json";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"921C3738F4006AFCD07425FD" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F6ABED62D1A1879DF431BA9E";
+		};
+		"2DC9A411000D2BDA1D62165F" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.xcconfig";
+			"path" = "../Configurations/Shared.xcconfig";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"19DC5382DD761A5D2E3CC186" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.json";
+			"path" = "../Configurations/TipProducts.storekit";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"FD378012CA2AEE7CCA996876" = {
+			"isa" = "PBXGroup";
+			"name" = "Native and Configuration";
+			"children" = (
+				"DA9AD81D7F383800F9291DA1",
+				"4D781A4F26CB51F129DBC729",
+				"5C719113DF8AD1AEA3563645",
+				"059C4F9BDC0E1E0D59B0F289",
+				"847F05D7EAE6D24207FB1DC8",
+				"C5EA468EB6079677AFFED76C",
+				"FACED0000000000000000003",
+				"F6ABED62D1A1879DF431BA9E",
+				"2DC9A411000D2BDA1D62165F",
+				"19DC5382DD761A5D2E3CC186",
+				"FACED0000000000000000001",
+			);
+			"sourceTree" = "<group>";
+		};
+		"FACED0000000000000000001" = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = "../Native/Localizable.xcstrings"; sourceTree = SOURCE_ROOT; };
+		"FACED0000000000000000002" = {isa = PBXBuildFile; fileRef = "FACED0000000000000000001"; };
+		"FACED0000000000000000003" = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Native/SupportActionStrip.swift"; sourceTree = SOURCE_ROOT; };
+		"FACED0000000000000000004" = {isa = PBXBuildFile; fileRef = "FACED0000000000000000003"; };
+	};
+	"rootObject" = "AB2F68B430451FEE00A1B7D4";
+}

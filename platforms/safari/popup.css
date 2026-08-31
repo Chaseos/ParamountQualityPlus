@@ -1,0 +1,22 @@
+/* Preserve the existing 340px content area plus its 16px side padding. */
+html { width: 372px; background: var(--bg-color, #0f172a); }
+body { box-sizing: border-box; width: 372px; overflow-x: hidden; }
+.safari-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.safari-action {
+  display: inline-flex; align-items: center; gap: 0; min-height: 28px;
+  padding: 3px 6px; border: 1px solid transparent; border-radius: 8px;
+  text-decoration: none; cursor: pointer; opacity: .78;
+  transition: opacity 180ms ease, background-color 180ms ease;
+}
+.safari-rate { color: #ffc857; }
+.safari-support { color: #ff5a5f; }
+.safari-action svg { width: 18px; height: 18px; flex: 0 0 18px; fill: currentColor; }
+.safari-action-label { display: grid; grid-template-columns: 0fr; transition: grid-template-columns 220ms ease; }
+.safari-action-label > span { min-width: 0; overflow: hidden; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.safari-action:is(:hover, :focus-visible) { opacity: 1; background: #ffffff0d; border-color: currentColor; }
+.safari-action:is(:hover, :focus-visible) .safari-action-label { grid-template-columns: 1fr; margin-inline-start: 6px; }
+.safari-action:focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; }
+.advanced-content.expanded { max-height: none; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

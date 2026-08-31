@@ -1,3 +1,10 @@
+// Safari serves complete FairPlay programs through this Google DAI route.
+// The hostname alone cannot distinguish these playlists from advertisements.
+export function isProgramPlaylist(url) {
+    return url.protocol === 'https:' && url.hostname === 'pubads.g.doubleclick.net' &&
+        /^\/ondemand\/hls\/content\/[^/]+\/vid\/[^/]+\/CHS\/streams\/[^/]+\/(?:[^/]+\/)*[^/]+\.m3u8$/i.test(url.pathname);
+}
+
 const DAI_VARIANT_PATTERN = /\/variant\/([^/]+)\/bandwidth\/(\d+)\.m3u8/i;
 
 const EXCLUDED_PATH_MARKERS = [
@@ -50,7 +57,7 @@ export function classifyMediaRequest(url) {
   const cmcd = parseCmcd(urlObj);
   const isAudio = cmcd.ot === 'a' || isExcludedReference(lower);
   const isDaiPlaylist = DAI_VARIANT_PATTERN.test(urlObj.pathname);
-  const isAd = !isDaiPlaylist && isAdReference(lower);
+  const isAd = !isDaiPlaylist && !isProgramPlaylist(urlObj) && isAdReference(lower);
   const isManifest = /\.(?:mpd|m3u8)(?:$|\?)/i.test(urlObj.toString());
   const isSegment = /\.(?:m4s|m4v|mp4|ts)(?:$|\?)/i.test(urlObj.toString());
   // DAI media can be served from event playlists, stitched program CDNs, or
