@@ -2,6 +2,7 @@ import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateSafariManifestText } from './apple-extension-metadata.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist');
@@ -41,6 +42,7 @@ for (const file of await moduleGraph('injected/index.js')) if (!resources.has(fi
 async function safari(destination) {
   const config = JSON.parse(await read('apple/Configuration.json'));
   const translations = JSON.parse(await read('platforms/safari/messages.json'));
+  const descriptions = JSON.parse(await read('platforms/safari/descriptions.json'));
   let html = await read('popup.html');
   html = removeRange(html, '    .kofi-link {', '    .status-dot {', 'support styles');
   html = removeRange(html, '    .review-card,', '    .advanced-header {', 'promotion styles');
@@ -83,7 +85,8 @@ async function safari(destination) {
     const translated = translations[entry.name];
     if (!translated) throw Error(`Missing Apple action translations for ${entry.name}`);
     ['rateThisApp', 'supportOptions', 'ratingUnavailable'].forEach((key, i) => { messages[key] = { message: translated[i] }; });
-    if ([...messages.appName.message].length > 40) throw Error(`Safari extension name exceeds 40 characters: ${entry.name}`);
+    messages.appDesc = { ...messages.appDesc, message: descriptions[entry.name] };
+    validateSafariManifestText(manifest, messages, entry.name);
     await writeFile(file, JSON.stringify(messages, null, 2) + '\n');
   }
   async function scan(dir) {

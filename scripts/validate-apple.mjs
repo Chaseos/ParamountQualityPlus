@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { validateSafariManifestText } from './apple-extension-metadata.mjs';
 const config=JSON.parse(await readFile('apple/Configuration.json','utf8'));
 const manifest=JSON.parse(await readFile('dist/safari/manifest.json','utf8'));
 assert.equal(manifest.version,config.version,'Apple and extension versions must match');
@@ -13,7 +14,7 @@ for(const file of ['popup.html','popup.js','content.js','safari-actions.js','saf
 for(const e of await readdir('dist/safari/_locales',{withFileTypes:true})) {
  if(!e.isDirectory())continue;
  const messages=JSON.parse(await readFile(`dist/safari/_locales/${e.name}/messages.json`,'utf8'));
- assert([...messages.appName.message].length<=40);
+ validateSafariManifestText(manifest,messages,e.name);
  const html=await readFile('dist/safari/popup.html','utf8');
  for(const m of html.matchAll(/data-i18n(?:-title|-aria-label)?="([^"]+)"/g))assert(messages[m[1]],`${e.name}: missing ${m[1]}`);
 }

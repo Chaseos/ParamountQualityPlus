@@ -2,6 +2,14 @@
 
 Updated 2026-08-31. This is a macOS-only containing app and Safari Web Extension. Implementation and local verification do not authorize publication or establish release readiness.
 
+## App Store upload metadata correction (2026-08-31)
+
+The first user-attempted upload was rejected with seven ITMS-90862 errors. The Safari manifest's localized description (`appDesc`) exceeded 112 characters in de, en, es, es_419, fr, it and pt_BR; Korean was already below the limit. Earlier local validation checked the extension name but missed this description constraint. This was an upload validation failure, not evidence of a playback or signing failure.
+
+Safari now uses concise localized descriptions from `platforms/safari/descriptions.json`. Chromium/Firefox retain their original descriptions. Both packaging and Apple bundle validation resolve manifest name/description messages and enforce nonempty strings and their separate 40/112-character extension limits. The App Store listing name retains its separate 30-character check. Regression coverage includes all packaged locales, exact limits, missing messages and invalid types.
+
+Create a fresh archive from the existing normal **Paramount Quality+** scheme before retrying upload; the rejected archive still contains the old descriptions. Do not reuse or edit the rejected archive in place. No playback retest is required solely for this metadata change. Raw distribution logs contain sensitive upload information and remain outside the repository; keep only sanitized error summaries in ignored local evidence. A rebuilt app does not establish that Apple accepted the corrected upload.
+
 ## Manual checklist result and shipping status
 
 After the batched manual-test handoff, the user reported that everything appeared to work. Record this as an overall user-reported local pass, superseding the earlier automation-only checkout uncertainty for the scenarios they exercised. Individual transaction completion records and a case-by-case result list were not supplied; do not invent them or mark exact-artifact release gates from this general report. No additional local retest loop is requested. The next stage is a fresh distribution/TestFlight candidate, subject to separate archive/upload authorization. TestFlight/sandbox, Intel/older macOS, store assets, privacy publication, compliance confirmations and authorized review access remain separate release gates.

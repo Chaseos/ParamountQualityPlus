@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import vm from 'node:vm';
+import { validateSafariManifestText } from '../scripts/apple-extension-metadata.mjs';
 
 const read = file => readFileSync(file, 'utf8');
 beforeAll(() => execFileSync(process.execPath, ['scripts/build.mjs']), 30000);
@@ -22,6 +23,31 @@ test('All packages recognize DAI program playlists without admitting ad segments
     }
 });
 function files(dir) { return readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?files(path.join(dir,e.name)):[path.join(dir,e.name)]); }
+
+test('all packaged Safari manifest descriptions satisfy the App Store upload limit', () => {
+    const manifest = JSON.parse(read('dist/safari/manifest.json'));
+    const key = manifest.description.match(/^__MSG_(.+)__$/)[1];
+    for (const locale of readdirSync('dist/safari/_locales')) {
+        const message = JSON.parse(read(`dist/safari/_locales/${locale}/messages.json`))[key]?.message;
+        expect(typeof message).toBe('string');
+        expect(message.trim().length).toBeGreaterThan(0);
+        expect(message.length).toBeLessThanOrEqual(112);
+    }
+});
+
+test('Safari metadata validation resolves manifest messages and enforces both text limits', () => {
+    const manifest = { name: '__MSG_title__', description: '__MSG_summary__' };
+    const messages = { title: { message: 'N'.repeat(40) }, summary: { message: 'D'.repeat(112) } };
+    expect(() => validateSafariManifestText(manifest, messages, 'en')).not.toThrow();
+    expect(() => validateSafariManifestText({ name: 'Name', description: 'Description' }, {}, 'en')).not.toThrow();
+    for (const value of [undefined, null, 42, '', '   ', 'D'.repeat(113)]) {
+        expect(() => validateSafariManifestText(manifest, { ...messages, summary: { message: value } }, 'en'))
+            .toThrow(/description/);
+    }
+    expect(() => validateSafariManifestText(manifest, { summary: messages.summary }, 'en')).toThrow(/name/);
+    expect(() => validateSafariManifestText(manifest, { ...messages, title: { message: 'N'.repeat(41) } }, 'en'))
+        .toThrow(/name/);
+});
 
 test('non-Apple runtime remains byte-for-byte identical, with browser-specific manifests', () => {
     for (const browser of ['chromium','firefox']) {
