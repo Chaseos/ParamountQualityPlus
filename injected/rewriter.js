@@ -152,8 +152,13 @@ function getParamountVodIdentity(value) {
     } catch {
       // A malformed escape should not prevent checking the raw path segment.
     }
-    const match = segment.match(/^(.+)_c\d+_\d{3,4}p_([^/_]+)_\d{2,6}$/i);
-    if (match) return `${match[1]}|${match[2]}`;
+    const modernMatch = segment.match(/^(.+)_c\d+_\d{3,4}p_([^/_]+)_\d{2,6}$/i);
+    if (modernMatch) return `${modernMatch[1]}|${modernMatch[2]}`;
+
+    // Older catalog entries (including early NCIS seasons) use
+    // TITLE_ASSETID_BITRATETIER without codec or height markers.
+    const legacyMatch = segment.match(/^(.+)_([^/_]+)_\d{2,6}$/);
+    if (legacyMatch) return `${legacyMatch[1]}|${legacyMatch[2]}`;
   }
   return null;
 }

@@ -258,4 +258,42 @@ describe('URL Rewriting', () => {
             'PPUSA_SURVIVOR_5008_V1_c24_540p_3820071_2000/seg_10.m4s';
         expect(maybeRewriteUrl(input)).toBe(input);
     });
+
+    test('rewrites legacy NCIS manual selections across repeated DASH periods', () => {
+        setAvailableRepresentations([
+            {
+                id: 'ncis-720', height: 720, bandwidth: 3721282, family: 'dash',
+                pathId: 'CBS_NCIS_001_R_1935084_3000',
+                variants: [
+                    {
+                        id: 'ncis-720-p1', height: 720, bandwidth: 3721282, family: 'dash',
+                        pathId: 'CBS_NCIS_001_R_1935084_3000', compatibilityKey: 'dash:period-1:avc'
+                    },
+                    {
+                        id: 'ncis-720-p2', height: 720, bandwidth: 3732644, family: 'dash',
+                        pathId: 'CBS_NCIS_001_R_1935084_3000', compatibilityKey: 'dash:period-2:avc'
+                    }
+                ]
+            },
+            {
+                id: 'ncis-576', height: 576, bandwidth: 2602453, family: 'dash',
+                pathId: 'CBS_NCIS_001_R_1935084_2100',
+                variants: [
+                    {
+                        id: 'ncis-576-p1', height: 576, bandwidth: 2602453, family: 'dash',
+                        pathId: 'CBS_NCIS_001_R_1935084_2100', compatibilityKey: 'dash:period-1:avc'
+                    },
+                    {
+                        id: 'ncis-576-p2', height: 576, bandwidth: 2573747, family: 'dash',
+                        pathId: 'CBS_NCIS_001_R_1935084_2100', compatibilityKey: 'dash:period-2:avc'
+                    }
+                ]
+            }
+        ]);
+        setConfig({ forceMax: false, forcedId: 'ncis-720', forcedHeight: 720 });
+
+        const input = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/2014/06/05/' +
+            '274068035997/3405928_cenc_precon_dash/CBS_NCIS_001_R_1935084_2100/seg_24.m4s';
+        expect(maybeRewriteUrl(input)).toContain('CBS_NCIS_001_R_1935084_3000/seg_24.m4s');
+    });
 });
