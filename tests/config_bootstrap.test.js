@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { consumePendingConfig, PENDING_CONFIG_KEY } from '../injected/config.js';
-import { getConfig, setConfig } from '../injected/state.js';
+import { DEFAULT_CONFIG, getConfig, normalizeConfig, setConfig } from '../injected/state.js';
 
 describe('Quality configuration bootstrap', () => {
   beforeEach(() => {
@@ -34,6 +34,22 @@ describe('Quality configuration bootstrap', () => {
     };
 
     expect(consumePendingConfig(storage)).toBeNull();
-    expect(getConfig()).toEqual({ forceMax: false, forcedId: null, forcedHeight: null });
+    expect(getConfig()).toEqual(DEFAULT_CONFIG);
+  });
+
+  test('normalizes corrupt stored network limits before requests use them', () => {
+    expect(normalizeConfig({
+      forceMax: true,
+      forcedId: 123,
+      forcedHeight: 'invalid',
+      maxRetries: 0,
+      prefetchCount: 99
+    })).toEqual(expect.objectContaining({
+      forceMax: true,
+      forcedId: null,
+      forcedHeight: null,
+      maxRetries: 1,
+      prefetchCount: 20
+    }));
   });
 });

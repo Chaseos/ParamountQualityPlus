@@ -1,8 +1,12 @@
-// Safari serves complete FairPlay programs through this Google DAI route.
-// The hostname alone cannot distinguish these playlists from advertisements.
-export function isProgramPlaylist(url) {
+// Google serves complete programs through this otherwise ad-associated host.
+// The hostname alone cannot distinguish these manifests from advertisements.
+export function isProgramManifest(url) {
     return url.protocol === 'https:' && url.hostname === 'pubads.g.doubleclick.net' &&
-        /^\/ondemand\/hls\/content\/[^/]+\/vid\/[^/]+\/CHS\/streams\/[^/]+\/(?:[^/]+\/)*[^/]+\.m3u8$/i.test(url.pathname);
+        /^\/ondemand\/(?:hls|dash)\/content\/[^/]+\/vid\/[^/]+\/CHS\/streams\/[^/]+\/(?:[^/]+\/)*(?:[^/]+\.(?:m3u8|mpd))$/i.test(url.pathname);
+}
+
+export function isProgramPlaylist(url) {
+  return isProgramManifest(url) && /\.m3u8$/i.test(url.pathname);
 }
 
 const DAI_VARIANT_PATTERN = /\/variant\/([^/]+)\/bandwidth\/(\d+)\.m3u8/i;
@@ -36,6 +40,14 @@ export function toUrl(value, base = window.location.origin) {
   }
 }
 
+export function getHlsTier(value) {
+  const urlObj = value instanceof URL ? value : toUrl(value);
+  const pathname = urlObj?.pathname || String(value || '').split(/[?#]/, 1)[0];
+  const match = pathname.match(/manifest(?:_video)?_(\d+)(?:[_/.]|$)/i) ||
+    pathname.match(/video[_/](\d+)[_/]/i);
+  return match?.[1] || null;
+}
+
 export function parseCmcd(url) {
   const urlObj = url instanceof URL ? url : toUrl(url);
   const raw = urlObj?.searchParams.get('CMCD');
@@ -57,7 +69,7 @@ export function classifyMediaRequest(url) {
   const cmcd = parseCmcd(urlObj);
   const isAudio = cmcd.ot === 'a' || isExcludedReference(lower);
   const isDaiPlaylist = DAI_VARIANT_PATTERN.test(urlObj.pathname);
-  const isAd = !isDaiPlaylist && !isProgramPlaylist(urlObj) && isAdReference(lower);
+  const isAd = !isDaiPlaylist && !isProgramManifest(urlObj) && isAdReference(lower);
   const isManifest = /\.(?:mpd|m3u8)(?:$|\?)/i.test(urlObj.toString());
   const isSegment = /\.(?:m4s|m4v|mp4|ts)(?:$|\?)/i.test(urlObj.toString());
   // DAI media can be served from event playlists, stitched program CDNs, or

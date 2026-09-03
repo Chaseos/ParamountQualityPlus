@@ -2,6 +2,7 @@ import {
   getDiagnosticSnapshot,
   initDiagnostics,
   recordDiagnosticEvent,
+  recordPlaybackCheckpoint,
   recordRequestAttempt,
   resetDiagnostics
 } from '../injected/diagnostics.js';
@@ -49,6 +50,15 @@ describe('Playback diagnostics', () => {
     expect(snapshot.counters.retry_attempts).toBe(1);
     expect(snapshot.counters.failed_attempts).toBe(1);
     expect(snapshot.counters.rewrite_result).toBe(1);
+  });
+
+  test('records named playback checkpoints for manual verification', () => {
+    recordPlaybackCheckpoint('ladder_ready', { streamKey: 'fixture', maxHeight: 1080 });
+
+    const checkpoint = getDiagnosticSnapshot().recentEvents.find(item => item.type === 'playback_checkpoint');
+    expect(checkpoint.detail).toEqual(expect.objectContaining({
+      checkpoint: 'ladder_ready', streamKey: 'fixture', maxHeight: 1080
+    }));
   });
 
   test('exposes a read-only page snapshot API', () => {

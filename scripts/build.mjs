@@ -65,6 +65,12 @@ async function safari(destination) {
   js = replaceRequired(js, 'updateStats(response);', 'updateStats(response);\n                    updateSafariPlaybackState(response);', 'native playback status');
   js = replaceRequired(js, 'function shouldShowGeolocationNotice(data, now = Date.now()) {', 'function shouldShowGeolocationNotice(data, now = Date.now()) {\n    if (data.nativePlayback) return false;', 'native location guidance');
   let content = (await read('content.js')).replaceAll('chrome.storage.sync', 'chrome.storage.local').replace("area === 'sync'", "area === 'local'");
+  content = replaceRequired(
+    content,
+    '/* PLATFORM_BOOTSTRAP */\ninjectScript();\nsyncConfig({ bootstrap: true });',
+    'syncConfig({ bootstrap: true, injectAfterConfig: true });',
+    'content bootstrap ordering'
+  );
   content = replaceRequired(content, '/* PLATFORM_CONTENT */', await read('platforms/safari/native-content.js'), 'native content bridge');
   await writeFile(path.join(destination, 'content.js'), content);
   await writeFile(path.join(destination, 'popup.js'), js);

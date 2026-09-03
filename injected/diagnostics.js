@@ -47,6 +47,15 @@ export function recordDiagnosticEvent(type, detail = {}) {
   trimEvents();
 }
 
+// Sparse, human-readable checkpoints for manual playback verification.
+// Per-request diagnostics remain available in the snapshot without filling the
+// console for every media segment.
+export function recordPlaybackCheckpoint(checkpoint, detail = {}) {
+  const payload = { checkpoint, ...detail };
+  recordDiagnosticEvent('playback_checkpoint', payload);
+  console.info?.(`[PQI checkpoint] ${checkpoint}`, detail);
+}
+
 export function recordRequestAttempt({
   transport,
   category,

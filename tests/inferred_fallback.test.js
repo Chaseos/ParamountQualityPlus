@@ -47,6 +47,10 @@ describe('Inferred Paramount VOD fallback', () => {
     }));
   });
 
+  test('does not infer a plain numeric tier without explicit video telemetry', () => {
+    expect(getInferredMaxCandidate(LEGACY_CBS_PLAIN_TIER_URL.split('?')[0])).toBeNull();
+  });
+
   test('uses the request planner configuration instead of stale global state', () => {
     setConfig({ forceMax: false, forcedId: null, forcedHeight: null });
 

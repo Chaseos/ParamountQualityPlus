@@ -195,4 +195,67 @@ describe('URL Rewriting', () => {
         const trailer = 'https://www.paramountplus.com/trailers/preview.mp4';
         expect(maybeRewriteUrl(trailer)).toBe(trailer);
     });
+
+    test('keeps tiered HLS rewrites within the source codec and audio family', () => {
+        setAvailableRepresentations([
+            {
+                id: 'hls-1080', height: 1080, bandwidth: 6000000,
+                family: 'tiered-hls', hlsTier: '7',
+                variants: [
+                    { id: 'hls-1080-avc', height: 1080, family: 'tiered-hls', hlsTier: '6', compatibilityKey: 'hls:avc:stereo:SDR' },
+                    { id: 'hls-1080-hevc', height: 1080, family: 'tiered-hls', hlsTier: '7', compatibilityKey: 'hls:hevc:surround:HDR' }
+                ]
+            },
+            {
+                id: 'hls-540', height: 540, bandwidth: 1800000,
+                family: 'tiered-hls', hlsTier: '3',
+                variants: [
+                    { id: 'hls-540-avc', height: 540, family: 'tiered-hls', hlsTier: '2', compatibilityKey: 'hls:avc:stereo:SDR' },
+                    { id: 'hls-540-hevc', height: 540, family: 'tiered-hls', hlsTier: '3', compatibilityKey: 'hls:hevc:surround:HDR' }
+                ]
+            }
+        ]);
+        setConfig({ forceMax: true, forcedId: null, forcedHeight: null });
+
+        expect(maybeRewriteUrl('https://host/video/manifest_video_2_0_123.ts'))
+            .toBe('https://host/video/manifest_video_6_0_123.ts');
+        expect(maybeRewriteUrl('https://host/video/manifest_video_3_0_123.ts'))
+            .toBe('https://host/video/manifest_video_7_0_123.ts');
+    });
+
+    test.each([
+        ['STAR_TREK_ST_101_c24_540p_4309720_2000', 'STAR_TREK_ST_101_c22_720p_4309720_3200'],
+        ['PPUSA_SURVIVOR_5008_V1_c24_540p_3820071_2000', 'PPUSA_SURVIVOR_5008_V1_c22_720p_3820071_3200']
+    ])('matches a manual VOD target to the current title and asset: %s', (sourcePath, targetPath) => {
+        const representations = [
+            {
+                id: 'vod-1080', height: 1080, bandwidth: 5812000, family: 'dash',
+                pathId: targetPath.replace('_c22_720p_', '_c20_1080p_').replace('_3200', '_5400'),
+                compatibilityKey: 'dash:period-0:avc'
+            },
+            {
+                id: 'vod-720', height: 720, bandwidth: 3800000, family: 'dash',
+                pathId: targetPath, compatibilityKey: 'dash:period-1:avc'
+            }
+        ];
+        setAvailableRepresentations(representations);
+        setConfig({ forceMax: false, forcedId: 'vod-720', forcedHeight: 720 });
+
+        expect(maybeRewriteUrl(
+            `https://vod.pplus.paramount.tech/title_cenc_precon_dash/${sourcePath}/seg_10.m4s?CMCD=ot%3Dv`
+        )).toContain(`${targetPath}/seg_10.m4s`);
+    });
+
+    test('does not match a manual VOD target from a different asset', () => {
+        setAvailableRepresentations([{
+            id: 'vod-720', height: 720, bandwidth: 3800000, family: 'dash',
+            pathId: 'PPUSA_SURVIVOR_5008_V1_c22_720p_9999999_3200',
+            compatibilityKey: 'dash:period-1:avc'
+        }]);
+        setConfig({ forceMax: false, forcedId: 'vod-720', forcedHeight: 720 });
+
+        const input = 'https://vod.pplus.paramount.tech/title_cenc_precon_dash/' +
+            'PPUSA_SURVIVOR_5008_V1_c24_540p_3820071_2000/seg_10.m4s';
+        expect(maybeRewriteUrl(input)).toBe(input);
+    });
 });

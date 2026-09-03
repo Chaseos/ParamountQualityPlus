@@ -8,8 +8,9 @@ import {
   resetInferredFallbackState
 } from './rewriter.js';
 import { maybePrefetchSegments } from './prefetch.js';
+import { createRecoveryController } from './recovery-controller.js';
 import { classifyMediaRequest, deriveStreamKey } from './stream-model.js';
-import { diagnosticNow, recordDiagnosticEvent, recordRequestAttempt } from './diagnostics.js';
+import { diagnosticNow, recordDiagnosticEvent, recordPlaybackCheckpoint, recordRequestAttempt } from './diagnostics.js';
 
 // Monkey-patch fetch/XMLHttpRequest to inspect and optionally rewrite network
 // requests. This lets the extension force specific quality tiers while still
@@ -19,24 +20,31 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
   const ORIGINAL_XHR_OPEN = XMLHttpRequest.prototype.open;
   const ORIGINAL_XHR_SEND = XMLHttpRequest.prototype.send;
   let activeStreamKey = null;
-  let recoveryRequested = false;
   let observationSequence = 0;
   const recordedOverrideStates = new Set();
   const recordedPassThroughReasons = new Set();
+  const recordedPlaybackCheckpoints = new Set();
   const xhrInferenceProbes = new Map();
 
-  function requestOriginalStreamRecovery(plan, detail = null) {
-    if (recoveryRequested || canFallbackToOriginal(plan)) return;
-    recoveryRequested = true;
-    window.postMessage({
-      type: 'PQI_ORIGINAL_STREAM_RECOVERY',
-      payload: {
-        streamKey: plan?.streamKey || null,
-        strategy: plan?.strategy || null,
-        detail
-      }
-    }, '*');
+  function recordStreamCheckpoint(checkpoint, plan = {}, detail = {}) {
+    const streamKey = plan?.streamKey || plan?.rejectionKey || 'unknown';
+    const key = `${checkpoint}|${streamKey}|${plan?.mediaRole || 'none'}`;
+    if (recordedPlaybackCheckpoints.has(key)) return;
+    recordedPlaybackCheckpoints.add(key);
+    recordPlaybackCheckpoint(checkpoint, {
+      streamKey: plan?.streamKey || null,
+      strategy: plan?.strategy || null,
+      mediaRole: plan?.mediaRole || null,
+      ...detail
+    });
   }
+
+  const recovery = createRecoveryController({
+    canFallbackToOriginal,
+    recordDiagnosticEvent,
+    recordCheckpoint: recordStreamCheckpoint,
+    postRecovery: payload => window.postMessage({ type: 'PQI_ORIGINAL_STREAM_RECOVERY', payload }, '*')
+  });
 
   function resetForNewContent(url) {
     if (!isManifestUrl(url)) return;
@@ -68,7 +76,11 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     activeStreamKey = streamKey;
     clearRepresentations();
     resetInferredFallbackState();
+    recordedPlaybackCheckpoints.clear();
+    recovery.reset();
     xhrInferenceProbes.clear();
+    recordPlaybackCheckpoint('stream_reset', { streamKey });
+    window.postMessage({ type: 'PQI_STREAM_RESET', payload: { streamKey } }, '*');
   }
 
   function getResourceUrl(resource) {
@@ -317,7 +329,8 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       try {
         const response = await observedFetch(thisArg, args, urlInfo, i + 1, maxRetries);
         const requestSignal = getRequestSignal(args);
-        if (response.ok || requestSignal?.aborted || i === maxRetries - 1) {
+        const retryableStatus = response.status === 408 || response.status === 429 || response.status >= 500;
+        if (response.ok || requestSignal?.aborted || !retryableStatus || i === maxRetries - 1) {
           return response;
         }
         console.warn(`[PQI] Fetch failed (${response.status}), retrying ${i + 1}/${maxRetries}: ${urlInfo}`);
@@ -382,6 +395,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
             action: rewritePlan.action,
             mediaRole: rewritePlan.mediaRole
           });
+          recordStreamCheckpoint('rewrite_planned', rewritePlan);
         }
       }
 
@@ -408,6 +422,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
               strategy: successfulCandidate?.strategy || rewritePlan.strategy,
               mediaRole: rewritePlan.mediaRole
             });
+            recordStreamCheckpoint('rewrite_succeeded', rewritePlan);
             if (isInferredAttempt) {
               recordInferredFallbackResult(
                 rewritePlan.streamKey,
@@ -418,6 +433,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
             } else {
               recordAuthoritativeRewriteResult(rewritePlan, true);
             }
+            recovery.recordRewriteSuccess(rewritePlan);
             analyzeUrl(successfulUrl, rewriteAnalyzeOptions(rewritePlan, requestObservationSequence));
             return inspectManifestResponse(response, successfulUrl);
           }
@@ -436,13 +452,14 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
             mediaRole: rewritePlan.mediaRole,
             status: response.status || null
           });
+          recordStreamCheckpoint('rewrite_failed', rewritePlan, { status: response.status || null });
 
           // Once a rewritten initialization has reached MediaSource, returning
           // a segment from the original rendition can mix codec/encryption
           // state and trigger Paramount's generic playback error. Preserve the
           // failed response so the player can retry/reload coherently.
           if (!canFallbackToOriginal(rewritePlan)) {
-            requestOriginalStreamRecovery(rewritePlan, response.status || 'validation-failed');
+            recovery.requestRecovery(rewritePlan, response.status || 'validation-failed');
             return response;
           }
 
@@ -461,7 +478,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
           }
 
           if (!canFallbackToOriginal(rewritePlan)) {
-            requestOriginalStreamRecovery(rewritePlan, err?.name || 'network-error');
+            recovery.requestRecovery(rewritePlan, err?.name || 'network-error');
             throw err;
           }
 
@@ -532,6 +549,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
             mediaRole: rewritePlan.mediaRole,
             transport: 'xhr'
           });
+          recordStreamCheckpoint('rewrite_planned', rewritePlan, { transport: 'xhr' });
         }
 
         this._pqi_originalUrl = originalUrl;
@@ -571,10 +589,14 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
           status: this.status || null,
           transport: 'xhr'
         });
+        recordStreamCheckpoint(succeeded ? 'rewrite_succeeded' : 'rewrite_failed', this._pqi_rewritePlan, {
+          transport: 'xhr', status: this.status || null
+        });
         if (!succeeded) {
-          requestOriginalStreamRecovery(this._pqi_rewritePlan, this.status || 'xhr-failed');
+          recovery.requestRecovery(this._pqi_rewritePlan, this.status || 'xhr-failed');
         }
         if (succeeded) {
+          recovery.recordRewriteSuccess(this._pqi_rewritePlan);
           analyzeUrl(
             this._pqi_plannedUrl,
             rewriteAnalyzeOptions(this._pqi_rewritePlan, this._pqi_observationSequence)

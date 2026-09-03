@@ -86,6 +86,15 @@ describe('Fetch Retries for Segments', () => {
         expect(response.ok).toBe(false);
     });
 
+    test('does not delay recovery by retrying permanent client errors', async () => {
+        setConfig({ enableRetries: true, maxRetries: 3, enablePrefetch: false, prefetchCount: 5 });
+        const response = { ok: false, status: 404 };
+        originalFetchMock.mockResolvedValue(response);
+
+        await expect(window.fetch('https://host/video/seg_10.m4s')).resolves.toBe(response);
+        expect(originalFetchMock).toHaveBeenCalledTimes(1);
+    });
+
     test('does not retry a player-cancelled segment request', async () => {
         const aborted = Object.assign(new Error('signal is aborted'), { name: 'AbortError' });
         originalFetchMock.mockRejectedValue(aborted);
@@ -366,4 +375,15 @@ test('shared DAI program classification leaves master requests intact and retrya
     expect((await request).status).toBe(503);
     expect(originalFetchMock).toHaveBeenCalledTimes(3);
     expect(originalFetchMock.mock.calls.every(([resource])=>resource===url)).toBe(true);
+});
+
+test('shared DAI program classification recognizes DASH program manifests', async () => {
+    const url='https://pubads.g.doubleclick.net/ondemand/dash/content/fixture/vid/program/CHS/streams/session/manifest.mpd';
+    setConfig({forceMax:true,forcedId:null,forcedHeight:null,enableRetries:false,enablePrefetch:false});
+    const response={ok:true,status:200,headers:{get:()=> 'application/dash+xml'},clone:()=>({text:async()=>'<MPD></MPD>'})};
+    originalFetchMock.mockResolvedValue(response);
+
+    await expect(window.fetch(url)).resolves.toBe(response);
+    expect(originalFetchMock).toHaveBeenCalledTimes(1);
+    expect(originalFetchMock).toHaveBeenCalledWith(url);
 });

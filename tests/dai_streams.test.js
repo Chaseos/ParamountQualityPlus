@@ -109,5 +109,21 @@ segment_100.ts`;
         );
     });
 
+    test('does not report a stale live variant after a lower manual selection', () => {
+        parseHlsManifest(masterManifest);
+        const low = getRepresentations().find(rep => rep.height === 270);
+        setConfig({ forceMax: false, forcedId: low.id, forcedHeight: low.height });
+
+        parseHlsManifest(
+            '#EXTM3U\n#EXTINF:6.0,\nsegment_100.ts',
+            'https://dai.google.com/linear/hls/pa/event/EID/stream/SID/variant/51dee42484fe2a2135500e11874015a5/bandwidth/8940798.m3u8'
+        );
+
+        expect(window.postMessage).not.toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'PQI_ACTIVE_QUALITY' }),
+            '*'
+        );
+    });
+
 
 });

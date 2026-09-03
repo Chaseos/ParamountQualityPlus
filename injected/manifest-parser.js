@@ -1,13 +1,16 @@
 import { estimateResolutionFromBitrate } from './constants.js';
-import { setRepresentations, getRepresentations } from './state.js';
+import { getConfig, setRepresentations, getRepresentations } from './state.js';
 import {
   classifyMediaRequest,
   deriveStreamKey,
   getDeliveryFamily,
+  getHlsTier,
   isAdReference,
   normalizeRepresentations,
-  resolveVariantUrl
+  resolveVariantUrl,
+  selectRepresentation
 } from './stream-model.js';
+import { recordPlaybackCheckpoint } from './diagnostics.js';
 
 function getVideoCodecFamily(codecs) {
   const value = String(codecs || '').toLowerCase();
@@ -80,11 +83,7 @@ export function parseHlsManifest(content, requestUrl) {
           let hlsTier = null;
           let daiId = null;
           if (variantUrl) {
-            const tierMatch = variantUrl.match(/manifest(?:_video)?_(\d+)(?:[_\/\.]|$)/) ||
-              variantUrl.match(/video[_\/](\d+)[_\/]/);
-            if (tierMatch) {
-              hlsTier = tierMatch[1];
-            }
+            hlsTier = getHlsTier(variantUrl);
 
             const daiMatch = variantUrl.match(/\/variant\/([^\/]+)\//);
             if (daiMatch) {
@@ -126,7 +125,13 @@ export function parseHlsManifest(content, requestUrl) {
       const availableRepresentations = getRepresentations();
       if (availableRepresentations.length > 0) {
         const match = availableRepresentations.find(r => r.daiId && requestUrl.includes(r.daiId));
-        if (match) {
+        const selected = selectRepresentation(availableRepresentations, getConfig());
+        // Media playlists can arrive out of order while a live selection is
+        // changing. Do not let a late playlist from the old variant overwrite
+        // the selected rendition in the popup.
+        const matchesSelection = !selected || selected.height === match?.height ||
+          selected.variants?.some(variant => variant.daiId === match?.daiId);
+        if (match && matchesSelection) {
           window.postMessage({
             type: 'PQI_ACTIVE_QUALITY',
             payload: {
@@ -181,6 +186,12 @@ export function parseHlsManifest(content, requestUrl) {
         streamKey: unique[0].streamKey,
         family: unique[0].family,
         manifestUrl: requestUrl
+      });
+      recordPlaybackCheckpoint('ladder_ready', {
+        family: unique[0].family,
+        streamKey: unique[0].streamKey || null,
+        representationCount: unique.length,
+        maxHeight: unique[0].height || null
       });
       window.postMessage({
         type: 'PQI_MANIFEST_DATA',
@@ -468,6 +479,12 @@ export function parseDashManifest(xmlString, requestUrl) {
         streamKey: unique[0].streamKey,
         family: 'dash',
         manifestUrl: requestUrl
+      });
+      recordPlaybackCheckpoint('ladder_ready', {
+        family: 'dash',
+        streamKey: unique[0].streamKey || null,
+        representationCount: unique.length,
+        maxHeight: unique[0].height || null
       });
       const displayQualities = unique.map(q => {
         const fallbackBandwidth = q.dashTier ? parseInt(q.dashTier, 10) * 1000 : null;

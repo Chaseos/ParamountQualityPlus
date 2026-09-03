@@ -5,6 +5,7 @@ if (globalThis.__PQP_CONTENT__) {
     return;
 }
 let injectionFailed = false;
+let latestInjectedConfig = null;
 // ParamountPlusQualityController - Content Script
 
 // State
@@ -20,8 +21,10 @@ let streamState = {
     playbackDetected: false,
     recoveryActive: false,
     appliedConfig: null,
+    manifestQualities: [],
     initializedAt: Date.now()
 };
+let lastDecodedHeight = null;
 
 function resetDisplayedQuality() {
     streamState.resolution = null;
@@ -30,6 +33,50 @@ function resetDisplayedQuality() {
     streamState.timestamp = null;
     streamState.isEstimated = false;
     streamState.hasActiveStream = false;
+}
+
+function resetStreamDisplay(streamKey = null) {
+    resetDisplayedQuality();
+    streamState.manifestQualities = [];
+    streamState.manifestStreamKey = streamKey;
+    streamState.requestStreamKey = streamKey;
+    streamState.qualitySource = null;
+    lastDecodedHeight = null;
+}
+
+function boundedStoredInteger(value, fallback, minimum, maximum) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.min(maximum, Math.max(minimum, parsed));
+}
+
+function normalizeStoredConfig(res = {}, recoverOriginalStream = false) {
+    const forcedHeight = Number.parseInt(res.forcedHeight, 10);
+    return {
+        forceMax: recoverOriginalStream ? false : Boolean(res.forceMax),
+        forcedId: recoverOriginalStream || typeof res.forcedId !== 'string' || !res.forcedId ? null : res.forcedId,
+        forcedHeight: recoverOriginalStream || !Number.isFinite(forcedHeight) || forcedHeight <= 0 ? null : forcedHeight,
+        enableRetries: res.enableRetries !== false,
+        maxRetries: boundedStoredInteger(res.maxRetries, 3, 1, 10),
+        enablePrefetch: res.enablePrefetch !== false,
+        prefetchCount: boundedStoredInteger(res.prefetchCount, 5, 1, 20)
+    };
+}
+
+function normalizeManifestQualities(payload) {
+    if (!Array.isArray(payload)) return null;
+    return payload.flatMap((quality, index) => {
+        if (!quality || typeof quality !== 'object') return [];
+        const height = Number.parseInt(quality.height, 10);
+        const bandwidth = Number(quality.bandwidth);
+        if (!Number.isFinite(height) || height <= 0 || !Number.isFinite(bandwidth) || bandwidth < 0) return [];
+        return [{
+            id: typeof quality.id === 'string' ? quality.id : String(quality.id ?? `quality-${index}`),
+            height,
+            bandwidth,
+            streamKey: typeof quality.streamKey === 'string' ? quality.streamKey : null
+        }];
+    }).slice(0, 20);
 }
 
 const PENDING_CONFIG_KEY = 'pqiPendingQualityConfig';
@@ -50,8 +97,46 @@ function isLivePlaybackPath(path = window.location.pathname) {
         /\/sports\/.*\/(?:live|watch|stream)\b/.test(normalized);
 }
 
+function getDecodedPlaybackQuality() {
+    if (!streamState.hasActiveStream || typeof document.querySelectorAll !== 'function') return null;
+
+    const videos = Array.from(document.querySelectorAll('video'))
+        .filter(video => Number(video.videoHeight) > 0 && Number(video.readyState) >= 2)
+        .sort((first, second) => {
+            if (Boolean(first.paused) !== Boolean(second.paused)) return first.paused ? 1 : -1;
+            return (Number(second.videoWidth) * Number(second.videoHeight)) -
+                (Number(first.videoWidth) * Number(first.videoHeight));
+        });
+    const video = videos[0];
+    if (!video) return null;
+
+    const height = Number.parseInt(video.videoHeight, 10);
+    const manifestMatch = streamState.manifestQualities.find(quality => quality.height === height);
+    return {
+        height,
+        bitrate: manifestMatch ? Math.round(manifestMatch.bandwidth / 1000) : null
+    };
+}
+
+function getStreamStateSnapshot() {
+    const state = { ...streamState, playbackDetected: detectPlaybackContext() };
+    const decoded = getDecodedPlaybackQuality();
+    if (!decoded) return state;
+
+    state.resolution = `${decoded.height}p`;
+    if (decoded.bitrate) state.bitrate = decoded.bitrate;
+    state.isEstimated = false;
+    state.qualitySource = 'decoded';
+
+    if (decoded.height !== lastDecodedHeight) {
+        lastDecodedHeight = decoded.height;
+        console.info('[PQI checkpoint] decoded_resolution', decoded);
+    }
+    return state;
+}
+
 // --- Injection Logic ---
-function injectScript(initialConfig) {
+function injectScript() {
     injectionFailed = false;
     const script = document.createElement('script');
     script.type = 'module';
@@ -61,7 +146,9 @@ function injectScript(initialConfig) {
         // The module consumes the staged value before installing its network
         // hooks. Posting it again covers browsers where sessionStorage was
         // unavailable without reintroducing a startup Auto/Force Max race.
-        window.postMessage({ type: 'PQI_CONFIG', payload: initialConfig }, '*');
+        if (latestInjectedConfig) {
+            window.postMessage({ type: 'PQI_CONFIG', payload: latestInjectedConfig }, '*');
+        }
     };
     script.onerror = () => { injectionFailed = true; script.remove(); };
     (document.head || document.documentElement).appendChild(script);
@@ -74,6 +161,8 @@ window.addEventListener('message', (event) => {
     if (event.source !== window || !event.data || event.data.type !== 'PARAMOUNT_QUALITY_DATA') {
         return;
     }
+
+    if (!event.data.payload || typeof event.data.payload !== 'object') return;
 
     let {
         resolution,
@@ -137,19 +226,35 @@ window.addEventListener('message', (event) => {
 window.addEventListener('message', (event) => {
     if (event.source === window && event.data) {
         if (event.data.type === 'PQI_MANIFEST_DATA') {
-            const manifestStreamKey = event.data.payload?.[0]?.streamKey || null;
+            const qualities = normalizeManifestQualities(event.data.payload);
+            if (!qualities) return;
+            const manifestStreamKey = qualities[0]?.streamKey || null;
             if (manifestStreamKey && streamState.manifestStreamKey &&
                 manifestStreamKey !== streamState.manifestStreamKey) {
-                resetDisplayedQuality();
-                streamState.requestStreamKey = null;
+                resetStreamDisplay(manifestStreamKey);
             }
             if (manifestStreamKey) streamState.manifestStreamKey = manifestStreamKey;
-            streamState.manifestQualities = event.data.payload;
+            streamState.manifestQualities = qualities;
             streamState.qualitySource = 'manifest';
-            reconcileStoredQuality(event.data.payload);
-        } else if (event.data.type === 'PQI_ACTIVE_QUALITY') {
+            reconcileStoredQuality(qualities);
+        } else if (event.data.type === 'PQI_STREAM_RESET') {
+            const streamKey = typeof event.data.payload?.streamKey === 'string'
+                ? event.data.payload.streamKey
+                : null;
+            resetStreamDisplay(streamKey);
+        } else if (event.data.type === 'PQI_ACTIVE_QUALITY' && event.data.payload &&
+            typeof event.data.payload === 'object') {
             // Update live stats from DAI variant playlist match
-            const { resolution, bitrate } = event.data.payload;
+            const { resolution, bitrate, streamKey } = event.data.payload;
+            if (streamKey && streamState.manifestStreamKey && streamKey !== streamState.manifestStreamKey) {
+                return;
+            }
+            const configuredHeight = Number.parseInt(streamState.appliedConfig?.forcedHeight, 10) ||
+                streamState.manifestQualities.find(q => q.id === streamState.appliedConfig?.forcedId)?.height || null;
+            const observedHeight = Number.parseInt(resolution, 10);
+            if (configuredHeight && observedHeight && configuredHeight !== observedHeight) {
+                return;
+            }
             if (resolution) streamState.resolution = resolution;
             if (bitrate) streamState.bitrate = bitrate;
             streamState.isEstimated = false; // Known from playlist URL match
@@ -178,8 +283,7 @@ window.addEventListener('message', (event) => {
 // Listen for Popup requests
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'GET_STREAM_STATE') {
-        streamState.playbackDetected = detectPlaybackContext();
-        sendResponse(streamState);
+        sendResponse(getStreamStateSnapshot());
     } else if (request.type === 'REQUEST_GEOLOCATION_PERMISSION') {
         let didRespond = false;
         let timeoutId = null;
@@ -247,7 +351,7 @@ function reconcileStoredQuality(qualities) {
 }
 
 // --- Config Sync ---
-function syncConfig({ bootstrap = false } = {}) {
+function syncConfig({ bootstrap = false, injectAfterConfig = false } = {}) {
     chrome.storage.sync.get(['forceMax', 'forcedId', 'forcedHeight', 'enableRetries', 'maxRetries', 'enablePrefetch', 'prefetchCount'], (res) => {
         let recoverOriginalStream = false;
         try {
@@ -257,21 +361,14 @@ function syncConfig({ bootstrap = false } = {}) {
             console.warn('[PQI] Unable to restore original-stream recovery.', error);
         }
 
-        const config = {
-            forceMax: recoverOriginalStream ? false : !!res.forceMax,
-            forcedId: recoverOriginalStream ? null : (res.forcedId || null),
-            forcedHeight: recoverOriginalStream ? null : (res.forcedHeight || null),
-            enableRetries: res.enableRetries !== false, // default true
-            maxRetries: res.maxRetries !== undefined ? res.maxRetries : 3,
-            enablePrefetch: res.enablePrefetch !== false, // default true
-            prefetchCount: res.prefetchCount !== undefined ? res.prefetchCount : 5
-        };
+        const config = normalizeStoredConfig(res, recoverOriginalStream);
 
         if (recoverOriginalStream) streamState.recoveryActive = true;
         const appliedConfig = streamState.recoveryActive
             ? { ...config, forceMax: false, forcedId: null, forcedHeight: null }
             : config;
         streamState.appliedConfig = appliedConfig;
+        latestInjectedConfig = appliedConfig;
 
         if (bootstrap) {
             try {
@@ -279,18 +376,22 @@ function syncConfig({ bootstrap = false } = {}) {
             } catch (error) {
                 console.warn('[PQI] Unable to stage initial quality configuration.', error);
             }
-            injectScript(appliedConfig);
-        } else {
-            window.postMessage({ type: 'PQI_CONFIG', payload: appliedConfig }, '*');
+            if (injectAfterConfig) injectScript();
         }
+        // If the module is already active this updates it immediately. If it is
+        // still loading, the staged session value and onload post cover both
+        // sides of the race without delaying interception installation.
+        window.postMessage({ type: 'PQI_CONFIG', payload: appliedConfig }, '*');
     });
 }
 
-// Read the saved selection before the main-world hooks are installed. This
-// prevents an original initialization segment from racing ahead of Force Max.
+// Start the main-world module immediately so early manifests can be observed.
+// The asynchronous saved selection is staged and posted as soon as it arrives.
 globalThis.__PQP_CONTENT__ = {
-    retryInjection: () => { if (injectionFailed) syncConfig({ bootstrap: true }); }
+    retryInjection: () => { if (injectionFailed) injectScript(); }
 };
+/* PLATFORM_BOOTSTRAP */
+injectScript();
 syncConfig({ bootstrap: true });
 
 // Listen for storage changes

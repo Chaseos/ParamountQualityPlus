@@ -4,10 +4,13 @@ import vm from 'node:vm';
 
 const contentSource = readFileSync(new URL('../content.js', import.meta.url), 'utf8');
 
-function loadContentScript({ storageState = {}, recoveryMarker = null } = {}) {
+function loadContentScript({
+  storageState = {}, recoveryMarker = null, deferStorage = false, videoElements = []
+} = {}) {
   const windowListeners = new Map();
   let runtimeListener = null;
   let injectedScript = null;
+  let storageCallback = null;
   const storageSet = jest.fn();
   const windowObject = {
     location: { pathname: '/movies/video/avatar/', reload: jest.fn() },
@@ -32,7 +35,8 @@ function loadContentScript({ storageState = {}, recoveryMarker = null } = {}) {
       head: { appendChild: jest.fn(script => { injectedScript = script; }) },
       documentElement: { appendChild: jest.fn() },
       createElement: jest.fn(() => ({ remove: jest.fn() })),
-      querySelector: jest.fn(() => null)
+      querySelector: jest.fn(() => null),
+      querySelectorAll: jest.fn(selector => selector === 'video' ? videoElements : [])
     },
     chrome: {
       runtime: {
@@ -41,7 +45,10 @@ function loadContentScript({ storageState = {}, recoveryMarker = null } = {}) {
       },
       storage: {
         sync: {
-          get: jest.fn((keys, callback) => callback(storageState)),
+          get: jest.fn((keys, callback) => {
+            if (deferStorage) storageCallback = callback;
+            else callback(storageState);
+          }),
           set: storageSet
         },
         onChanged: { addListener: jest.fn() }
@@ -70,6 +77,12 @@ function loadContentScript({ storageState = {}, recoveryMarker = null } = {}) {
     runInjection() {
       injectedScript.onload.call(injectedScript);
     },
+    releaseStorage() {
+      storageCallback?.(storageState);
+    },
+    hasInjectedScript() {
+      return Boolean(injectedScript);
+    },
     getState() {
       let state;
       runtimeListener({ type: 'GET_STREAM_STATE' }, {}, value => { state = value; });
@@ -79,6 +92,29 @@ function loadContentScript({ storageState = {}, recoveryMarker = null } = {}) {
     windowObject
   };
 }
+
+test('installs the main-world module before asynchronous storage returns', () => {
+  const page = loadContentScript({
+    storageState: { forceMax: true, forcedId: null, forcedHeight: null },
+    deferStorage: true
+  });
+
+  expect(page.hasInjectedScript()).toBe(true);
+  expect(page.windowObject.sessionStorage.setItem).not.toHaveBeenCalled();
+
+  // Cover the slower-storage ordering: the module can finish loading first,
+  // then receives the configuration as soon as storage responds.
+  page.runInjection();
+  page.releaseStorage();
+  expect(page.windowObject.sessionStorage.setItem).toHaveBeenCalledWith(
+    'pqiPendingQualityConfig',
+    expect.any(String)
+  );
+  expect(page.windowObject.postMessage).toHaveBeenCalledWith({
+    type: 'PQI_CONFIG',
+    payload: expect.objectContaining({ forceMax: true })
+  }, '*');
+});
 
 test('accepts a successful manual downgrade and ignores an older late response', () => {
   const page = loadContentScript();
@@ -175,4 +211,77 @@ test('keeps a manual height preference when a partial ladder lacks that height',
 
   expect(page.storageSet).toHaveBeenCalledWith({ forcedId: null });
   expect(page.storageSet).not.toHaveBeenCalledWith(expect.objectContaining({ forcedHeight: null }));
+});
+
+test('clears stale quality state when the main-world stream session resets', () => {
+  const page = loadContentScript();
+  page.sendWindowMessage({
+    type: 'PQI_MANIFEST_DATA',
+    payload: [{ id: 'old-1080', height: 1080, bandwidth: 5800000, streamKey: 'old-title' }]
+  });
+  page.sendWindowMessage({
+    type: 'PARAMOUNT_QUALITY_DATA',
+    payload: { resolution: '1080p', bitrate: 5800, streamKey: 'old-title', observationSequence: 1 }
+  });
+
+  page.sendWindowMessage({ type: 'PQI_STREAM_RESET', payload: { streamKey: 'new-title' } });
+
+  expect(page.getState()).toEqual(expect.objectContaining({
+    resolution: null,
+    bitrate: null,
+    manifestQualities: [],
+    manifestStreamKey: 'new-title'
+  }));
+});
+
+test('ignores malformed page messages instead of corrupting extension state', () => {
+  const page = loadContentScript();
+
+  expect(() => page.sendWindowMessage({ type: 'PARAMOUNT_QUALITY_DATA' })).not.toThrow();
+  expect(() => page.sendWindowMessage({ type: 'PQI_MANIFEST_DATA', payload: 'not-a-ladder' })).not.toThrow();
+  expect(page.getState().manifestQualities).toEqual([]);
+});
+
+test('does not let a stale live playlist overwrite the selected resolution', () => {
+  const page = loadContentScript({
+    storageState: { forceMax: false, forcedId: 'hls_2', forcedHeight: 540 }
+  });
+  page.sendWindowMessage({
+    type: 'PQI_MANIFEST_DATA',
+    payload: [{ id: 'hls_2', height: 540, bandwidth: 2000000 }]
+  });
+  page.sendWindowMessage({
+    type: 'PARAMOUNT_QUALITY_DATA',
+    payload: { resolution: '540p', bitrate: 2000, observationSequence: 1 }
+  });
+  page.sendWindowMessage({
+    type: 'PQI_ACTIVE_QUALITY',
+    payload: { resolution: '1080p', bitrate: 5800 }
+  });
+
+  expect(page.getState().resolution).toBe('540p');
+});
+
+test('reports the decoded video resolution instead of a stale live request', () => {
+  const page = loadContentScript({
+    videoElements: [{ videoHeight: 540, videoWidth: 960, paused: false, readyState: 4 }]
+  });
+  page.sendWindowMessage({
+    type: 'PQI_MANIFEST_DATA',
+    payload: [
+      { id: 'live-1080', height: 1080, bandwidth: 5800000 },
+      { id: 'live-540', height: 540, bandwidth: 2000000 }
+    ]
+  });
+  page.sendWindowMessage({
+    type: 'PARAMOUNT_QUALITY_DATA',
+    payload: { resolution: '1080p', bitrate: 5800, observationSequence: 1 }
+  });
+
+  expect(page.getState()).toEqual(expect.objectContaining({
+    resolution: '540p',
+    bitrate: 2000,
+    isEstimated: false,
+    qualitySource: 'decoded'
+  }));
 });

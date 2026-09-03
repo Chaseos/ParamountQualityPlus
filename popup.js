@@ -445,11 +445,8 @@ function startPolling() {
                     activeRuntimeConfig = response.appliedConfig || null;
                     updateStats(response);
 
-                    if (response.manifestQualities && response.manifestQualities.length > 0) {
-                        renderQualityList(response.manifestQualities);
-                    } else {
-                        updateSelectionUI();
-                    }
+                    renderQualityList(response.manifestQualities || []);
+                    updateSelectionUI();
                 }
             });
         });
@@ -462,14 +459,15 @@ function startPolling() {
 function setConnectionStatus(connected) {
     const dot = document.getElementById('connection-dot');
     if (dot) {
-        if (connected) dot.classList.add('active');
-        else dot.classList.remove('active');
+        dot.classList.toggle('active', connected);
 
         const statusKey = connected ? 'connected' : 'notConnected';
         const fallback = connected ? 'Connected' : 'Not connected';
         const statusLabel = chrome.i18n.getMessage(statusKey) || fallback;
-        dot.title = statusLabel;
-        dot.setAttribute('aria-label', statusLabel);
+        if (dot.title !== statusLabel) dot.title = statusLabel;
+        if (dot.getAttribute('aria-label') !== statusLabel) {
+            dot.setAttribute('aria-label', statusLabel);
+        }
     }
 }
 
@@ -478,14 +476,13 @@ function updateStats(data) {
     const resEl = document.getElementById('res-val');
     const brEl = document.getElementById('bitrate-val');
 
-    if (resEl && data.resolution) {
-        resEl.textContent = data.resolution;
-    }
+    if (resEl) resEl.textContent = data.resolution || '--';
 
-    if (brEl && data.bitrate) {
+    if (brEl) {
         // Mbps (e.g. 5.7)
-        const mbps = (data.bitrate / 1000).toFixed(1);
-        brEl.textContent = `${mbps} Mbps`;
+        brEl.textContent = Number.isFinite(Number(data.bitrate)) && Number(data.bitrate) > 0
+            ? `${(Number(data.bitrate) / 1000).toFixed(1)} Mbps`
+            : '--';
     }
 
     updateGeolocationNotice(data);
@@ -517,9 +514,14 @@ function renderQualityList(qualities) {
 
     if (!container || !list) return;
 
-    if (qualities.length > 0) {
-        container.classList.remove('hidden');
+    if (!Array.isArray(qualities) || qualities.length === 0) {
+        container.classList.add('hidden');
+        list.replaceChildren();
+        delete list.dataset.qualitySignature;
+        updateSelectionUI();
+        return;
     }
+    container.classList.remove('hidden');
 
     const qualitySignature = qualities
         .map(q => `${q.id}:${q.height}:${q.bandwidth}`)
@@ -533,21 +535,23 @@ function renderQualityList(qualities) {
         return;
     }
 
-    list.innerHTML = '';
+    list.replaceChildren();
     list.dataset.qualitySignature = qualitySignature;
 
     qualities.forEach(q => {
         const btn = document.createElement('button');
         btn.className = 'q-btn';
-        btn.dataset.id = q.id;
-        btn.dataset.height = q.height;
+        btn.dataset.id = String(q.id);
+        btn.dataset.height = String(q.height);
 
         const mbps = Math.round(q.bandwidth / 10000) / 100; // rough Mbps
-
-        btn.innerHTML = `
-            <span>${q.height}p</span>
-            <span style="opacity:0.6; font-size:11px;">${mbps} Mbps</span>
-        `;
+        const resolution = document.createElement('span');
+        resolution.textContent = `${q.height}p`;
+        const bitrate = document.createElement('span');
+        bitrate.style.opacity = '0.6';
+        bitrate.style.fontSize = '11px';
+        bitrate.textContent = `${mbps} Mbps`;
+        btn.append(resolution, bitrate);
 
         // Click -> Specific Mode
         btn.addEventListener('click', () => {
