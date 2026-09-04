@@ -25,6 +25,7 @@ let streamState = {
     initializedAt: Date.now()
 };
 let lastDecodedHeight = null;
+let lastPopupStateSignature = null;
 
 function resetDisplayedQuality() {
     streamState.resolution = null;
@@ -224,10 +225,20 @@ window.addEventListener('message', (event) => {
 });
 
 window.addEventListener('message', (event) => {
+    if (event.data?.type === 'PQI_MANIFEST_DATA') {
+        console.info('[PQI checkpoint] ladder_message_observed', {
+            sourceMatches: event.source === window,
+            payloadIsArray: Array.isArray(event.data.payload),
+            payloadCount: Array.isArray(event.data.payload) ? event.data.payload.length : null
+        });
+    }
     if (event.source === window && event.data) {
         if (event.data.type === 'PQI_MANIFEST_DATA') {
             const qualities = normalizeManifestQualities(event.data.payload);
-            if (!qualities) return;
+            if (!qualities) {
+                console.info('[PQI checkpoint] ladder_message_rejected', { reason: 'not-an-array' });
+                return;
+            }
             const manifestStreamKey = qualities[0]?.streamKey || null;
             if (manifestStreamKey && streamState.manifestStreamKey &&
                 manifestStreamKey !== streamState.manifestStreamKey) {
@@ -236,6 +247,11 @@ window.addEventListener('message', (event) => {
             if (manifestStreamKey) streamState.manifestStreamKey = manifestStreamKey;
             streamState.manifestQualities = qualities;
             streamState.qualitySource = 'manifest';
+            console.info('[PQI checkpoint] ladder_state_stored', {
+                representationCount: qualities.length,
+                maxHeight: qualities.length ? Math.max(...qualities.map(quality => quality.height)) : null,
+                streamKey: manifestStreamKey
+            });
             reconcileStoredQuality(qualities);
         } else if (event.data.type === 'PQI_STREAM_RESET') {
             const streamKey = typeof event.data.payload?.streamKey === 'string'
@@ -283,7 +299,17 @@ window.addEventListener('message', (event) => {
 // Listen for Popup requests
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'GET_STREAM_STATE') {
-        sendResponse(getStreamStateSnapshot());
+        const snapshot = getStreamStateSnapshot();
+        const signature = `${snapshot.manifestQualities.length}:${snapshot.resolution || ''}:${snapshot.qualitySource || ''}`;
+        if (signature !== lastPopupStateSignature) {
+            lastPopupStateSignature = signature;
+            console.info('[PQI checkpoint] popup_state_sent', {
+                representationCount: snapshot.manifestQualities.length,
+                resolution: snapshot.resolution,
+                qualitySource: snapshot.qualitySource
+            });
+        }
+        sendResponse(snapshot);
     } else if (request.type === 'REQUEST_GEOLOCATION_PERMISSION') {
         let didRespond = false;
         let timeoutId = null;

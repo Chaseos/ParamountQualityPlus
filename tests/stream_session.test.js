@@ -57,6 +57,47 @@ manifest_8.m3u8`, 'https://host/first/master.m3u8');
 });
 
 describe('Media request classification', () => {
+  test('recognizes the observed Safari TUL program route without admitting unrelated ad manifests', () => {
+    const root = 'https://pubads.g.doubleclick.net/ondemand/hls/content/2497752/' +
+      'vid/sFOQcK8mUYljXWcsjGbNI_g0mYAZW5d5/TUL/streams/session/';
+
+    for (const url of [root + 'master.m3u8', root + 'media/video.m3u8']) {
+      expect(classifyMediaRequest(url)).toEqual(expect.objectContaining({
+        kind: 'manifest',
+        excluded: false,
+        isAd: false
+      }));
+    }
+    expect(classifyMediaRequest(
+      'https://pubads.g.doubleclick.net/ondemand/hls/content/2497752/ad/master.m3u8'
+    ).isAd).toBe(true);
+  });
+
+  test('parses the captured Safari TUL master into its complete quality ladder', () => {
+    const root = 'https://pubads.g.doubleclick.net/ondemand/hls/content/2497752/' +
+      'vid/sFOQcK8mUYljXWcsjGbNI_g0mYAZW5d5/TUL/streams/session/';
+    const variants = [
+      [5266097, 1920, 1080, 'high'],
+      [289074, 416, 234, 'lowest'],
+      [593831, 640, 360, 'low'],
+      [1064113, 768, 432, 'medium-low'],
+      [1852423, 960, 540, 'medium'],
+      [3433301, 1280, 720, 'high-medium']
+    ];
+    const manifest = '#EXTM3U\n' + variants.map(([bandwidth, width, height, id]) =>
+      `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${width}x${height},CODECS="avc1.640028,mp4a.40.2"\n` +
+      `${root}media/${id}.m3u8`
+    ).join('\n');
+
+    parseHlsManifest(manifest, root + 'master.m3u8');
+
+    expect(getRepresentations().map(rep => rep.height)).toEqual([1080, 720, 540, 432, 360, 234]);
+    expect(window.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'PQI_MANIFEST_DATA',
+      payload: expect.arrayContaining([expect.objectContaining({ height: 1080 })])
+    }), '*');
+  });
+
   test.each([
     'https://host/path/init.m4v',
     'https://host/path/init.m4s',

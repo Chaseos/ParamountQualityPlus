@@ -15,7 +15,7 @@ const runtimeFiles = ['content.js', 'popup.html', 'popup.js', 'icon.png', ...man
 const browserFiles = [...new Set(runtimeFiles), 'kofi_symbol.svg', 'simple-video-speed-controller-icon.png', 'youtube-ui-cleaner-icon.png', 'README.md', 'PRIVACYPOLICY.md', 'LOCALIZATION_REVIEW.md'];
 const safariFiles = [...new Set(runtimeFiles), 'PRIVACYPOLICY.md'];
 const safariNativeModules = ['native-master.js', 'native-captions.js', 'native-session.js', 'native-playback.js'];
-const removedKeys = ['leaveReview', 'supportMyWork', 'supportMyWorkCta', 'simpleVideoSpeedControllerAdLineOne', 'simpleVideoSpeedControllerAdLineTwo', 'youtubeUiCleanerAdLineOne', 'youtubeUiCleanerAdLineTwo'];
+const removedKeys = ['leaveReview', 'supportMyWork', 'supportMyWorkCta', 'simpleVideoSpeedControllerAdLineOne', 'simpleVideoSpeedControllerAdLineTwo', 'youtubeUiCleanerAdLineOne', 'youtubeUiCleanerAdLineTwo', 'updatingQuality'];
 const forbidden = /ko-fi|kofi|chromewebstore|microsoftedge\.microsoft\.com\/addons|addons\.mozilla|addons\.opera|store\.whale|reviewClicked|leaveReview|PROMOTED_EXTENSION|simpleVideoSpeedController|youtubeUiCleaner|SimpleVideoSpeedController|6806633069|simplevideospeedcontroller/i;
 
 function replaceRequired(source, search, replacement, label) {
@@ -60,6 +60,12 @@ async function safari(destination) {
   js = replaceRequired(js, /\n        if \(!result.reviewClicked[\s\S]*?\n        }(?=\n    } catch)/, '', 'engagement initialization');
   js = removeRange(js, '    // 3. Bind Review Link', '    // 4. Start Polling', 'engagement bindings');
   js = removeRange(js, 'function determineStoreUrl()', 'function setMode(', 'browser routing');
+  js = replaceRequired(
+    js,
+    '    showToast(chrome.i18n.getMessage("updatingQuality") || "Updating quality… The buffer may take 10–20 seconds to clear.");',
+    '    // Native playback replaces the source immediately, so no buffer-wait notice is needed.',
+    'quality-change toast'
+  );
   // Safari preferences are explicitly device-local. Keep the shared key names and bootstrap ordering.
   js = js.replaceAll('chrome.storage.sync', 'chrome.storage.local');
   js = replaceRequired(js, 'updateStats(response);', 'updateStats(response);\n                    updateSafariPlaybackState(response);', 'native playback status');

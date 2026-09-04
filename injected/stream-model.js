@@ -2,7 +2,7 @@
 // The hostname alone cannot distinguish these manifests from advertisements.
 export function isProgramManifest(url) {
     return url.protocol === 'https:' && url.hostname === 'pubads.g.doubleclick.net' &&
-        /^\/ondemand\/(?:hls|dash)\/content\/[^/]+\/vid\/[^/]+\/CHS\/streams\/[^/]+\/(?:[^/]+\/)*(?:[^/]+\.(?:m3u8|mpd))$/i.test(url.pathname);
+        /^\/ondemand\/(?:hls|dash)\/content\/[^/]+\/vid\/[^/]+\/[a-z0-9_-]+\/streams\/[^/]+\/(?:[^/]+\/)*(?:[^/]+\.(?:m3u8|mpd))$/i.test(url.pathname);
 }
 
 export function isProgramPlaylist(url) {

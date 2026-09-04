@@ -84,6 +84,11 @@ test('Safari popup executes shared quality controls using local preferences with
     context.setMode(false,null);
     expect(get.mock.calls[0][0]).not.toContain('reviewClicked');
     expect(set.mock.calls[0][0]).toMatchObject({forceMax:false,forcedId:null});
+    expect(document.getElementById('toast').classList.contains('visible')).toBe(false);
+    expect(read('dist/safari/popup.js')).not.toContain('updatingQuality');
+    for (const locale of readdirSync('dist/safari/_locales')) {
+        expect(JSON.parse(read(`dist/safari/_locales/${locale}/messages.json`)).updatingQuality).toBeUndefined();
+    }
     expect(document.getElementById('apple-support').getAttribute('href')).toBe('paramountqualityplus://support');
     expect(document.getElementById('review-card')).toBeNull();
 });
