@@ -1,3 +1,7 @@
+import { createQualityWatch } from './quality-watch.js';
+import { createPackageDiscovery, needsPackageDiscovery } from './package-discovery.js';
+import { createIndexedSession } from './indexed-session.js';
+import { installManifestXhrView, replaceManifestResponse } from './manifest-response.js';
 import { clearRepresentations, getConfig, getRepresentations, getStreamSession } from './state.js';
 import { isManifestUrl, isSegmentUrl, stripCMCD } from './url-utils.js';
 import {
@@ -9,7 +13,7 @@ import {
 } from './rewriter.js';
 import { maybePrefetchSegments } from './prefetch.js';
 import { createRecoveryController } from './recovery-controller.js';
-import { classifyMediaRequest, deriveStreamKey } from './stream-model.js';
+import { classifyMediaRequest, deriveStreamKey, getParamountPackaging } from './stream-model.js';
 import { diagnosticNow, recordDiagnosticEvent, recordPlaybackCheckpoint, recordRequestAttempt } from './diagnostics.js';
 
 // Monkey-patch fetch/XMLHttpRequest to inspect and optionally rewrite network
@@ -19,6 +23,48 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
   const ORIGINAL_FETCH = window.fetch;
   const ORIGINAL_XHR_OPEN = XMLHttpRequest.prototype.open;
   const ORIGINAL_XHR_SEND = XMLHttpRequest.prototype.send;
+  const ORIGINAL_XHR_SET_HEADER = XMLHttpRequest.prototype.setRequestHeader;
+  const indexed = createIndexedSession();
+  const discovery = createPackageDiscovery({
+    fetch: (...args) => ORIGINAL_FETCH.apply(window, args), record: recordDiagnosticEvent
+  });
+  const qualityWatch = createQualityWatch({ discovery, getConfig, getRepresentations, record: recordDiagnosticEvent });
+  let acceptedStreamKey = null;
+  function acceptPlayerManifest(text, url) {
+    if (classifyMediaRequest(url).isAd) return;
+    const previous = getRepresentations();
+    parseManifest(text, url);
+    if (getRepresentations() === previous || !getRepresentations().length) return;
+    const streamKey = getStreamSession().key;
+    if (acceptedStreamKey && streamKey !== acceptedStreamKey) {
+      discovery.reset();
+      qualityWatch.reset();
+    }
+    acceptedStreamKey = streamKey;
+    playerManifestReceived();
+  }
+  function playerManifestReceived() {
+    discovery.authoritativeReceived();
+    qualityWatch.authoritativeReceived();
+  }
+  function planWithDiscovery(url, allowDiscovery = true) {
+    const normal = planRequest(url, { allowInference: false });
+    const corrective = qualityWatch.override(url, normal, allowDiscovery);
+    if (corrective) return corrective;
+    if (!needsPackageDiscovery(normal, getConfig())) return normal;
+    return (allowDiscovery && discovery.plan(url, getConfig(), getRepresentations())) || planRequest(url);
+  }
+  function observeForDiscovery(url, token, finalUrl) {
+    // Only query the package of the file actually retrieved. Cross-file or
+    // cross-package redirects cannot establish source compatibility.
+    try {
+      const requested = new URL(url, window.location.href);
+      const received = new URL(finalUrl);
+      if (requested.origin !== received.origin || requested.pathname !== received.pathname) return;
+    } catch { return; }
+    const normal = planRequest(url, { allowInference: false });
+    if (!indexed.handlesManifest() && needsPackageDiscovery(normal, getConfig())) discovery.observe(finalUrl, token);
+  }
   let activeStreamKey = null;
   let observationSequence = 0;
   const recordedOverrideStates = new Set();
@@ -75,6 +121,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     }
     activeStreamKey = streamKey;
     clearRepresentations();
+    indexed.reset();
     resetInferredFallbackState();
     recordedPlaybackCheckpoints.clear();
     recovery.reset();
@@ -200,16 +247,24 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
     const isEncryptedParamountVod = request.url?.pathname.toLowerCase().includes('_cenc_precon_dash/');
     return isSegmentUrl(url) && !request.excluded && !request.isInitialization && !request.isLive &&
-      !isHidden && !isEncryptedParamountVod;
+      !isHidden && !isEncryptedParamountVod && getParamountPackaging(url) !== 'single-file';
   }
 
   async function inspectManifestResponse(response, url) {
-    if (!isManifestResponse(response, url)) return response;
+    if (response.ok === false || !isManifestResponse(response, url)) return response;
 
     const inspectionStartedAt = diagnosticNow();
     try {
       const text = await response.clone().text();
-      parseManifest(text, url);
+      const manifestUrl = response.url || url;
+      acceptPlayerManifest(text, manifestUrl);
+      const selection = indexed.prepare(text, manifestUrl);
+      if (!selection.supported) indexed.commit(selection);
+      if (selection.supported) {
+        const result = selection.text === text ? response : replaceManifestResponse(response, selection.text);
+        indexed.commit(selection);
+        return result;
+      }
       recordDiagnosticEvent('manifest_inspection', {
         outcome: 'success',
         durationMs: Math.round((diagnosticNow() - inspectionStartedAt) * 10) / 10
@@ -310,9 +365,12 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       contentType.includes('mpegurl');
     if (!isManifestResponse) return;
 
-    this._pqi_manifestParsed = true;
     try {
-      parseManifest(this.responseText, this._pqi_url);
+      const text = this.responseType === 'document' ? new XMLSerializer().serializeToString(this.responseXML) : this.responseText;
+      if (!this._pqi_manifestParsed) {
+        this._pqi_manifestParsed = true;
+        acceptPlayerManifest(text, this.responseURL || this._pqi_url);
+      }
     } catch (error) {
       console.warn('[PQI] Unable to inspect XHR manifest; playback will continue unchanged.', error);
     }
@@ -343,6 +401,21 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     }
   }
 
+  async function fetchOriginal(args, url, retryable, token, qualityToken) {
+    try {
+      const response = await fetchWithRetry(this, args, retryable, url);
+      indexed.observe(url, response.ok, response.status, getRequestSignal(args)?.aborted);
+      if (response.ok && getRequestMethod(args) === 'GET' && !getRequestSignal(args)?.aborted) {
+        qualityWatch.success(qualityToken, response.url, { range: new Headers(args[1]?.headers || args[0]?.headers).get('Range') });
+      }
+      if (response.ok && getRequestMethod(args) === 'GET' && !getRequestSignal(args)?.aborted) observeForDiscovery(url, token, response.url);
+      return response;
+    } catch (error) {
+      indexed.observe(url, false, error?.name || 'network-error', isCancelledRequest(args, error));
+      throw error;
+    }
+  }
+
   function isCancelledRequest(args, error) {
     const requestSignal = getRequestSignal(args);
     return error?.name === 'AbortError' || requestSignal?.aborted;
@@ -354,6 +427,8 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     const url = getResourceUrl(resource);
     const requestObservationSequence = ++observationSequence;
     resetForNewContent(url);
+    const discoveryToken = discovery.capture();
+    const qualityToken = qualityWatch.capture(url, requestObservationSequence);
 
     let newUrl = url;
     let rewritePlan = null;
@@ -378,7 +453,8 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       // Check if it's a Segment OR a Manifest (for playlist rewriting)
       if (isSegmentUrl(url) || isManifestUrl(url)) {
 
-        rewritePlan = planRequest(url);
+        const headers = new Headers(args[1]?.headers || args[0]?.headers);
+        rewritePlan = planWithDiscovery(url, getRequestMethod(args) === 'GET' && !headers.has('Range'));
         if (rewritePlan?.action === 'pass-through' &&
             !recordedPassThroughReasons.has(rewritePlan.reason)) {
           recordedPassThroughReasons.add(rewritePlan.reason);
@@ -417,6 +493,9 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
 
           if (response.ok && inferredValidationSucceeded) {
             const successfulUrl = successfulCandidate?.url || newUrl;
+            if (getRequestMethod(args) === 'GET' && !getRequestSignal(args)?.aborted) qualityWatch.success(qualityToken, response.url, {
+              plannedUrl: successfulUrl, strategy: rewritePlan.strategy, range: new Headers(args[1]?.headers || args[0]?.headers).get('Range')
+            });
             recordDiagnosticEvent('rewrite_result', {
               outcome: 'success',
               strategy: successfulCandidate?.strategy || rewritePlan.strategy,
@@ -438,6 +517,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
             return inspectManifestResponse(response, successfulUrl);
           }
 
+          if (rewritePlan.strategy === 'package-manifest') qualityWatch.failure(qualityToken, response.status);
           if (isInferredAttempt) {
             recordInferredFallbackResult(rewritePlan.streamKey, false, rewritePlan.mediaRole);
             const failure = inferredValidationSucceeded ? response.status : 'companion media validation';
@@ -465,11 +545,18 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
 
           args[0] = originalResource;
           const fallbackResponse = await fetchWithRetry(this, args, true, url);
-          if (fallbackResponse.ok) analyzeUrl(url, { observationSequence: requestObservationSequence });
+          if (fallbackResponse.ok) {
+            analyzeUrl(url, { observationSequence: requestObservationSequence });
+            observeForDiscovery(url, discoveryToken, fallbackResponse.url);
+            if (getRequestMethod(args) === 'GET' && !getRequestSignal(args)?.aborted) qualityWatch.success(qualityToken, fallbackResponse.url, {
+              range: new Headers(args[1]?.headers || args[0]?.headers).get('Range')
+            });
+          }
           return fallbackResponse;
 
         } catch (err) {
           if (isCancelledRequest(args, err)) throw err;
+          if (rewritePlan?.strategy === 'package-manifest') qualityWatch.failure(qualityToken, 'network-error');
 
           if (rewritePlan?.action === 'inferred-probe') {
             recordInferredFallbackResult(rewritePlan.streamKey, false, rewritePlan.mediaRole);
@@ -486,7 +573,13 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
 
           args[0] = originalResource;
           const fallbackResponse = await fetchWithRetry(this, args, true, url);
-          if (fallbackResponse.ok) analyzeUrl(url, { observationSequence: requestObservationSequence });
+          if (fallbackResponse.ok) {
+            analyzeUrl(url, { observationSequence: requestObservationSequence });
+            observeForDiscovery(url, discoveryToken, fallbackResponse.url);
+            if (getRequestMethod(args) === 'GET' && !getRequestSignal(args)?.aborted) qualityWatch.success(qualityToken, fallbackResponse.url, {
+              range: new Headers(args[1]?.headers || args[0]?.headers).get('Range')
+            });
+          }
           return fallbackResponse;
         }
       }
@@ -495,7 +588,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       // available quality tiers stay in sync with the player session.
       if (shouldPrefetch(url)) maybePrefetchSegments(stripCMCD(url), ORIGINAL_FETCH);
       const isRetryable = isSegmentUrl(url) || isManifestUrl(url);
-      const response = await fetchWithRetry(this, args, isRetryable, url);
+      const response = await fetchOriginal.call(this, args, url, isRetryable, discoveryToken, qualityToken);
       if (response.ok) analyzeUrl(url, { observationSequence: requestObservationSequence });
       return inspectManifestResponse(response, url);
     }
@@ -508,15 +601,37 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       maybePrefetchSegments(stripCMCD(url), ORIGINAL_FETCH);
     }
 
-    const response = await fetchWithRetry(this, args, isRetryable, url);
+    const response = await fetchOriginal.call(this, args, url, isRetryable, discoveryToken, qualityToken);
     if (response.ok) analyzeUrl(url, { observationSequence: requestObservationSequence });
     return inspectManifestResponse(response, url);
+  };
+
+  // open() chooses the URL before request headers are available. A byte range
+  // belongs to the source file; undo only a discovery rewrite if one is supplied.
+  XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+    const result = ORIGINAL_XHR_SET_HEADER.apply(this, [name, value]);
+    if (String(name).toLowerCase() === 'range') this._pqi_qualityRange = String(value);
+    if (this._pqi_rewritePlan?.strategy !== 'package-manifest') return result;
+    this._pqi_discoveryHeaders.push([name, value]);
+    if (String(name).toLowerCase() !== 'range') return result;
+    const saved = { responseType: this.responseType, timeout: this.timeout, withCredentials: this.withCredentials };
+    ORIGINAL_XHR_OPEN.apply(this, this._pqi_discoveryOpenArgs);
+    for (const [key, value] of Object.entries(saved)) this[key] = value;
+    for (const header of this._pqi_discoveryHeaders) ORIGINAL_XHR_SET_HEADER.apply(this, header);
+    this._pqi_rewritePlan = null;
+    this._pqi_url = this._pqi_originalUrl;
+    this._pqi_plannedUrl = this._pqi_originalUrl;
+    recordDiagnosticEvent('package_manifest_range_passthrough', {});
+    return result;
   };
 
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
     // XMLHttpRequest instances can be reused. Do not let a prior rewrite or
     // completion suppress analysis for the next open/send cycle.
     this._pqi_rewritePlan = null;
+    this._pqi_discoveryHeaders = [];
+    this._pqi_qualityRange = null;
+    this._pqi_discoveryOpenArgs = [method, url, ...rest];
     this._pqi_rewriteRecorded = false;
     this._pqi_originalUrl = null;
     this._pqi_plannedUrl = null;
@@ -524,13 +639,28 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     this._pqi_observationSequence = ++observationSequence;
     this._pqi_diagnosticStartedAt = diagnosticNow();
     this._pqi_diagnosticRecorded = false;
+    installManifestXhrView(this, text => {
+      try {
+        this._pqi_manifestParsed = true;
+        const manifestUrl = this.responseURL || this._pqi_url;
+        acceptPlayerManifest(text, manifestUrl);
+        const selection = indexed.prepare(text, manifestUrl);
+        indexed.commit(selection);
+        return selection.supported && selection.text !== text ? selection.text : null;
+      } catch (error) {
+        console.warn('[PQI] Indexed XHR manifest left unchanged.', error?.name);
+        return null;
+      }
+    });
 
     let finalUrl = url instanceof URL ? url.toString() : url;
     if (finalUrl && typeof finalUrl === 'string') {
       resetForNewContent(finalUrl);
+      this._pqi_discoveryToken = discovery.capture();
+      this._pqi_qualityToken = qualityWatch.capture(finalUrl, this._pqi_observationSequence);
       if (isSegmentUrl(finalUrl) || isManifestUrl(finalUrl)) {
         const originalUrl = finalUrl;
-        const rewritePlan = planRequest(originalUrl);
+        const rewritePlan = planWithDiscovery(originalUrl, String(method).toUpperCase() === 'GET');
         if (rewritePlan?.action === 'inferred-probe' && rewritePlan.needsValidation) {
           if (rewritePlan.mediaRole === 'initialization') {
             // XHR cannot be redirected after an asynchronous probe without
@@ -561,12 +691,22 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       this._pqi_url = finalUrl;
       this._pqi_manifestParsed = false;
       this.addEventListener('readystatechange', inspectXhrManifest);
+      if (!this._pqi_indexedErrorListeners) {
+        this._pqi_indexedErrorListeners = true;
+        this.addEventListener('error', () => indexed.observe(this._pqi_url, false, 'network-error'));
+        this.addEventListener('timeout', () => indexed.observe(this._pqi_url, false, 'timeout'));
+      }
       this.addEventListener('readystatechange', function () {
         if (this.readyState !== 4 || this._pqi_rewriteRecorded) return;
         this._pqi_rewriteRecorded = true;
         const succeeded = this.status >= 200 && this.status < 400;
+        if (this.status) indexed.observe(this._pqi_url, succeeded, this.status);
+        if (this.status >= 200 && this.status < 300 && String(method).toUpperCase() === 'GET') qualityWatch.success(this._pqi_qualityToken, this.responseURL, {
+          range: this._pqi_qualityRange, plannedUrl: this._pqi_plannedUrl, strategy: this._pqi_rewritePlan?.strategy || 'original'
+        });
         if (!this._pqi_rewritePlan) {
           if (succeeded) {
+            if (String(method).toUpperCase() === 'GET') observeForDiscovery(this._pqi_originalUrl, this._pqi_discoveryToken, this.responseURL);
             analyzeUrl(this._pqi_originalUrl, {
               observationSequence: this._pqi_observationSequence
             });
@@ -593,6 +733,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
           transport: 'xhr', status: this.status || null
         });
         if (!succeeded) {
+          if (this.status && this._pqi_rewritePlan.strategy === 'package-manifest') qualityWatch.failure(this._pqi_qualityToken, this.status);
           recovery.requestRecovery(this._pqi_rewritePlan, this.status || 'xhr-failed');
         }
         if (succeeded) {

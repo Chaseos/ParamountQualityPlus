@@ -206,16 +206,17 @@ describe('Inferred fallback network validation', () => {
     originalFetch
       .mockResolvedValueOnce({ ok: false, status: 404, headers: { get: () => 'video/mp4' } })
       .mockResolvedValueOnce({ ok: false, status: 404, headers: { get: () => 'video/mp4' } })
-      .mockResolvedValue(successResponse());
+      .mockImplementation(async url => ({ ...successResponse(), url }));
 
     await window.fetch(SEGMENT_URL);
     await window.fetch(SEGMENT_URL.replace('seg_56', 'seg_57'));
 
-    expect(originalFetch).toHaveBeenCalledTimes(4);
+    expect(originalFetch).toHaveBeenCalledTimes(5);
     expect(originalFetch.mock.calls[0][0]).toContain('_c20_1080p_4309720_5400/seg_56.m4s');
     expect(originalFetch.mock.calls[1][0]).toContain('_c23_1080p_4309720_5400/seg_56.m4s');
     expect(originalFetch.mock.calls[2][0]).toBe(SEGMENT_URL);
-    expect(originalFetch.mock.calls[3][0]).toContain('_c24_540p_4309720_2000/seg_57.m4s');
+    expect(originalFetch.mock.calls[3][0]).toContain('_cenc_precon_dash/stream.mpd');
+    expect(originalFetch.mock.calls[4][0]).toContain('_c24_540p_4309720_2000/seg_57.m4s');
   });
 
   test('does not turn a cancelled inferred request into a fallback request', async () => {

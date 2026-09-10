@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import vm from 'node:vm';
-import { validateSafariManifestText } from '../scripts/apple-extension-metadata.mjs';
+import { validateAppleTipMetadata, validateSafariManifestText } from '../scripts/apple-extension-metadata.mjs';
 
 const read = file => readFileSync(file, 'utf8');
 beforeAll(() => execFileSync(process.execPath, ['scripts/build.mjs']), 30000);
@@ -32,6 +32,35 @@ test('all packaged Safari manifest descriptions satisfy the App Store upload lim
         expect(typeof message).toBe('string');
         expect(message.trim().length).toBeGreaterThan(0);
         expect(message.length).toBeLessThanOrEqual(112);
+    }
+});
+
+test('Safari branding uses the Apple name and keeps the disclaimer in the native app', () => {
+    const config = JSON.parse(read('apple/Configuration.json'));
+    const catalog = JSON.parse(read('apple/Native/Localizable.xcstrings')).strings;
+    const key = 'Independent tool. Not affiliated with, endorsed by, or sponsored by Paramount or Paramount+.';
+    document.body.innerHTML = read('dist/safari/popup.html');
+    expect(document.querySelector('[data-i18n="independenceDisclaimer"]')).toBeNull();
+    expect(read('apple/Native/SetupView.swift')).toContain(`Text("${key}")`);
+    expect(document.querySelector('.brand-title').textContent).toBe(config.name);
+    for (const locale of readdirSync('dist/safari/_locales')) {
+        const messages = JSON.parse(read(`dist/safari/_locales/${locale}/messages.json`));
+        expect(messages.appName.message).toBe(config.name);
+        expect(messages.independenceDisclaimer).toBeUndefined();
+        expect(catalog[key].localizations[locale.replace('_', '-')].stringUnit.value).toBeTruthy();
+    }
+    for (const browser of ['chromium', 'firefox']) {
+        expect(read(`dist/${browser}/popup.html`)).not.toContain('independenceDisclaimer');
+    }
+});
+
+test('Apple tip metadata fits the published name and description limits', () => {
+    const products = JSON.parse(read('apple/Configuration.json')).products;
+    expect(() => validateAppleTipMetadata(products)).not.toThrow();
+    const tip = { name: 'N'.repeat(30), description: 'D'.repeat(45), priceUSD: '0.99' };
+    expect(() => validateAppleTipMetadata([tip])).not.toThrow();
+    for (const change of [{ name: 'N'.repeat(31) }, { description: 'D'.repeat(46) }, { name: '' }, { description: ' ' }, { priceUSD: '0.9' }]) {
+        expect(() => validateAppleTipMetadata([{ ...tip, ...change }])).toThrow(/Invalid consumable metadata/);
     }
 });
 

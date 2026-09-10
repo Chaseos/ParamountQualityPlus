@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "1.30",
+  "version": "1.31",
   "description": "__MSG_appDesc__",
   "default_locale": "en",
   "permissions": [
@@ -42,6 +42,13 @@
         "injected/config.js",
         "injected/diagnostics.js",
         "injected/manifest-parser.js",
+        "injected/package-manifest.js",
+        "injected/package-discovery.js",
+        "injected/quality-monitor.js",
+        "injected/quality-watch.js",
+        "injected/indexed-dash.js",
+        "injected/indexed-session.js",
+        "injected/manifest-response.js",
         "injected/network-hooks.js",
         "injected/rewriter.js",
         "injected/inferred-vod.js",

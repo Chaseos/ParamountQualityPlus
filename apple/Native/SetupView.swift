@@ -49,6 +49,7 @@ struct SetupView: View {
                     Text("1. Enable Paramount Quality+ in Safari Settings > Extensions.")
                     Text("2. Allow the extension on paramountplus.com. This app cannot inspect your website permission settings.")
                     Text("3. Reload the Paramount+ page, start playback, then open the toolbar popup.")
+                    Text("If quality options are missing after installing or updating, quit and reopen Safari, then reload Paramount+.").font(.callout)
                     Text("Quality availability depends on Paramount+, your subscription, region, and Safari playback support.").foregroundStyle(.secondary)
                 }.fixedSize(horizontal: false, vertical: true)
                 if let message = model.message { Text(message).font(.callout).foregroundStyle(.secondary) }
@@ -57,7 +58,7 @@ struct SetupView: View {
                     if let url = URL(string: model.config.supportURL) { Link("Help", destination: url) }
                     if let url = URL(string: model.config.privacyURL) { Link("Privacy", destination: url) }
                 }.font(.callout)
-                Text("Independent tool. Not affiliated with or endorsed by Paramount.").font(.caption).foregroundStyle(.secondary)
+                Text("Independent tool. Not affiliated with, endorsed by, or sponsored by Paramount or Paramount+.").font(.caption).foregroundStyle(.secondary)
             }.padding(30).frame(maxWidth: .infinity)
         }.frame(minWidth: 480, idealWidth: 560, minHeight: 550, idealHeight: 620)
     }

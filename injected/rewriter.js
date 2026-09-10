@@ -1,6 +1,7 @@
 import { getConfig, getRepresentations } from './state.js';
 import {
   classifyMediaRequest,
+  getParamountPackaging,
   deriveStreamKey,
   getHlsTier,
   mergeRuntimeTelemetry,
@@ -292,6 +293,8 @@ export function planRequest(url, options = {}) {
 
   const request = classifyMediaRequest(url);
   if (request.excluded || request.kind === 'unknown') return passThrough(url, 'excluded');
+  // The player must use the selected file's own initialization and byte index.
+  if (getParamountPackaging(url) === 'single-file') return passThrough(url, 'single-file-manifest-selection');
   const canUseInferredFallback = config.forceMax && !config.forcedId && !config.forcedHeight &&
     options.allowInference !== false && request.kind === 'segment';
 

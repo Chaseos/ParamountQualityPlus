@@ -118,7 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         store?.purchasingID == nil ? .terminateNow : .terminateCancel
     }
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showWindow(); return true }
     func applicationDidBecomeActive(_ notification: Notification) { setup?.refresh(); store?.reconcile(); router?.flush() }
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }

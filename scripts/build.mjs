@@ -97,6 +97,7 @@ async function safari(destination) {
     const translated = translations[entry.name];
     if (!translated) throw Error(`Missing Apple action translations for ${entry.name}`);
     ['rateThisApp', 'supportOptions', 'ratingUnavailable'].forEach((key, i) => { messages[key] = { message: translated[i] }; });
+    messages.appName = { ...messages.appName, message: config.name };
     messages.appDesc = { ...messages.appDesc, message: descriptions[entry.name] };
     validateSafariManifestText(manifest, messages, entry.name);
     await writeFile(file, JSON.stringify(messages, null, 2) + '\n');

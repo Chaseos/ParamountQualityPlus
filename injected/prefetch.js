@@ -1,4 +1,5 @@
 import { getConfig } from './state.js';
+import { getParamountPackaging } from './stream-model.js';
 import { diagnosticNow, recordDiagnosticEvent, recordRequestAttempt } from './diagnostics.js';
 
 const PREFETCH_CACHE_LIMIT = 200; // Keep the set from growing infinitely
@@ -11,6 +12,8 @@ const SEGMENT_NUMBER_REGEX = /^(.*?)(\d+)(\.(?:m4s|ts|mp4)(?:\?.*)?)$/i;
 export function maybePrefetchSegments(url, originalFetch) {
   const config = getConfig();
   if (!url || config.enablePrefetch === false) return;
+  // A trailing MP4 number identifies a rendition, not a future segment.
+  if (getParamountPackaging(url) === 'single-file') return;
 
   const prefetchCount = config.prefetchCount ?? 5;
 

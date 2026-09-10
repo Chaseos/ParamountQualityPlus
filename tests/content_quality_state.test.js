@@ -5,9 +5,10 @@ import vm from 'node:vm';
 const contentSource = readFileSync(new URL('../content.js', import.meta.url), 'utf8');
 
 function loadContentScript({
-  storageState = {}, recoveryMarker = null, deferStorage = false, videoElements = []
+  storageState = {}, recoveryMarker = null, deferStorage = false, videoElements = [], resume = null
 } = {}) {
   const windowListeners = new Map();
+  const documentListeners = new Map();
   let runtimeListener = null;
   let injectedScript = null;
   let storageCallback = null;
@@ -15,7 +16,7 @@ function loadContentScript({
   const windowObject = {
     location: { pathname: '/movies/video/avatar/', reload: jest.fn() },
     sessionStorage: {
-      getItem: jest.fn(() => recoveryMarker),
+      getItem: jest.fn(key => key === 'pqiIndexedResume' ? resume : recoveryMarker),
       setItem: jest.fn(),
       removeItem: jest.fn()
     },
@@ -32,6 +33,8 @@ function loadContentScript({
   const context = {
     window: windowObject,
     document: {
+      addEventListener: jest.fn((type, handler) => documentListeners.set(type, handler)),
+      removeEventListener: jest.fn(type => documentListeners.delete(type)),
       head: { appendChild: jest.fn(script => { injectedScript = script; }) },
       documentElement: { appendChild: jest.fn() },
       createElement: jest.fn(() => ({ remove: jest.fn() })),
@@ -66,6 +69,7 @@ function loadContentScript({
   vm.runInContext(contentSource, context);
 
   return {
+    emitVideo(type, video) { documentListeners.get(type)?.({ target: video }); },
     sendWindowMessage(data) {
       for (const listener of windowListeners.get('message') || []) {
         listener({ source: windowObject, data });
@@ -284,4 +288,60 @@ test('reports the decoded video resolution instead of a stale live request', () 
     isEstimated: false,
     qualitySource: 'decoded'
   }));
+});
+
+function enableIndexed(page, streamKey = 'indexed-title') {
+  page.sendWindowMessage({ type: 'PQI_MANIFEST_DATA', payload: [{ id: '1080', height: 1080, bandwidth: 5500000, streamKey }] });
+  page.sendWindowMessage({ type: 'PQI_QUALITY_STRATEGY', payload: { streamKey, strategy: 'indexed-manifest' } });
+}
+
+test('indexed selection stages a single reload with episode position and paused state', () => {
+  const page = loadContentScript({ videoElements: [{ videoHeight: 540, currentTime: 71, duration: 3000, paused: true }] });
+  enableIndexed(page);
+  const message = { type: 'PQI_INDEXED_RELOAD', payload: { streamKey: 'indexed-title', config: { forcedHeight: 1080 } } };
+  page.sendWindowMessage(message); page.sendWindowMessage(message);
+  expect(page.windowObject.location.reload).toHaveBeenCalledTimes(1);
+  const resume = page.windowObject.sessionStorage.setItem.mock.calls.find(([key]) => key === 'pqiIndexedResume');
+  expect(JSON.parse(resume[1])).toMatchObject({ path: '/movies/video/avatar/', time: 71, paused: true });
+  expect(page.windowObject.sessionStorage.setItem).toHaveBeenCalledWith('pqiPendingQualityConfig', expect.stringContaining('1080'));
+});
+
+test('ordinary video and stale indexed title messages never add reloads', () => {
+  const page = loadContentScript();
+  const message = { type: 'PQI_INDEXED_RELOAD', payload: { streamKey: 'indexed-title', config: { forcedHeight: 1080 } } };
+  page.sendWindowMessage(message);
+  enableIndexed(page);
+  page.sendWindowMessage({ type: 'PQI_STREAM_RESET', payload: { streamKey: 'next-title' } });
+  page.sendWindowMessage(message);
+  expect(page.getState().qualityStrategy).toBeNull();
+  expect(page.windowObject.location.reload).not.toHaveBeenCalled();
+});
+
+test('indexed recovery stages Auto before the next bootstrap', () => {
+  const page = loadContentScript(); enableIndexed(page);
+  page.sendWindowMessage({ type: 'PQI_ORIGINAL_STREAM_RECOVERY', payload: { streamKey: 'indexed-title' } });
+  const calls = page.windowObject.sessionStorage.setItem.mock.calls.filter(([key]) => key === 'pqiPendingQualityConfig');
+  expect(JSON.parse(calls.at(-1)[1])).toMatchObject({ forceMax: false, forcedId: null, forcedHeight: null });
+  expect(page.windowObject.location.reload).toHaveBeenCalledTimes(1);
+});
+
+
+test.each([true, false])('indexed reload restores the playhead and paused=%s on the matching episode', paused => {
+  const page = loadContentScript({ resume: JSON.stringify({ path: '/movies/video/avatar/', time: 71,
+    duration: 3000, paused, savedAt: Date.now() }) });
+  const video = { tagName: 'VIDEO', currentTime: 0, duration: 3000, readyState: 2,
+    play: jest.fn(() => Promise.resolve()), pause: jest.fn(), addEventListener: jest.fn(), removeEventListener: jest.fn() };
+  page.emitVideo('loadedmetadata', { ...video, duration: 30, player: { isAd: true } });
+  expect(video.play).not.toHaveBeenCalled(); expect(video.pause).not.toHaveBeenCalled();
+  page.emitVideo('loadedmetadata', video);
+  expect(video.currentTime).toBe(71);
+  expect(paused ? video.pause : video.play).toHaveBeenCalledTimes(1);
+  video.currentTime = 80; page.emitVideo('canplay', video); expect(video.currentTime).toBe(80);
+});
+
+test('resume data from another episode is ignored', () => {
+  const page = loadContentScript({ resume: JSON.stringify({ path: '/different/episode/', time: 71,
+    duration: 3000, paused: false, savedAt: Date.now() }) });
+  const video = { tagName: 'VIDEO', currentTime: 0, duration: 3000, readyState: 2 };
+  page.emitVideo('loadedmetadata', video); expect(video.currentTime).toBe(0);
 });

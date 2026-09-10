@@ -5,8 +5,8 @@
   "teamID": "QG4CBM3K89",
   "urlScheme": "paramountqualityplus",
   "sku": "PQP-MAC-001",
-  "version": "1.30",
-  "build": "1",
+  "version": "1.31",
+  "build": "2",
   "minimumMacOS": "13.0",
   "architectures": [
     "arm64",
@@ -16,8 +16,8 @@
   "primaryLanguage": "en-US",
   "appStoreID": "6806901993",
   "appStorePublished": false,
-  "supportURL": "https://github.com/Chaseos/ParamountQualityPlus/issues",
-  "privacyURL": "https://github.com/Chaseos/ParamountQualityPlus/blob/main/PRIVACYPOLICY.md",
+  "supportURL": "https://chaseos.app/extensions/paramount-quality-plus/support",
+  "privacyURL": "https://chaseos.app/extensions/paramount-quality-plus/privacy",
   "products": [
     {
       "id": "app.chaseos.ParamountQualityPlus.tip.small",
@@ -28,13 +28,13 @@
     {
       "id": "app.chaseos.ParamountQualityPlus.tip.standard",
       "name": "Standard Tip",
-      "description": "An optional tip to support continued development.",
+      "description": "An optional tip to support development.",
       "priceUSD": "2.99"
     },
     {
       "id": "app.chaseos.ParamountQualityPlus.tip.generous",
       "name": "Generous Tip",
-      "description": "A generous optional tip supporting ongoing development.",
+      "description": "A generous optional tip for development.",
       "priceUSD": "4.99"
     }
   ],

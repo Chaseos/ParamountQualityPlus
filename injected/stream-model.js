@@ -61,6 +61,14 @@ export function parseCmcd(url) {
   }));
 }
 
+export function getParamountPackaging(value) {
+  const url = value instanceof URL ? value : toUrl(value);
+  if (!url || !['vod.pplus.paramount.tech', 'vod-gcs-cedexis.cbsaavideo.com'].includes(url.hostname.toLowerCase())) return null;
+  if (/\/[^/]+_cenc_fmp4_dash\//i.test(url.pathname)) return 'single-file';
+  if (/\/[^/]+_cenc_precon_dash\//i.test(url.pathname)) return 'segmented';
+  return null;
+}
+
 export function classifyMediaRequest(url) {
   const urlObj = url instanceof URL ? url : toUrl(url);
   if (!urlObj) return { kind: 'unknown', excluded: true, isAd: false, url: null };

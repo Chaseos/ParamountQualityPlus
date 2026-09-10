@@ -21,6 +21,7 @@ let streamState = {
     playbackDetected: false,
     recoveryActive: false,
     appliedConfig: null,
+    qualityStrategy: null,
     manifestQualities: [],
     initializedAt: Date.now()
 };
@@ -43,6 +44,7 @@ function resetStreamDisplay(streamKey = null) {
     streamState.requestStreamKey = streamKey;
     streamState.qualitySource = null;
     lastDecodedHeight = null;
+    streamState.qualityStrategy = null;
 }
 
 function boundedStoredInteger(value, fallback, minimum, maximum) {
@@ -83,6 +85,53 @@ function normalizeManifestQualities(payload) {
 const PENDING_CONFIG_KEY = 'pqiPendingQualityConfig';
 const ORIGINAL_STREAM_RECOVERY_KEY = 'pqiOriginalStreamRecovery';
 let recoveryReloadRequested = false;
+let indexedReloadRequested = false;
+const INDEXED_RESUME_KEY = 'pqiIndexedResume';
+
+function saveIndexedPosition() {
+    const video = Array.from(document.querySelectorAll('video')).find(video =>
+        Number(video.videoHeight) > 0 && !video.player?.isAd);
+    if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+    window.sessionStorage.setItem(INDEXED_RESUME_KEY, JSON.stringify({
+        path: window.location.pathname, time: video.currentTime, duration: video.duration,
+        paused: video.paused, savedAt: Date.now()
+    }));
+}
+
+function restoreIndexedPosition() {
+    let saved;
+    try {
+        saved = JSON.parse(window.sessionStorage.getItem(INDEXED_RESUME_KEY));
+        window.sessionStorage.removeItem(INDEXED_RESUME_KEY);
+    } catch { return; }
+    if (!saved || saved.path !== window.location.pathname || !Number.isFinite(saved.time) ||
+        !Number.isFinite(saved.duration) || saved.duration <= 0 ||
+        !Number.isFinite(saved.savedAt) || Date.now() - saved.savedAt > 120000) return;
+    let restored = false;
+    const restore = event => {
+        const video = event.target;
+        if (restored || video?.tagName !== 'VIDEO' || video.player?.isAd ||
+            !Number.isFinite(video.duration) || Math.abs(video.duration - saved.duration) > 2 ||
+            video.readyState < 1) return;
+        restored = true;
+        video.currentTime = Math.max(0, Math.min(saved.time, video.duration - 0.1));
+        if (saved.paused) {
+            video.pause();
+            // Some players autoplay after metadata, so retain the paused state
+            // through the first playing event after the restored seek.
+            const keepPaused = () => video.pause();
+            video.addEventListener('playing', keepPaused, { once: true });
+            setTimeout(() => video.removeEventListener('playing', keepPaused), 2000);
+        } else {
+            Promise.resolve(video.play()).catch(() => {});
+        }
+        document.removeEventListener('loadedmetadata', restore, true);
+        document.removeEventListener('canplay', restore, true);
+    };
+    document.addEventListener?.('loadedmetadata', restore, true);
+    document.addEventListener?.('canplay', restore, true);
+}
+restoreIndexedPosition();
 
 function detectPlaybackContext() {
     const player = document.querySelector('video, [class*="player"], [id*="player"], [data-testid*="player"]');
@@ -253,11 +302,32 @@ window.addEventListener('message', (event) => {
                 streamKey: manifestStreamKey
             });
             reconcileStoredQuality(qualities);
+        } else if (event.data.type === 'PQI_QUALITY_STRATEGY') {
+            const payload = event.data.payload;
+            if (!payload?.strategy) streamState.qualityStrategy = null;
+            else if (payload.streamKey === streamState.manifestStreamKey) {
+                streamState.qualityStrategy = payload.strategy === 'indexed-manifest' ? payload.strategy : null;
+            }
+        } else if (event.data.type === 'PQI_INDEXED_RELOAD') {
+            const payload = event.data.payload;
+            if (!indexedReloadRequested && streamState.qualityStrategy === 'indexed-manifest' &&
+                payload?.streamKey === streamState.manifestStreamKey && payload.config) {
+                try {
+                    const config = normalizeStoredConfig(payload.config);
+                    saveIndexedPosition();
+                    window.sessionStorage.setItem(PENDING_CONFIG_KEY, JSON.stringify(config));
+                    indexedReloadRequested = true;
+                    window.location.reload();
+                } catch (error) {
+                    console.warn('[PQI] Unable to stage indexed quality change.', error);
+                }
+            }
         } else if (event.data.type === 'PQI_STREAM_RESET') {
             const streamKey = typeof event.data.payload?.streamKey === 'string'
                 ? event.data.payload.streamKey
                 : null;
             resetStreamDisplay(streamKey);
+            indexedReloadRequested = false;
         } else if (event.data.type === 'PQI_ACTIVE_QUALITY' && event.data.payload &&
             typeof event.data.payload === 'object') {
             // Update live stats from DAI variant playlist match
@@ -287,6 +357,10 @@ window.addEventListener('message', (event) => {
                 forcedHeight: null
             };
             try {
+                if (streamState.qualityStrategy === 'indexed-manifest') {
+                    saveIndexedPosition();
+                    window.sessionStorage.setItem(PENDING_CONFIG_KEY, JSON.stringify(normalizeStoredConfig({}, true)));
+                }
                 window.sessionStorage.setItem(ORIGINAL_STREAM_RECOVERY_KEY, '1');
             } catch (error) {
                 console.warn('[PQI] Unable to stage original-stream recovery.', error);

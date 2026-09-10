@@ -1,3 +1,4 @@
+import { getIndexedAddressing } from './indexed-dash.js';
 import { estimateResolutionFromBitrate } from './constants.js';
 import { getConfig, setRepresentations, getRepresentations } from './state.js';
 import {
@@ -203,7 +204,7 @@ export function parseHlsManifest(content, requestUrl) {
   }
 }
 
-export function parseDashManifest(xmlString, requestUrl) {
+export function readDashRepresentations(xmlString, requestUrl) {
   try {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
@@ -415,6 +416,9 @@ export function parseDashManifest(xmlString, requestUrl) {
           const q = {
             id,
             rawId,
+            periodKey,
+            manifestNodeIndex: Array.from(xmlDoc.getElementsByTagNameNS('*', 'Representation')).indexOf(rep),
+            addressing: getIndexedAddressing(rep, requestUrl),
             pathId: (pathId && pathId !== rawId) ? pathId : null,
             baseUrl,
             template: finalTemplate,
@@ -448,7 +452,7 @@ export function parseDashManifest(xmlString, requestUrl) {
     // For content, retain all same-height compatibility variants
     // internally and expose a single representative row to the popup.
     const nonAdQualities = qualities.filter(q => !q.isAd);
-    if (nonAdQualities.length === 0) return;
+    if (nonAdQualities.length === 0) return [];
     const markedContentQualities = nonAdQualities.filter(q => q.isContent);
     const eligibleQualities = markedContentQualities.length > 0
       ? markedContentQualities
@@ -466,7 +470,7 @@ export function parseDashManifest(xmlString, requestUrl) {
         Number(Boolean(b.pathId)) - Number(Boolean(a.pathId)) ||
         (b.bandwidth || 0) - (a.bandwidth || 0)
       )[0];
-      return { ...preferred, variants };
+      return { ...preferred, variants, indexedManifestEligible: nonAdQualities.length === eligibleQualities.length && nonAdQualities.every(rep => rep.addressing) };
     });
 
     unique = normalizeRepresentations(unique, {
@@ -474,40 +478,45 @@ export function parseDashManifest(xmlString, requestUrl) {
       streamKey: deriveStreamKey(requestUrl, 'dash')
     });
 
-    if (unique.length > 0) {
-      setRepresentations(unique, {
-        streamKey: unique[0].streamKey,
-        family: 'dash',
-        manifestUrl: requestUrl
-      });
-      recordPlaybackCheckpoint('ladder_ready', {
-        family: 'dash',
-        streamKey: unique[0].streamKey || null,
-        representationCount: unique.length,
-        maxHeight: unique[0].height || null
-      });
-      const displayQualities = unique.map(q => {
-        const fallbackBandwidth = q.dashTier ? parseInt(q.dashTier, 10) * 1000 : null;
-        return {
-          ...withoutVariants(q),
-          // dashTier is a URL naming token and may be nominal. The MPD's
-          // bandwidth attribute remains the authoritative display value.
-          bandwidth: Number.isFinite(q.bandwidth) ? q.bandwidth : fallbackBandwidth,
-          height: q.height || (q.dashTier
-            ? parseInt(estimateResolutionFromBitrate(parseInt(q.dashTier, 10)), 10)
-            : 0)
-        };
-      });
+    return unique;
+  } catch {
+    return [];
+  }
+}
 
-      displayQualities.sort((a, b) => parseInt(b.height) - parseInt(a.height));
+export function parseDashManifest(xmlString, requestUrl) {
+  const unique = readDashRepresentations(xmlString, requestUrl);
+  if (unique.length > 0) {
+    setRepresentations(unique, {
+      streamKey: unique[0].streamKey,
+      family: 'dash',
+      manifestUrl: requestUrl
+    });
+    recordPlaybackCheckpoint('ladder_ready', {
+      family: 'dash',
+      streamKey: unique[0].streamKey || null,
+      representationCount: unique.length,
+      maxHeight: unique[0].height || null
+    });
+    const displayQualities = unique.map(q => {
+      const fallbackBandwidth = q.dashTier ? parseInt(q.dashTier, 10) * 1000 : null;
+      return {
+        ...withoutVariants(q),
+        // dashTier is a URL naming token and may be nominal. The MPD's
+        // bandwidth attribute remains the authoritative display value.
+        bandwidth: Number.isFinite(q.bandwidth) ? q.bandwidth : fallbackBandwidth,
+        height: q.height || (q.dashTier
+          ? parseInt(estimateResolutionFromBitrate(parseInt(q.dashTier, 10)), 10)
+          : 0)
+      };
+    });
 
-      window.postMessage({
-        type: 'PQI_MANIFEST_DATA',
-        payload: displayQualities
-      }, '*');
-    }
-  } catch (e) {
-    console.error('[PQI] Error parsing DASH manifest:', e);
+    displayQualities.sort((a, b) => parseInt(b.height) - parseInt(a.height));
+
+    window.postMessage({
+      type: 'PQI_MANIFEST_DATA',
+      payload: displayQualities
+    }, '*');
   }
 }
 

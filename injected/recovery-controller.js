@@ -11,11 +11,11 @@ export function createRecoveryController({ canFallbackToOriginal, postRecovery, 
     return plan?.streamKey || plan?.rejectionKey || 'unknown';
   }
 
-  function requestRecovery(plan, detail = null) {
+  function requestRecovery(plan, detail = null, { terminal = false } = {}) {
     if (recoveryRequested || canFallbackToOriginal(plan)) return false;
 
     const key = failureKey(plan);
-    const failureCount = (committedFailureCounts.get(key) || 0) + 1;
+    const failureCount = terminal ? RECOVERY_FAILURE_THRESHOLD : (committedFailureCounts.get(key) || 0) + 1;
     committedFailureCounts.set(key, failureCount);
     if (failureCount < RECOVERY_FAILURE_THRESHOLD) {
       recordDiagnosticEvent('recovery_deferred', { failureCount, detail });

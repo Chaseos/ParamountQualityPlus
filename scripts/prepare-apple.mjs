@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateAppleTipMetadata } from './apple-extension-metadata.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(await readFile(path.join(root, 'apple/Configuration.json'), 'utf8'));
 export function run(cmd, args) {
@@ -18,7 +19,7 @@ if (!/^([a-zA-Z0-9-]+\.)+[a-zA-Z0-9-]+$/.test(config.appBundleID) || config.exte
 if (!/^[a-z][a-z0-9]*$/.test(config.urlScheme)) throw Error('Invalid support scheme');
 if ([...config.name].length > 30) throw Error('App Store listing name exceeds 30 characters');
 if (new Set(config.products.map(p => p.id)).size !== config.products.length) throw Error('Duplicate product ID');
-if (config.products.some(p => p.name.length > 35 || p.description.length > 55 || !/^\d+\.\d{2}$/.test(p.priceUSD))) throw Error('Invalid consumable metadata');
+validateAppleTipMetadata(config.products);
 if (config.products.some(p => !p.id.startsWith(config.appBundleID + '.tip.'))) throw Error('Foreign product ID');
 const settings = {
   PQP_APP_BUNDLE_ID: config.appBundleID,

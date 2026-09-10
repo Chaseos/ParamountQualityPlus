@@ -478,55 +478,55 @@
         }
       }
     },
-    "Independent tool. Not affiliated with or endorsed by Paramount.": {
+    "Independent tool. Not affiliated with, endorsed by, or sponsored by Paramount or Paramount+.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unabhängiges Tool. Nicht mit Paramount verbunden oder von Paramount unterstützt."
+            "value": "Unabhängiges Tool. Nicht mit Paramount oder Paramount+ verbunden und weder von ihnen unterstützt noch gesponsert."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Independent tool. Not affiliated with or endorsed by Paramount."
+            "value": "Independent tool. Not affiliated with, endorsed by, or sponsored by Paramount or Paramount+."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Herramienta independiente. Sin afiliación ni respaldo de Paramount."
+            "value": "Herramienta independiente. Sin afiliación, respaldo ni patrocinio de Paramount o Paramount+."
           }
         },
         "es-419": {
           "stringUnit": {
             "state": "translated",
-            "value": "Herramienta independiente. Sin afiliación ni respaldo de Paramount."
+            "value": "Herramienta independiente. Sin afiliación, respaldo ni patrocinio de Paramount o Paramount+."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Outil indépendant, sans affiliation ni approbation de Paramount."
+            "value": "Outil indépendant, sans affiliation, approbation ni parrainage de Paramount ou Paramount+."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Strumento indipendente, non affiliato né approvato da Paramount."
+            "value": "Strumento indipendente, non affiliato, approvato o sponsorizzato da Paramount o Paramount+."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "독립적인 도구입니다. Paramount와 제휴 관계가 없으며 승인을 받지 않았습니다."
+            "value": "독립적인 도구입니다. Paramount 또는 Paramount+와 제휴 관계가 없으며, 승인이나 후원을 받지 않았습니다."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ferramenta independente, sem afiliação ou endosso da Paramount."
+            "value": "Ferramenta independente, sem afiliação, endosso ou patrocínio da Paramount ou Paramount+."
           }
         }
       }
@@ -1746,6 +1746,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tentar novamente"
+          }
+        }
+      }
+    },
+    "If quality options are missing after installing or updating, quit and reopen Safari, then reload Paramount+.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If quality options are missing after installing or updating, quit and reopen Safari, then reload Paramount+."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn nach der Installation oder einem Update Qualitätsoptionen fehlen, beende Safari und öffne es erneut. Lade dann Paramount+ neu."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si faltan opciones de calidad después de instalar o actualizar, cierra Safari por completo y vuelve a abrirlo. Después, recarga Paramount+."
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si faltan opciones de calidad después de instalar o actualizar, cierra Safari por completo y vuelve a abrirlo. Después, vuelve a cargar Paramount+."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si les options de qualité manquent après une installation ou une mise à jour, quittez puis rouvrez Safari et rechargez Paramount+."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se le opzioni di qualità non compaiono dopo un’installazione o un aggiornamento, chiudi completamente Safari e riaprilo, poi ricarica Paramount+."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설치 또는 업데이트 후 화질 옵션이 표시되지 않으면 Safari를 완전히 종료한 후 다시 열고 Paramount+ 페이지를 새로고침하세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se as opções de qualidade não aparecerem após instalar ou atualizar, encerre e reabra o Safari e recarregue o Paramount+."
           }
         }
       }

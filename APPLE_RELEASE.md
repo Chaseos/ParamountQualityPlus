@@ -1,5 +1,13 @@
 # Paramount Quality+ — Apple release guide
 
+## September 8 review fixes — local candidate 1.30 (2)
+
+Website follow-up: support now covers all browser editions, and the existing privacy policy is available in the portfolio source at `/extensions/paramount-quality-plus/privacy`. Apple `privacyURL` points to that planned destination. No terms document exists in the published GitHub tree. Both website routes still need publication and store URL updates; the GitHub policy is preserved for existing links.
+
+Setup now includes localized troubleshooting guidance to fully quit and reopen Safari if quality options disappear after installation or an update. The independence disclaimer remains on the native setup screen and has been removed from the Safari popup at the owner's request. This supersedes the earlier notes about sharing the disclaimer across both Apple surfaces. Live debugging restored the missing ladder by fully restarting Safari after a reinstall; no playback-code change was needed.
+
+The current local candidate supersedes the older version/build references below. Closing the containing app's main window now quits it, retaining purchase guards and support URL routing. The dedicated support page is implemented in ChaseosPortfolio; Apple configuration points to its planned public URL, but publication and the portal URL update are still pending. All three consumable drafts were inspected and still require inclusion with the corrected uploaded app. See [the resolution record and reviewer drafts](docs/APPLE_REVIEW_RESOLUTION.md) for current checks, publication sequence and outstanding runtime evidence. No archive, upload, review submission, public deployment, commit or push was performed.
+
 Updated 2026-08-31. This is a macOS-only containing app and Safari Web Extension. Implementation and local verification do not authorize publication or establish release readiness.
 
 ## App Store upload metadata correction (2026-08-31)
@@ -58,11 +66,19 @@ Chrome's full Avatar Aang playback passed the tested 1080p-to-360p caption check
 
 The public Avia native-video adapter does not implement manual bitrate switching, so merely removing the Safari source reload would remove the current quality enforcement. Its subtitle handling caches track identities and rejects replacement tracks with matching language/label/kind as duplicates. Saving enabled state alone is therefore insufficient. The subsequent Safari-only bridge described above reconnects that subsystem while preserving the site's settings; the user has confirmed the fix works for the tested playback.
 
+## Apple review preparation — September 7, 2026
+
+The Apple name remains **Paramount Quality+**. The approved subtitle **Quality control for Paramount+** (30 characters), accurate Apple description, and narrow review-note corrections were saved and verified in App Store Connect; listing copy is in `apple/APP_STORE.md`. Native UI and generated Safari resources now share the expanded localized independence disclaimer. Chromium/Firefox resources and artwork remain unchanged.
+
+All three tip drafts now have a real **Support options** review screenshot and product-specific notes, verified after reload. Standard and Generous descriptions were shortened to fit Apple's published limits. Prices, availability, and IDs are unchanged. The active submission still contains only the app; **none of the tips is attached or submitted**. The recording and automatic-release setting were preserved. Current results supersede the older missing-screenshot statements below; purchase/recovery verification remains outstanding.
+
+25 packaging/localization checks, 9 Swift tests, and one unsigned universal Release build with one Xcode job passed. The existing mountain artwork remains pending an original Apple logo. Detailed private evidence is in ignored `build/release-check/iap-review-2026-09-07/REVIEW_FINDINGS.md`. No archive, upload, review cancellation/submission, Git publication, or legal/release-setting changes were made.
+
 ## Source and identity
 
 `apple/Configuration.json` owns bundle IDs, team, Apple version/build, support scheme, listing ID, URLs, and consumable definitions. `npm run prepare:apple` generates `Shared.xcconfig`, local StoreKit products, Safari resources, and icon sizes from the existing artwork. Do not regenerate the converter project over the native implementation. There are no mobile targets.
 
-The registered Mac app is **Paramount Quality+**, Apple ID **6806901993**, SKU **PQP-MAC-001**, version/build **1.27 / 1**. App and extension IDs are `app.chaseos.ParamountQualityPlus` and `app.chaseos.ParamountQualityPlus.Extension`. These are public product identifiers, not credentials. Signing material, account data, receipts, raw diagnostics, and screenshots must remain outside version control.
+The registered Mac app is **Paramount Quality+**, Apple ID **6806901993**, SKU **PQP-MAC-001**, local version/build **1.30 / 1**. The waiting App Store listing remains version **1.27**, using the previously uploaded **1.30 (1)** build. App and extension IDs are `app.chaseos.ParamountQualityPlus` and `app.chaseos.ParamountQualityPlus.Extension`. These are public product identifiers, not credentials. Signing material, account data, receipts, raw diagnostics, and screenshots must remain outside version control.
 
 Support is [GitHub Issues](https://github.com/Chaseos/ParamountQualityPlus/issues). Privacy is [PRIVACYPOLICY.md on main](https://github.com/Chaseos/ParamountQualityPlus/blob/main/PRIVACYPOLICY.md). The revised local policy must be reviewed and separately authorized for push before its public contents match this implementation. No chaseos.app dependency was added.
 
@@ -78,7 +94,7 @@ npm run test:apple
 npm run validate:apple:release -- --app="/path/to/fresh/distribution/Paramount Quality+.app" --signed
 ```
 
-Builds are sequential, limited to two Xcode jobs, and use separate Debug/Release and unsigned/development output directories. They never archive or upload. Use the existing project only; do not create diagnostic Xcode projects or launch parallel build jobs during testing.
+Builds are sequential, limited to one Xcode job, and use separate Debug/Release and unsigned/development output directories. They never archive or upload. Use the existing project only; do not create diagnostic Xcode projects or launch parallel build jobs during testing.
 
 The normal **Paramount Quality+** scheme has no local StoreKit binding and archives with Release. **StoreKit Testing (macOS)** binds `TipProducts.storekit` only for local testing and disables archive builds. Confirm Xcode's no-charge test environment before any transaction. Do not purchase in production while testing.
 
