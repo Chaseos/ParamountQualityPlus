@@ -19,3 +19,14 @@ apple/.swiftpm/
 *.dSYM/
 *.pem
 *.key
+
+# Local investigations and reporter diagnostics (never package or commit)
+/.local/
+*.har
+*.log
+/reports/
+/diagnostic-reports/
+/docs/ERROR_2103_INVESTIGATION.md
+/docs/INDEXED_DASH_VALIDATION.md
+/docs/PACKAGE_MANIFEST_DISCOVERY.md
+/docs/QUALITY_MISMATCH_MONITOR.md
