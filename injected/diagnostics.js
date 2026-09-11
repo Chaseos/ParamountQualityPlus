@@ -1,3 +1,4 @@
+import { initReportMetadata, resetReportContext, exportDiagnosticReport } from './diagnostic-report.js';
 const DIAGNOSTIC_EVENT_LIMIT = 300;
 
 const diagnosticState = {
@@ -130,6 +131,7 @@ export function getDiagnosticSnapshot() {
 }
 
 export function resetDiagnostics() {
+  resetReportContext();
   diagnosticState.startedAt = Date.now();
   diagnosticState.startedAtMonotonic = diagnosticNow();
   diagnosticState.sequence = 0;
@@ -140,6 +142,7 @@ export function resetDiagnostics() {
 export function initDiagnostics() {
   if (diagnosticsInitialized || typeof window === 'undefined' || typeof document === 'undefined') return;
   diagnosticsInitialized = true;
+  initReportMetadata();
 
   const playbackEvents = [
     'encrypted', 'error', 'loadedmetadata', 'pause', 'play', 'playing',
@@ -154,7 +157,7 @@ export function initDiagnostics() {
 
   Object.defineProperty(window, '__PQI_DIAGNOSTICS__', {
     configurable: true,
-    value: Object.freeze({ snapshot: getDiagnosticSnapshot })
+    value: Object.freeze({ snapshot: getDiagnosticSnapshot, report: () => exportDiagnosticReport(getDiagnosticSnapshot()) })
   });
 
   recordDiagnosticEvent('diagnostics_initialized');

@@ -5,6 +5,7 @@ import { createServer } from 'node:http';
 import { initNetworkHooks } from '../injected/network-hooks.js';
 import { parseManifest } from '../injected/manifest-parser.js';
 import { getRepresentations, clearRepresentations, setConfig } from '../injected/state.js';
+import { createDiagnosticReport } from '../injected/diagnostic-report.js';
 import { manifest, manifestUrl } from './fixtures/indexed-dash.js';
 let dom;
 let originalFetch;
@@ -42,6 +43,7 @@ test('selected media URLs, Request headers, byte ranges and cancellation remain 
   await window.fetch(request);
   expect(originalFetch.mock.calls.at(-1)[0]).toBe(request);
   expect(request.headers.get('Range')).toBe('bytes=1000-1499');
+  expect(createDiagnosticReport().mediaRequests.at(-1)).toMatchObject({ transport: 'fetch', status: 206, range: 'bytes=1000-1499' });
   originalFetch.mockRejectedValueOnce(new DOMException('aborted', 'AbortError'));
   await expect(window.fetch(request)).rejects.toMatchObject({ name: 'AbortError' });
 });

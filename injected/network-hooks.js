@@ -404,14 +404,19 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
   async function fetchOriginal(args, url, retryable, token, qualityToken) {
     try {
       const response = await fetchWithRetry(this, args, retryable, url);
-      indexed.observe(url, response.ok, response.status, getRequestSignal(args)?.aborted);
+      indexed.observe(url, response.ok, response.status, getRequestSignal(args)?.aborted, {
+        transport: 'fetch', finalUrl: response.url, range: new Headers(args[1]?.headers || args[0]?.headers).get('Range'),
+        contentRange: response.headers?.get?.('Content-Range')
+      });
       if (response.ok && getRequestMethod(args) === 'GET' && !getRequestSignal(args)?.aborted) {
         qualityWatch.success(qualityToken, response.url, { range: new Headers(args[1]?.headers || args[0]?.headers).get('Range') });
       }
       if (response.ok && getRequestMethod(args) === 'GET' && !getRequestSignal(args)?.aborted) observeForDiscovery(url, token, response.url);
       return response;
     } catch (error) {
-      indexed.observe(url, false, error?.name || 'network-error', isCancelledRequest(args, error));
+      indexed.observe(url, false, error?.name || 'network-error', isCancelledRequest(args, error), {
+        transport: 'fetch', range: new Headers(args[1]?.headers || args[0]?.headers).get('Range')
+      });
       throw error;
     }
   }
@@ -693,14 +698,16 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       this.addEventListener('readystatechange', inspectXhrManifest);
       if (!this._pqi_indexedErrorListeners) {
         this._pqi_indexedErrorListeners = true;
-        this.addEventListener('error', () => indexed.observe(this._pqi_url, false, 'network-error'));
-        this.addEventListener('timeout', () => indexed.observe(this._pqi_url, false, 'timeout'));
+        this.addEventListener('error', () => indexed.observe(this._pqi_url, false, 'network-error', false, { transport: 'xhr', range: this._pqi_qualityRange }));
+        this.addEventListener('timeout', () => indexed.observe(this._pqi_url, false, 'timeout', false, { transport: 'xhr', range: this._pqi_qualityRange }));
       }
       this.addEventListener('readystatechange', function () {
         if (this.readyState !== 4 || this._pqi_rewriteRecorded) return;
         this._pqi_rewriteRecorded = true;
         const succeeded = this.status >= 200 && this.status < 400;
-        if (this.status) indexed.observe(this._pqi_url, succeeded, this.status);
+        if (this.status) indexed.observe(this._pqi_url, succeeded, this.status, false, {
+          transport: 'xhr', finalUrl: this.responseURL, range: this._pqi_qualityRange, contentRange: this.getResponseHeader('Content-Range')
+        });
         if (this.status >= 200 && this.status < 300 && String(method).toUpperCase() === 'GET') qualityWatch.success(this._pqi_qualityToken, this.responseURL, {
           range: this._pqi_qualityRange, plannedUrl: this._pqi_plannedUrl, strategy: this._pqi_rewritePlan?.strategy || 'original'
         });

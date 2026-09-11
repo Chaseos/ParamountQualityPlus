@@ -190,6 +190,7 @@ function injectScript() {
     injectionFailed = false;
     const script = document.createElement('script');
     script.type = 'module';
+    if (script.dataset) script.dataset.pqiVersion = chrome.runtime.getManifest?.()?.version || 'unknown';
     script.src = chrome.runtime.getURL('injected/index.js');
     script.onload = function () {
         this.remove();
