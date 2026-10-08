@@ -6,10 +6,10 @@ import { initNetworkHooks } from '../injected/network-hooks.js';
 import { parseManifest } from '../injected/manifest-parser.js';
 import { clearRepresentations, getRepresentations, setConfig } from '../injected/state.js';
 import { resetInferredFallbackState } from '../injected/inferred-vod.js';
-const text = readFileSync(new URL('./fixtures/lioness-segmented-captured.mpd', import.meta.url), 'utf8');
-const root = 'https://vod.pplus.paramount.tech/intl_vms/2026/06/10/ALVE01KTSC0QNME2JAKFQW7D3XQN8X/4388933_cenc_precon_dash/';
-const url = root + 'PARPUS_LIONESS_302_V1_c24_540p_4342061_2000/seg_140.m4s';
-const target = url.replace('c24_540p_4342061_2000', 'c20_1080p_4342061_5400');
+const text = readFileSync(new URL('./fixtures/paramount-segmented-anonymized.mpd', import.meta.url), 'utf8');
+const root = 'https://vod.pplus.paramount.tech/intl_vms/2099/01/01/EXAMPLE_EPISODE_01/1000001_cenc_precon_dash/';
+const url = root + 'SAMPLE_SERIES_101_V1_c24_540p_2000001_2000/seg_140.m4s';
+const target = url.replace('c24_540p_2000001_2000', 'c20_1080p_2000001_5400');
 let dom, originalFetch, complete;
 const flush = async () => { for (let i = 0; i < 25; i++) await Promise.resolve(); };
 const response = (body, url, status = 200) => {
@@ -124,8 +124,8 @@ test('aborted and failed XHR observations do not probe', async () => {
 
 
 test('single-file discovery never publishes a ladder, rewrites a range, or requests reload', async () => {
-  const indexedText = readFileSync(new URL('./fixtures/lioness-single-file-captured.mpd', import.meta.url), 'utf8');
-  const indexedUrl = url.replace('4388933_cenc_precon_dash', '4389134_cenc_fmp4_dash').replace('/seg_140.m4s', '.mp4');
+  const indexedText = readFileSync(new URL('./fixtures/paramount-indexed-anonymized.mpd', import.meta.url), 'utf8');
+  const indexedUrl = url.replace('1000001_cenc_precon_dash', '1000002_cenc_fmp4_dash').replace('/seg_140.m4s', '.mp4');
   originalFetch.mockImplementation(async resource => {
     const path = typeof resource === 'string' ? resource : resource.url;
     return response(path.endsWith('.mpd') ? indexedText : 'bytes', path);
@@ -153,7 +153,7 @@ test.each(['ad', 'malformed'].flatMap(kind => ['fetch', 'xhr'].map(transport => 
   expect((await window.fetch(url)).url).toBe(target);
  });
  test.each(['fetch', 'xhr'])('%s redirected media cannot authorize source-package discovery', async transport => {
-  const finalUrl = url.replace('4388933', '9999999');
+  const finalUrl = url.replace('1000001', '9999999');
   if (transport === 'fetch') {
     originalFetch.mockImplementation(async path => response(path.endsWith('.mpd') ? text : 'media', path === url ? finalUrl : path));
     await window.fetch(url);

@@ -2,7 +2,7 @@
 
 Latest setup adjustment: restart-Safari troubleshooting guidance appears in the containing app. The independence disclaimer is retained there and removed from the Safari popup; earlier descriptions of a shared popup disclaimer below are historical.
 
-September 8 update: local candidate is now 1.30 (2), with quit-on-close and a new support destination. The portfolio support page is implemented but not yet published. Current reviewer drafts and resubmission prerequisites are in [APPLE_REVIEW_RESOLUTION.md](../docs/APPLE_REVIEW_RESOLUTION.md). Portal version/build and purchase attachment remain unchanged pending the separately authorized release steps. Historical preparation notes below describe the earlier candidate.
+Release-specific investigation records and reviewer drafts are kept locally and excluded from the public repository.
 
 English (U.S.) name, subtitle, description, and review-note corrections were verified in App Store Connect on September 7, 2026. The waiting submission remains listing version 1.27 with build 1.30 (1); local Apple source remains 1.30 (1). Saving these fields did not replace its binary or attach the tip products.
 

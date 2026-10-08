@@ -4,7 +4,7 @@ import { resetInferredFallbackState } from '../injected/rewriter.js';
 import { setConfig, setRepresentations } from '../injected/state.js';
 
 const LOW = 'https://dai.google.com/linear/hls/pa/event/UFC/stream/LIVE/variant/0219929b8f4989b82a0b9a8f58f7352a/bandwidth/635781.m3u8?CMCD=br%3D635%2Cot%3Dv%2Ctb%3D8941';
-const HIGH = 'https://dai.google.com/linear/hls/pa/event/UFC/stream/LIVE/variant/51dee42484fe2a2135500e11874015a5/bandwidth/8940798.m3u8?token=signed';
+const HIGH = 'https://dai.google.com/linear/hls/pa/event/UFC/stream/LIVE/variant/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bandwidth/8940798.m3u8?token=signed';
 
 const response = (ok, status) => ({
   ok,
@@ -36,7 +36,7 @@ beforeEach(() => {
       family: 'google-dai-hls',
       streamKey: 'https://dai.google.com/event/UFC/stream/LIVE',
       variantUrl: HIGH,
-      daiId: '51dee42484fe2a2135500e11874015a5'
+      daiId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
     },
     {
       id: 'hls_0',
@@ -57,7 +57,7 @@ describe('Authoritative rewrite network fallback', () => {
     await window.fetch(LOW);
 
     const requested = originalFetch.mock.calls[0][0];
-    expect(requested).toContain('/variant/51dee42484fe2a2135500e11874015a5/bandwidth/8940798.m3u8');
+    expect(requested).toContain('/variant/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bandwidth/8940798.m3u8');
     expect(requested).toContain('token=signed');
     expect(requested).toContain('CMCD=br%3D635%2Cot%3Dv%2Ctb%3D8941');
     expect(analyzeUrl.mock.calls.map(call => call[0])).toEqual([

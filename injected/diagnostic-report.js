@@ -6,9 +6,11 @@ const MAX_BYTES = 128 * 1024;
 let extensionVersion = 'unknown';
 let manifest = null;
 let requests = [];
+let sourceRecovery = null;
 const safely = fn => { try { return fn(); } catch { return null; } };
 const number = value => typeof value === 'number' && Number.isFinite(value) ? value : null;
 const label = value => typeof value === 'string' && /^[\w .:+-]{1,100}$/.test(value) ? value : null;
+const sourceId = value => /^\d{1,20}$/.test(String(value || '')) ? String(value) : null;
 const range = value => typeof value === 'string' && /^(?:bytes[= ])?\d+-\d*(?:\/\d+)?$/.test(value) ? value : null;
 export const reportPath = value => safely(() => {
   if (typeof value !== 'string' || !value) return null;
@@ -22,7 +24,12 @@ const dimensions = object => ({ ...numericFields(object, ['width', 'height', 'ba
 export function initReportMetadata() {
   extensionVersion = label(document.querySelector('script[data-pqi-version]')?.dataset.pqiVersion) || 'unknown';
 }
-export function resetReportContext() { manifest = null; requests = []; }
+export function resetReportContext() { manifest = null; requests = []; sourceRecovery = null; }
+export function recordSourceRecoveryReport(outcome, detail = {}) {
+  const safe = eventReport({ type: 'source_recovery', timestamp: Date.now(), detail: { ...detail, outcome } });
+  const fields = Object.fromEntries(Object.entries(safe.detail).filter(([, value]) => value !== null));
+  sourceRecovery = { ...sourceRecovery, ...fields, at: safe.at };
+}
 export function recordManifestReport(result) {
   safely(() => {
     const variants = result.representations.flatMap(rep => rep.variants?.length ? rep.variants : [rep]);
@@ -69,6 +76,7 @@ function playerReport() {
       readyState: number(video.readyState), nativeError: number(video.error?.code),
       isAd: typeof player?.isAd === 'boolean' ? player.isAd : null,
       resource: reportPath(safely(() => player.resource.location.mediaUrl)),
+      resourceSourceId: sourceId(safely(() => player.resource.ad.ssai.contentSourceId)),
       playerAvailable: Boolean(shaka), keyStatuses,
       resourceAbr: safely(() => ({ ...numericFields(player.resource.playback.abr, ['maxHeight','minBitrate','maxBitrate']),
         maxCategory: label(player.resource.playback.abr.maxCategory) })),
@@ -82,13 +90,23 @@ function playerReport() {
     };
   });
 }
+function sourceContextReport() {
+  const tag = safely(() => window.SmartTag?.list?.length === 1 ? window.SmartTag.list[0] : null);
+  return {
+    sdkAvailable: safely(() => typeof tag?.API?.VIDEO?.load === 'function') === true,
+    declaredSourceId: sourceId(safely(() => tag.model.TagConstants.ADOPS_ID.CMSID)),
+    catalogPath: reportPath(safely(() => tag.model.apiMetadata.streamingUrl))
+  };
+}
 // Deliberately do not serialize arbitrary event payloads, player configuration,
 // DRM objects, or headers. Those can contain credentials or license material.
 function eventReport(event) {
   const detail = event.detail || {};
   const result = {};
-  for (const key of ['checkpoint','reason','strategy','outcome','transport','category']) result[key] = label(detail[key]);
-  for (const key of ['status','selectedHeight','targetHeight','retrievedHeight','decodedHeight','failureCount','shakaCode']) result[key] = number(detail[key]);
+  for (const key of ['checkpoint','reason','strategy','outcome','transport','category','sourceId','alternativeSourceId']) result[key] = label(detail[key]);
+  for (const key of ['status','selectedHeight','targetHeight','retrievedHeight','decodedHeight','failureCount','shakaCode',
+    'contentTime','elapsedMs','programMs','adMs']) result[key] = number(detail[key]);
+  for (const key of ['paused','active','startup']) if (typeof detail[key] === 'boolean') result[key] = detail[key];
   if (detail.url) result.path = reportPath(detail.url);
   return { at: number(event.timestamp), type: label(event.type), detail: result };
 }
@@ -101,7 +119,8 @@ export function createDiagnosticReport(snapshot = {}) {
       browser: navigator.userAgent.slice(0,300),
       selection: { mode: config.forceMax ? 'highest' : config.forcedHeight || config.forcedId ? 'manual' : 'auto',
         requestedHeight: number(config.forcedHeight), effectiveHeight: number(target?.height) },
-      manifest, mediaRequests: requests.slice(), players: playerReport(),
+      manifest, sourceContext: sourceContextReport(), sourceRecovery: sourceRecovery ? { ...sourceRecovery } : null,
+      mediaRequests: requests.slice(), players: playerReport(),
       events: (snapshot.recentEvents || []).slice(-60).map(eventReport)
     };
   });

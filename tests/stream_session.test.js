@@ -58,8 +58,8 @@ manifest_8.m3u8`, 'https://host/first/master.m3u8');
 
 describe('Media request classification', () => {
   test('recognizes the observed Safari TUL program route without admitting unrelated ad manifests', () => {
-    const root = 'https://pubads.g.doubleclick.net/ondemand/hls/content/2497752/' +
-      'vid/sFOQcK8mUYljXWcsjGbNI_g0mYAZW5d5/TUL/streams/session/';
+    const root = 'https://pubads.g.doubleclick.net/ondemand/hls/content/100/' +
+      'vid/EXAMPLE_EPISODE_03/TUL/streams/session/';
 
     for (const url of [root + 'master.m3u8', root + 'media/video.m3u8']) {
       expect(classifyMediaRequest(url)).toEqual(expect.objectContaining({
@@ -69,13 +69,13 @@ describe('Media request classification', () => {
       }));
     }
     expect(classifyMediaRequest(
-      'https://pubads.g.doubleclick.net/ondemand/hls/content/2497752/ad/master.m3u8'
+      'https://pubads.g.doubleclick.net/ondemand/hls/content/100/ad/master.m3u8'
     ).isAd).toBe(true);
   });
 
-  test('parses the captured Safari TUL master into its complete quality ladder', () => {
-    const root = 'https://pubads.g.doubleclick.net/ondemand/hls/content/2497752/' +
-      'vid/sFOQcK8mUYljXWcsjGbNI_g0mYAZW5d5/TUL/streams/session/';
+  test('parses an anonymized Safari TUL master into its complete quality ladder', () => {
+    const root = 'https://pubads.g.doubleclick.net/ondemand/hls/content/100/' +
+      'vid/EXAMPLE_EPISODE_03/TUL/streams/session/';
     const variants = [
       [5266097, 1920, 1080, 'high'],
       [289074, 416, 234, 'lowest'],

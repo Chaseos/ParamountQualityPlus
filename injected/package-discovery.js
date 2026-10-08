@@ -1,38 +1,13 @@
 import { getPackageManifestCandidate, readPackageManifest, selectPackageTarget } from './package-manifest.js';
 import { isAuthoritativePlanRejected } from './inferred-vod.js';
+import { readBoundedManifest } from './manifest-body.js';
 
-const MAX_BYTES = 2 * 1024 * 1024;
 const eligibleReasons = new Set(['no-representation', 'no-compatible-representation', 'rejected',
   'unrecognized-family-request', 'single-file-manifest-selection']);
 
 export function needsPackageDiscovery(plan, config) {
   return Boolean(config.forceMax || config.forcedId || config.forcedHeight) &&
     plan?.action === 'pass-through' && eligibleReasons.has(plan.reason);
-}
-
-async function readBoundedBody(response, signal) {
-  if (Number(response.headers?.get('content-length')) > MAX_BYTES) throw new Error('manifest-too-large');
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error('unsupported-body');
-  const cancel = () => { void reader.cancel().catch(() => {}); };
-  signal.addEventListener('abort', cancel, { once: true });
-  const decoder = new TextDecoder();
-  let size = 0;
-  let text = '';
-  try {
-    while (true) {
-      if (signal.aborted) throw new Error('cancelled');
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > MAX_BYTES) { cancel(); throw new Error('manifest-too-large'); }
-      text += decoder.decode(value, { stream: true });
-    }
-    return text + decoder.decode();
-  } finally {
-    signal.removeEventListener('abort', cancel);
-    reader.releaseLock();
-  }
 }
 
 export function createPackageDiscovery({ fetch, record, getPage = () => window.location.pathname }) {
@@ -70,7 +45,7 @@ export function createPackageDiscovery({ fetch, record, getPage = () => window.l
         credentials: 'omit', redirect: 'error', signal: controller.signal
       });
       if (!response.ok || response.redirected || response.url !== candidate.manifestUrl) throw new Error('response-rejected');
-      const text = await readBoundedBody(response, controller.signal);
+      const text = await readBoundedManifest(response, controller.signal);
       if (capture() !== token || controller.signal.aborted) return;
       const manifest = readPackageManifest(text, candidate, url);
       if (!manifest) throw new Error('manifest-mismatch-or-unsupported');

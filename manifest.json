@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "1.32",
+  "version": "1.33",
   "description": "__MSG_appDesc__",
   "default_locale": "en",
   "permissions": [
@@ -48,6 +48,9 @@
         "injected/quality-watch.js",
         "injected/indexed-dash.js",
         "injected/indexed-session.js",
+        "injected/source-recovery.js",
+        "injected/source-recovery-policy.js",
+        "injected/manifest-body.js",
         "injected/manifest-response.js",
         "injected/network-hooks.js",
         "injected/rewriter.js",

@@ -4,12 +4,15 @@ import { createRecoveryController } from './recovery-controller.js';
 import { getDiagnosticSnapshot, recordDiagnosticEvent, recordPlaybackCheckpoint } from './diagnostics.js';
 import { getConfig, getRepresentations } from './state.js';
 import { deriveStreamKey } from './stream-model.js';
+import { createSourceRecovery } from './source-recovery.js';
 
-export function createIndexedSession() {
+export function createIndexedSession({ fetch } = {}) {
   let current = null;
   let reloadRequested = false;
   let mediaReceived = false;
   const reported = new Set();
+  let sourceFailurePlan = null;
+  let preserveSourceFailure = false;
   let detachPlayerError = () => {};
   function bindPlayerError(result) {
     detachPlayerError();
@@ -26,8 +29,10 @@ export function createIndexedSession() {
     let handled = false;
     const handle = event => {
       const error = event?.detail?.error;
-      if (handled || current !== result || player.isAd !== false || !matchesResource(player) ||
+      if (handled || current !== result || !matchesResource(player) ||
           error?.fatal !== true || String(error.code) !== '2103' || error.cause?.category !== 4) return;
+      if (sourceRecovery.handleError(error, player)) { handled = true; return; }
+      if (player.isAd !== false) return;
       const cause = error.cause;
       const restrictions = cause.code === 4012 ? cause.data?.[0] : null;
       const detail = { playerCode: '2103', shakaCode: Number.isInteger(cause.code) ? cause.code : null,
@@ -37,12 +42,7 @@ export function createIndexedSession() {
         restrictedKeyStatuses: Array.isArray(restrictions?.restrictedKeyStatuses)
           ? restrictions.restrictedKeyStatuses.filter(status => ['output-restricted', 'internal-error'].includes(status)) : [] };
       handled = true;
-      try {
-        window.sessionStorage.setItem('pqiIndexedFailure', JSON.stringify({
-          path: window.location.pathname, recordedAt: Date.now(), ...detail
-        }));
-      } catch { /* Recovery must work even when diagnostic storage is unavailable. */ }
-      recordPlaybackCheckpoint('indexed_player_error', { streamKey: result.streamKey, ...detail });
+      recordPlayerFailure(detail, result);
       recovery.requestRecovery({ streamKey: result.streamKey, strategy: 'indexed-manifest' }, detail, { terminal: true });
     };
     try {
@@ -57,18 +57,37 @@ export function createIndexedSession() {
   const recovery = createRecoveryController({
     canFallbackToOriginal: () => false,
     postRecovery: payload => {
-      persistDiagnosticReport(getDiagnosticSnapshot(), payload.detail);
+      if (!preserveSourceFailure) persistDiagnosticReport(getDiagnosticSnapshot(), payload.detail);
       window.postMessage({ type: 'PQI_ORIGINAL_STREAM_RECOVERY', payload }, '*');
     },
     recordDiagnosticEvent,
     recordCheckpoint: recordPlaybackCheckpoint
+  });
+  function recordPlayerFailure(detail, result = current, persist = false) {
+    const failure = { ...detail, selectedHeight: result?.selectedHeight || detail.selectedHeight || null };
+    try {
+      window.sessionStorage.setItem('pqiIndexedFailure', JSON.stringify({
+        path: window.location.pathname, recordedAt: Date.now(), ...failure
+      }));
+    } catch { /* Recovery must work even when diagnostic storage is unavailable. */ }
+    sourceFailurePlan = { streamKey: result?.streamKey || null, strategy: 'indexed-manifest' };
+    recordPlaybackCheckpoint('indexed_player_error', { ...sourceFailurePlan, ...failure });
+    if (persist) persistDiagnosticReport(getDiagnosticSnapshot(), failure);
+  }
+  const sourceRecovery = createSourceRecovery({ fetch,
+    onFailure: detail => recordPlayerFailure(detail, current, true),
+    onAttempt: () => resetIndexed(),
+    recoverOriginal: detail => {
+      preserveSourceFailure = true;
+      recovery.requestRecovery(sourceFailurePlan, detail, { terminal: true });
+    }
   });
   const publish = () => window.postMessage({ type: 'PQI_QUALITY_STRATEGY', payload: {
     streamKey: current?.streamKey || null,
     strategy: current ? 'indexed-manifest' : null,
     selectedHeight: current?.selectedHeight || null
   } }, '*');
-  const reset = () => {
+  function resetIndexed() {
     detachPlayerError();
     detachPlayerError = () => {};
     resetReportContext();
@@ -77,8 +96,10 @@ export function createIndexedSession() {
     reported.clear();
     reloadRequested = false;
     recovery.reset();
+    preserveSourceFailure = false;
     publish();
-  };
+  }
+  const reset = () => { resetIndexed(); sourceRecovery.sync(); };
   const prepare = (text, url) => {
     const representations = getRepresentations();
     const result = filterIndexedDash(text, url, representations, getConfig());
@@ -86,6 +107,7 @@ export function createIndexedSession() {
   };
   // Commit only after the transport has successfully installed the new body.
   const commit = result => {
+    sourceRecovery.observeManifest(result);
     if (!result.supported) {
       if (result.original.includes('_cenc_fmp4_dash') && !reported.has(result.reason)) {
         reported.add(result.reason);
@@ -106,6 +128,7 @@ export function createIndexedSession() {
     if (event.source !== window || event.data?.type !== 'PQI_CONFIG' || !current || reloadRequested) return;
     const next = filterIndexedDash(current.original, current.url, current.representations, getConfig());
     if (!next.supported || next.selectedHeight === current.selectedHeight) return;
+    sourceRecovery.stagePosition();
     reloadRequested = true;
     window.postMessage({ type: 'PQI_INDEXED_RELOAD', payload: {
       streamKey: current.streamKey, config: getConfig()
@@ -126,13 +149,14 @@ export function createIndexedSession() {
     if (!matches(url)) return;
     recordMediaReport(url, typeof detail === 'number' ? detail : null, { ...info, cancelled, outcome: cancelled ? 'cancelled' : succeeded ? 'success' : typeof detail === 'string' ? detail : 'http-error' });
     if (cancelled) return;
+    if (sourceRecovery.busy()) return;
     const plan = { streamKey: current.streamKey, strategy: 'indexed-manifest' };
     if (succeeded) { mediaReceived = true; recovery.recordRewriteSuccess(plan); }
     else recovery.requestRecovery(plan, detail);
   };
   document.addEventListener?.('error', event => {
     const video = event.target;
-    if (video?.tagName !== 'VIDEO' || video.player?.isAd !== false || !mediaReceived || !current?.selectedHeight ||
+    if (sourceRecovery.busy() || video?.tagName !== 'VIDEO' || video.player?.isAd !== false || !mediaReceived || !current?.selectedHeight ||
         ![3, 4].includes(video.error?.code)) return;
     recovery.requestRecovery({ streamKey: current.streamKey, strategy: 'indexed-manifest' },
       `video-error-${video.error.code}`, { terminal: true });

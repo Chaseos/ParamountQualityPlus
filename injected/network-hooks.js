@@ -24,7 +24,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
   const ORIGINAL_XHR_OPEN = XMLHttpRequest.prototype.open;
   const ORIGINAL_XHR_SEND = XMLHttpRequest.prototype.send;
   const ORIGINAL_XHR_SET_HEADER = XMLHttpRequest.prototype.setRequestHeader;
-  const indexed = createIndexedSession();
+  const indexed = createIndexedSession({ fetch: (...args) => ORIGINAL_FETCH.apply(window, args) });
   const discovery = createPackageDiscovery({
     fetch: (...args) => ORIGINAL_FETCH.apply(window, args), record: recordDiagnosticEvent
   });

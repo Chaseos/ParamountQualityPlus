@@ -7,11 +7,11 @@ import { parseManifest, readDashRepresentations } from '../injected/manifest-par
 import { clearRepresentations, setRepresentations, setConfig, getConfig } from '../injected/state.js';
 import { resetInferredFallbackState } from '../injected/inferred-vod.js';
 import { getDiagnosticSnapshot, resetDiagnostics } from '../injected/diagnostics.js';
-const text = readFileSync(new URL('./fixtures/lioness-segmented-captured.mpd', import.meta.url), 'utf8');
-const root = 'https://vod.pplus.paramount.tech/intl_vms/2026/06/10/ALVE01KTSC0QNME2JAKFQW7D3XQN8X/4388933_cenc_precon_dash/';
-const source = n => root + `PARPUS_LIONESS_302_V1_c24_540p_4342061_2000/seg_${n}.m4s`;
-const targetDirectory = 'PARPUS_LIONESS_302_V1_c20_1080p_4342061_5400';
-const staleDirectory = 'PARPUS_LIONESS_302_V1_c21_1080p_4342061_5400';
+const text = readFileSync(new URL('./fixtures/paramount-segmented-anonymized.mpd', import.meta.url), 'utf8');
+const root = 'https://vod.pplus.paramount.tech/intl_vms/2099/01/01/EXAMPLE_EPISODE_01/1000001_cenc_precon_dash/';
+const source = n => root + `SAMPLE_SERIES_101_V1_c24_540p_2000001_2000/seg_${n}.m4s`;
+const targetDirectory = 'SAMPLE_SERIES_101_V1_c20_1080p_2000001_5400';
+const staleDirectory = 'SAMPLE_SERIES_101_V1_c21_1080p_2000001_5400';
 let dom, fetch, decoded, startedAt;
 const makeResponse = (body, url, status = 200) => {
   const response = new Response(body, { status }); Object.defineProperty(response, 'url', { value: url }); return response;
@@ -32,13 +32,13 @@ beforeEach(() => {
     open(method, url) { this.url = url; this.readyState = 1; }
     setRequestHeader() {}
     getResponseHeader() { return null; }
-    send() { this.status = 200; this.readyState = 4; this.responseURL = this.url.replace(staleDirectory, 'PARPUS_LIONESS_302_V1_c24_540p_4342061_2000'); this.dispatchEvent(new dom.window.Event('readystatechange')); }
+    send() { this.status = 200; this.readyState = 4; this.responseURL = this.url.replace(staleDirectory, 'SAMPLE_SERIES_101_V1_c24_540p_2000001_2000'); this.dispatchEvent(new dom.window.Event('readystatechange')); }
   }
   globalThis.XMLHttpRequest = window.XMLHttpRequest = XHR;
   fetch = jest.fn(async resource => {
     const url = typeof resource === 'string' ? resource : resource.url;
     if (url.endsWith('/stream.mpd')) return makeResponse(text, url);
-    return makeResponse('media', url.replace(staleDirectory, 'PARPUS_LIONESS_302_V1_c24_540p_4342061_2000'));
+    return makeResponse('media', url.replace(staleDirectory, 'SAMPLE_SERIES_101_V1_c24_540p_2000001_2000'));
   });
   window.fetch = fetch; window.postMessage = jest.fn();
   clearRepresentations(); resetInferredFallbackState(); resetDiagnostics();

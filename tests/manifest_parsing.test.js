@@ -151,7 +151,7 @@ describe('Manifest Parsing', () => {
             [1080, 5812183, 'c20', '5400']
         ].map(([height, bandwidth, codecTier, urlTier], index) => `
             <Representation id="${index}" width="1920" height="${height}" bandwidth="${bandwidth}">
-              <SegmentTemplate media="PPUSA_MOVIE_UHD_V1_${codecTier}_${height}p_4309720_${urlTier}/seg_$Number$.m4s" />
+              <SegmentTemplate media="PPUSA_MOVIE_UHD_V1_${codecTier}_${height}p_2000004_${urlTier}/seg_$Number$.m4s" />
             </Representation>
         `).join('');
 
@@ -175,7 +175,7 @@ describe('Manifest Parsing', () => {
     });
 
     test('does not interpret a numeric production ID as every representation bitrate', () => {
-        const titlePrefix = 'WOLF_OF_WALL_STREET_THE_36001_001_FTR_VMASTER_c24';
+        const titlePrefix = 'SAMPLE_MOVIE_90001_001_FTR_VMASTER_c24';
         const contentReps = [
             [234, 145361],
             [432, 1024338],
@@ -184,7 +184,7 @@ describe('Manifest Parsing', () => {
             [1080, 5812183]
         ].map(([height, bandwidth]) => `
             <Representation
-              id="${titlePrefix}_${height}p_3054956"
+              id="${titlePrefix}_${height}p_2000012"
               width="1920"
               height="${height}"
               bandwidth="${bandwidth}"></Representation>
@@ -195,11 +195,11 @@ describe('Manifest Parsing', () => {
             <SegmentTemplate media="$RepresentationID$_$Bandwidth$/seg_$Number$.m4s" />
             ${contentReps}
           </AdaptationSet></Period></MPD>
-        `, 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/wolf/manifest.mpd');
+        `, 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/sample/manifest.mpd');
 
         const reps = getAvailableRepresentations();
         expect(reps.map(rep => rep.dashTier)).toEqual(['5812', '3797', '1716', '1024', '145']);
-        expect(reps.every(rep => rep.dashTier !== '36001')).toBe(true);
+        expect(reps.every(rep => rep.dashTier !== '90001')).toBe(true);
 
         const manifestMessage = window.postMessage.mock.calls
             .map(call => call[0])
@@ -208,11 +208,11 @@ describe('Manifest Parsing', () => {
             .toEqual([5812183, 3797217, 1716061, 1024338, 145361]);
     });
 
-    test('selects the highest representation from the captured Big Brother live DASH ladder', () => {
+    test('selects the highest representation from an anonymized live DASH ladder', () => {
         parseManifest(`
           <MPD><Period>
             <AdaptationSet mimeType="video/mp4">
-              <SegmentTemplate media="manifest_video_$RepresentationID$_0_$Number$.mp4?m=1783441869" />
+              <SegmentTemplate media="manifest_video_$RepresentationID$_0_$Number$.mp4?m=1" />
               <Representation id="4" width="960" height="540" bandwidth="1800000"></Representation>
               <Representation id="5" width="1280" height="720" bandwidth="3499968"></Representation>
               <Representation id="6" width="1920" height="1080" bandwidth="5800000"></Representation>
@@ -377,7 +377,7 @@ describe('Manifest Parsing', () => {
                 <Period>
                     <AdaptationSet contentType="video" mimeType="video/mp4">
                         <Representation id="1080" bandwidth="5577000" width="1920" height="1080">
-                            <BaseURL>BIG_BROTHER_2701_2997DF_HD_2CH_1920x1080_R1_c23_1080p_3412599_5400/seg_$Number$.m4s</BaseURL>
+                            <BaseURL>SAMPLE_LIVE_101_HD_2CH_1920x1080_R1_c23_1080p_2000027_5400/seg_$Number$.m4s</BaseURL>
                         </Representation>
                         <Representation id="ad" bandwidth="150000" width="360" height="200">
                             <BaseURL>https://r1.googlevideo.com/videoplayback?source=dclk_video_ads</BaseURL>

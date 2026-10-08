@@ -4,9 +4,9 @@ import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, expect, jest, test } from '@jest/globals';
 import { createPackageDiscovery, needsPackageDiscovery } from '../injected/package-discovery.js';
 import { recordAuthoritativeRewriteResult, resetInferredFallbackState } from '../injected/inferred-vod.js';
-const text = readFileSync(new URL('./fixtures/lioness-segmented-captured.mpd', import.meta.url), 'utf8');
-const root = 'https://vod.pplus.paramount.tech/intl_vms/2026/06/10/ALVE01KTSC0QNME2JAKFQW7D3XQN8X/4388933_cenc_precon_dash/';
-const url = root + 'PARPUS_LIONESS_302_V1_c24_540p_4342061_2000/seg_140.m4s';
+const text = readFileSync(new URL('./fixtures/paramount-segmented-anonymized.mpd', import.meta.url), 'utf8');
+const root = 'https://vod.pplus.paramount.tech/intl_vms/2099/01/01/EXAMPLE_EPISODE_01/1000001_cenc_precon_dash/';
+const url = root + 'SAMPLE_SERIES_101_V1_c24_540p_2000001_2000/seg_140.m4s';
 let dom, discovery, fetch, record, page;
 const response = (body = text, options = {}) => {
   const value = new Response(body, options);

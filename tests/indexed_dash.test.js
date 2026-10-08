@@ -14,9 +14,9 @@ const filter = (text, config = { forcedHeight: 1080 }) => {
 };
 const xml = text => new DOMParser().parseFromString(text, 'application/xml');
 
-test.each(['PARPUS_LIONESS_302_V1', 'DIFFERENT_MOVIE'])('does not invent prefetch URLs for %s', name => {
+test.each(['SAMPLE_SERIES_101_V1', 'DIFFERENT_MOVIE'])('does not invent prefetch URLs for %s', name => {
   const fetch = jest.fn();
-  const url = `${root}${name}_c24_540p_4342061_2000.mp4`;
+  const url = `${root}${name}_c24_540p_2000001_2000.mp4`;
   maybePrefetchSegments(url, fetch);
   expect(fetch).not.toHaveBeenCalled();
   expect(getParamountPackaging(url)).toBe('single-file');

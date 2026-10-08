@@ -4,7 +4,28 @@ import { setConfig } from '../injected/state.js';
 
 beforeEach(() => {
   document.body.replaceChildren(); sessionStorage.clear(); resetReportContext(); setConfig({ forcedHeight: 1080 });
+  delete window.SmartTag;
   const script = document.createElement('script'); script.dataset.pqiVersion = '1.32'; document.body.append(script); initReportMetadata();
+});
+afterEach(() => { delete window.SmartTag; });
+test('reports declared and active source context without guessing or exposing credentials', () => {
+  window.SmartTag = { list: [{
+    model: { TagConstants: { ADOPS_ID: { CMSID: 111 } },
+      apiMetadata: { streamingUrl: 'https://user:SECRET@cdn.test/package/stream.mpd?token=SECRET' } },
+    API: { VIDEO: { load() {} } }
+  }] };
+  const video = document.createElement('video'); document.body.append(video);
+  video.player = { resource: { ad: { ssai: { contentSourceId: '222' } } } };
+  const report = createDiagnosticReport();
+  expect(report.sourceContext).toEqual({ sdkAvailable: true, declaredSourceId: '111', catalogPath: 'https://cdn.test/package/stream.mpd' });
+  expect(report.players[0].resourceSourceId).toBe('222');
+  expect(JSON.stringify(report)).not.toContain('SECRET');
+});
+test('missing or ambiguous SDK context is explicit and does not make report collection fail', () => {
+  const absent = { sdkAvailable: false, declaredSourceId: null, catalogPath: null };
+  expect(createDiagnosticReport().sourceContext).toEqual(absent);
+  window.SmartTag = { list: [{}, {}] };
+  expect(createDiagnosticReport().sourceContext).toEqual(absent);
 });
 function fixture() {
   return { url: 'https://cdn.test/stream.mpd?token=SECRET', reason: 'selected', selectedHeight: 1080,

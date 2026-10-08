@@ -58,20 +58,20 @@ describe('URL Rewriting', () => {
                 id: '1080p',
                 height: 1080,
                 bandwidth: 5880000,
-                pathId: 'Sleepy_Hollow_FTR_VMASTER_2725014_4500'
+                pathId: 'SAMPLE_PLAIN_MOVIE_FTR_VMASTER_2000015_4500'
             },
             {
                 id: '540p',
                 height: 540,
                 bandwidth: 2738000,
-                pathId: 'Sleepy_Hollow_FTR_VMASTER_2725014_2100'
+                pathId: 'SAMPLE_PLAIN_MOVIE_FTR_VMASTER_2000015_2100'
             }
         ]);
         setConfig({ forceMax: true });
 
-        const input = 'https://vod-gcs-cedexis.cbsaavideo.com/path/Sleepy_Hollow_FTR_VMASTER_2725014_2100/init.m4v?CMCD=ot%3Di';
+        const input = 'https://vod-gcs-cedexis.cbsaavideo.com/path/SAMPLE_PLAIN_MOVIE_FTR_VMASTER_2000015_2100/init.m4v?CMCD=ot%3Di';
         expect(maybeRewriteUrl(input))
-            .toContain('/Sleepy_Hollow_FTR_VMASTER_2725014_4500/init.m4v');
+            .toContain('/SAMPLE_PLAIN_MOVIE_FTR_VMASTER_2000015_4500/init.m4v');
     });
 
     test('rewrites initialization URLs from the manifest initialization template', () => {
@@ -120,20 +120,20 @@ describe('URL Rewriting', () => {
         expect(result).toBe(input);
     });
 
-    test('rewrites the captured Big Brother live DASH representation ID', () => {
+    test('rewrites an anonymized live DASH representation ID', () => {
         setAvailableRepresentations([
             { id: 's0-7', rawId: '7', height: 1080, bandwidth: 8000000 },
             { id: 's0-4', rawId: '4', height: 540, bandwidth: 1800000 }
         ]);
         setConfig({ forceMax: true, forcedId: null });
 
-        const input = 'https://airspace-cdn.cbsivideo.com/out/v1/live/manifest_video_4_0_465410.mp4?CMCD=br%3D1800%2Cot%3Dv%2Ctb%3D8000';
+        const input = 'https://airspace-cdn.cbsivideo.com/out/v1/live/manifest_video_4_0_2000028.mp4?CMCD=br%3D1800%2Cot%3Dv%2Ctb%3D8000';
         expect(maybeRewriteUrl(input))
-            .toContain('manifest_video_7_0_465410.mp4');
+            .toContain('manifest_video_7_0_2000028.mp4');
     });
 
     test('rewrites live DASH templates with cache-busting queries', () => {
-        const template = 'manifest_video_$RepresentationID$_0_$Number$.mp4?m=1783441869';
+        const template = 'manifest_video_$RepresentationID$_0_$Number$.mp4?m=1';
         setAvailableRepresentations([
             {
                 id: 's0-7', rawId: '7', height: 1080, bandwidth: 8000000,
@@ -147,11 +147,11 @@ describe('URL Rewriting', () => {
         setConfig({ forceMax: true, forcedId: null });
 
         const input = 'https://airspace-cdn.cbsivideo.com/out/v1/live/' +
-            'manifest_video_4_0_465410.mp4?m=1783441869&CMCD=br%3D1800%2Cot%3Dv%2Ctb%3D8000';
+            'manifest_video_4_0_2000028.mp4?m=1&CMCD=br%3D1800%2Cot%3Dv%2Ctb%3D8000';
 
         expect(maybeRewriteUrl(input)).toBe(
             'https://airspace-cdn.cbsivideo.com/out/v1/live/' +
-            'manifest_video_7_0_465410.mp4?m=1783441869&CMCD=br%3D1800%2Cot%3Dv%2Ctb%3D8000'
+            'manifest_video_7_0_2000028.mp4?m=1&CMCD=br%3D1800%2Cot%3Dv%2Ctb%3D8000'
         );
     });
 
@@ -224,8 +224,8 @@ describe('URL Rewriting', () => {
     });
 
     test.each([
-        ['STAR_TREK_ST_101_c24_540p_4309720_2000', 'STAR_TREK_ST_101_c22_720p_4309720_3200'],
-        ['PPUSA_SURVIVOR_5008_V1_c24_540p_3820071_2000', 'PPUSA_SURVIVOR_5008_V1_c22_720p_3820071_3200']
+        ['SAMPLE_SERIES_101_c24_540p_2000004_2000', 'SAMPLE_SERIES_101_c22_720p_2000004_3200'],
+        ['SAMPLE_SURVIVOR_101_V1_c24_540p_2000009_2000', 'SAMPLE_SURVIVOR_101_V1_c22_720p_2000009_3200']
     ])('matches a manual VOD target to the current title and asset: %s', (sourcePath, targetPath) => {
         const representations = [
             {
@@ -249,13 +249,13 @@ describe('URL Rewriting', () => {
     test('does not match a manual VOD target from a different asset', () => {
         setAvailableRepresentations([{
             id: 'vod-720', height: 720, bandwidth: 3800000, family: 'dash',
-            pathId: 'PPUSA_SURVIVOR_5008_V1_c22_720p_9999999_3200',
+            pathId: 'SAMPLE_SURVIVOR_101_V1_c22_720p_9999999_3200',
             compatibilityKey: 'dash:period-1:avc'
         }]);
         setConfig({ forceMax: false, forcedId: 'vod-720', forcedHeight: 720 });
 
         const input = 'https://vod.pplus.paramount.tech/title_cenc_precon_dash/' +
-            'PPUSA_SURVIVOR_5008_V1_c24_540p_3820071_2000/seg_10.m4s';
+            'SAMPLE_SURVIVOR_101_V1_c24_540p_2000009_2000/seg_10.m4s';
         expect(maybeRewriteUrl(input)).toBe(input);
     });
 
@@ -263,37 +263,37 @@ describe('URL Rewriting', () => {
         setAvailableRepresentations([
             {
                 id: 'ncis-720', height: 720, bandwidth: 3721282, family: 'dash',
-                pathId: 'CBS_NCIS_001_R_1935084_3000',
+                pathId: 'SAMPLE_SERIES_101_R_2000030_3000',
                 variants: [
                     {
                         id: 'ncis-720-p1', height: 720, bandwidth: 3721282, family: 'dash',
-                        pathId: 'CBS_NCIS_001_R_1935084_3000', compatibilityKey: 'dash:period-1:avc'
+                        pathId: 'SAMPLE_SERIES_101_R_2000030_3000', compatibilityKey: 'dash:period-1:avc'
                     },
                     {
                         id: 'ncis-720-p2', height: 720, bandwidth: 3732644, family: 'dash',
-                        pathId: 'CBS_NCIS_001_R_1935084_3000', compatibilityKey: 'dash:period-2:avc'
+                        pathId: 'SAMPLE_SERIES_101_R_2000030_3000', compatibilityKey: 'dash:period-2:avc'
                     }
                 ]
             },
             {
                 id: 'ncis-576', height: 576, bandwidth: 2602453, family: 'dash',
-                pathId: 'CBS_NCIS_001_R_1935084_2100',
+                pathId: 'SAMPLE_SERIES_101_R_2000030_2100',
                 variants: [
                     {
                         id: 'ncis-576-p1', height: 576, bandwidth: 2602453, family: 'dash',
-                        pathId: 'CBS_NCIS_001_R_1935084_2100', compatibilityKey: 'dash:period-1:avc'
+                        pathId: 'SAMPLE_SERIES_101_R_2000030_2100', compatibilityKey: 'dash:period-1:avc'
                     },
                     {
                         id: 'ncis-576-p2', height: 576, bandwidth: 2573747, family: 'dash',
-                        pathId: 'CBS_NCIS_001_R_1935084_2100', compatibilityKey: 'dash:period-2:avc'
+                        pathId: 'SAMPLE_SERIES_101_R_2000030_2100', compatibilityKey: 'dash:period-2:avc'
                     }
                 ]
             }
         ]);
         setConfig({ forceMax: false, forcedId: 'ncis-720', forcedHeight: 720 });
 
-        const input = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/2014/06/05/' +
-            '274068035997/3405928_cenc_precon_dash/CBS_NCIS_001_R_1935084_2100/seg_24.m4s';
-        expect(maybeRewriteUrl(input)).toContain('CBS_NCIS_001_R_1935084_3000/seg_24.m4s');
+        const input = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/2000/01/01/' +
+            'EXAMPLE_EPISODE_99/1000016_cenc_precon_dash/SAMPLE_SERIES_101_R_2000030_2100/seg_24.m4s';
+        expect(maybeRewriteUrl(input)).toContain('SAMPLE_SERIES_101_R_2000030_3000/seg_24.m4s');
     });
 });

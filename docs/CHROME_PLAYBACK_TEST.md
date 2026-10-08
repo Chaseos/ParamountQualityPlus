@@ -29,8 +29,9 @@ query strings and fragments.
 ## Recommended playback matrix
 
 Use these titles after loading `dist/chromium` as an unpacked extension. They
-are the real stream shapes covered by the captured regression fixtures, rather
-than generic placeholders.
+cover the stream shapes represented by the anonymized capture-derived regression
+fixtures. Public fixtures use synthetic paths, identifiers and DRM payloads;
+actual playback still requires testing with Paramount's current streams.
 
 | Video | Primary check |
 | --- | --- |

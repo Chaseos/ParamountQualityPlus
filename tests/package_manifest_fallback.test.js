@@ -5,9 +5,9 @@ import { getPackageManifestCandidate, readPackageManifest, selectPackageTarget }
 import { readDashRepresentations } from '../injected/manifest-parser.js';
 import { setRepresentations, getRepresentations } from '../injected/state.js';
 
-const captured = readFileSync(new URL('./fixtures/lioness-segmented-captured.mpd', import.meta.url), 'utf8');
-const root = 'https://vod.pplus.paramount.tech/intl_vms/2026/06/10/ALVE01KTSC0QNME2JAKFQW7D3XQN8X/4388933_cenc_precon_dash/';
-const source = root + 'PARPUS_LIONESS_302_V1_c24_540p_4342061_2000/seg_140.m4s';
+const captured = readFileSync(new URL('./fixtures/paramount-segmented-anonymized.mpd', import.meta.url), 'utf8');
+const root = 'https://vod.pplus.paramount.tech/intl_vms/2099/01/01/EXAMPLE_EPISODE_01/1000001_cenc_precon_dash/';
+const source = root + 'SAMPLE_SERIES_101_V1_c24_540p_2000001_2000/seg_140.m4s';
 const candidate = getPackageManifestCandidate(source);
 const read = text => readPackageManifest(text, candidate, source);
 const target = (text, config = { forcedHeight: 1080 }, reps = []) => {
@@ -32,7 +32,7 @@ test.each([
   source.replace('seg_140.m4s', 'init.m4v'), source + '?CMCD=ot%3Da', source + '?CMCD=st%3Dl',
   source.replace('/intl_vms/', '/ads/'), source.replace('_cenc_precon_dash', '_hls'),
   source.replace('seg_140.m4s', 'stream.mpd'), source.replace('seg_140.m4s', 'seg_140.ts'),
-  source.replace('PARPUS_LIONESS_302_V1_c24_540p_4342061_2000', 'OTHER_en-US_eac3_192')
+  source.replace('SAMPLE_SERIES_101_V1_c24_540p_2000001_2000', 'OTHER_en-US_eac3_192')
 ])('does not probe excluded observation %s', url => expect(getPackageManifestCandidate(url)).toBeNull());
 
 test('pure parsing never publishes or replaces authoritative state', () => {
@@ -44,15 +44,15 @@ test('pure parsing never publishes or replaces authoritative state', () => {
   expect(window.postMessage).not.toHaveBeenCalled();
 });
 
-test.each([1, 124, 125, 307, 308, 435, 436, 520])('captured timeline selects the correct period for segment %i', number => {
+test.each([1, 124, 125, 307, 308, 435, 436, 520])('capture-derived timeline selects the correct period for segment %i', number => {
   const manifest = read(captured);
   const url = source.replace('seg_140', `seg_${number}`);
   const selected = selectPackageTarget(manifest, url, { forcedHeight: 1080 }, []);
-  expect(selected?.url).toBe(url.replace('c24_540p_4342061_2000', 'c20_1080p_4342061_5400'));
+  expect(selected?.url).toBe(url.replace('c24_540p_2000001_2000', 'c20_1080p_2000001_5400'));
 });
 
 test('uses declared paths, not c20/c23 guesses', () => {
-  const renamed = captured.replaceAll('PARPUS_LIONESS_302_V1_c20_1080p_4342061_5400', 'UNFAMILIAR_TARGET');
+  const renamed = captured.replaceAll('SAMPLE_SERIES_101_V1_c20_1080p_2000001_5400', 'UNFAMILIAR_TARGET');
   expect(target(renamed)?.url).toBe(root + 'UNFAMILIAR_TARGET/seg_140.m4s');
 });
 
@@ -93,14 +93,14 @@ test('resolves inherited BaseURLs without leaving the observed package', () => {
 
 test('rejects ambiguous source periods and mismatched packages', () => {
   expect(read(mutate(doc => doc.documentElement.appendChild(doc.querySelectorAll('Period')[1].cloneNode(true))))).toBeNull();
-  expect(read(captured.replaceAll('c24_540p_4342061_2000', 'different_source'))).toBeNull();
+  expect(read(captured.replaceAll('c24_540p_2000001_2000', 'different_source'))).toBeNull();
   expect(read(captured.replace('type="static"', 'type="dynamic"'))).toBeNull();
   expect(read('<MPD>')).toBeNull();
 });
 
 test('single-file package discovery is diagnostic-only', () => {
-  const content = readFileSync(new URL('./fixtures/lioness-single-file-captured.mpd', import.meta.url), 'utf8');
-  const url = source.replace('4388933_cenc_precon_dash', '4389134_cenc_fmp4_dash').replace('/seg_140.m4s', '.mp4');
+  const content = readFileSync(new URL('./fixtures/paramount-indexed-anonymized.mpd', import.meta.url), 'utf8');
+  const url = source.replace('1000001_cenc_precon_dash', '1000002_cenc_fmp4_dash').replace('/seg_140.m4s', '.mp4');
   const candidate = getPackageManifestCandidate(url);
   const manifest = readPackageManifest(content, candidate, url);
   expect(manifest?.diagnosticOnly).toBe(true);

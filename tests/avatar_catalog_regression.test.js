@@ -3,8 +3,8 @@ import { parseManifest } from '../injected/manifest-parser.js';
 import { planRequest, resetInferredFallbackState } from '../injected/rewriter.js';
 import { getRepresentations, setConfig, setRepresentations } from '../injected/state.js';
 
-const MANIFEST_URL = 'https://pubads.g.doubleclick.net/ondemand/dash/content/2497752/vid/4ArZ1SA516mS4BSuicLeDS1hmKzm8Irf/CHS/streams/session/manifest.mpd';
-const CONTENT_ROOT = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/2020/06/05/1747188803528/3348861_cenc_precon_dash/';
+const MANIFEST_URL = 'https://pubads.g.doubleclick.net/ondemand/dash/content/100/vid/EXAMPLE_EPISODE_02/CHS/streams/session/manifest.mpd';
+const CONTENT_ROOT = 'https://vod-gcs-cedexis.cbsaavideo.com/intl_vms/2000/01/01/EXAMPLE_EPISODE_13/1000014_cenc_precon_dash/';
 
 const avatarManifest = `
   <MPD xmlns="urn:mpeg:dash:schema:mpd:2011">
@@ -43,17 +43,17 @@ const avatarManifest = `
       </AdaptationSet>
       <AdaptationSet contentType="video">
         <Representation id="0" width="1920" height="1080" bandwidth="5462882">
-          <SegmentTemplate media="NICKELODEON_AVATAR_105_V1_c23_1080p_3347410_5400/seg_$Number$.m4s" initialization="NICKELODEON_AVATAR_105_V1_c23_1080p_3347410_5400/init.m4v" />
+          <SegmentTemplate media="SAMPLE_CARTOON_101_V1_c23_1080p_2000021_5400/seg_$Number$.m4s" initialization="SAMPLE_CARTOON_101_V1_c23_1080p_2000021_5400/init.m4v" />
         </Representation>
       </AdaptationSet>
       <AdaptationSet contentType="video">
         <Representation id="1" width="416" height="234" bandwidth="141729">
-          <SegmentTemplate media="NICKELODEON_AVATAR_105_V1_c28_234p_3347410_130/seg_$Number$.m4s" initialization="NICKELODEON_AVATAR_105_V1_c28_234p_3347410_130/init.m4v" />
+          <SegmentTemplate media="SAMPLE_CARTOON_101_V1_c28_234p_2000021_130/seg_$Number$.m4s" initialization="SAMPLE_CARTOON_101_V1_c28_234p_2000021_130/init.m4v" />
         </Representation>
       </AdaptationSet>
       <AdaptationSet contentType="video">
         <Representation id="4" width="960" height="540" bandwidth="1606505">
-          <SegmentTemplate media="NICKELODEON_AVATAR_105_V1_c24_540p_3347410_2000/seg_$Number$.m4s" initialization="NICKELODEON_AVATAR_105_V1_c24_540p_3347410_2000/init.m4v" />
+          <SegmentTemplate media="SAMPLE_CARTOON_101_V1_c24_540p_2000021_2000/seg_$Number$.m4s" initialization="SAMPLE_CARTOON_101_V1_c24_540p_2000021_2000/init.m4v" />
         </Representation>
       </AdaptationSet>
     </Period>
@@ -73,24 +73,24 @@ describe('Avatar legacy catalog regression', () => {
 
     expect(getRepresentations().map(rep => rep.height)).toEqual([1080, 540, 234]);
     expect(getRepresentations()[0]).toEqual(expect.objectContaining({
-      pathId: 'NICKELODEON_AVATAR_105_V1_c23_1080p_3347410_5400',
+      pathId: 'SAMPLE_CARTOON_101_V1_c23_1080p_2000021_5400',
       bandwidth: 5462882,
       isContent: true
     }));
 
-    const sourceDirectory = 'NICKELODEON_AVATAR_105_V1_c24_540p_3347410_2000';
+    const sourceDirectory = 'SAMPLE_CARTOON_101_V1_c24_540p_2000021_2000';
     const initPlan = planRequest(`${CONTENT_ROOT}${sourceDirectory}/init.m4v?CMCD=ot%3Di`);
     const segmentPlan = planRequest(`${CONTENT_ROOT}${sourceDirectory}/seg_4.m4s?CMCD=br%3D1607%2Cot%3Dv%2Ctb%3D5463`);
 
     expect(initPlan).toEqual(expect.objectContaining({
       action: 'authoritative-rewrite',
       mediaRole: 'initialization',
-      url: expect.stringContaining('NICKELODEON_AVATAR_105_V1_c23_1080p_3347410_5400/init.m4v')
+      url: expect.stringContaining('SAMPLE_CARTOON_101_V1_c23_1080p_2000021_5400/init.m4v')
     }));
     expect(segmentPlan).toEqual(expect.objectContaining({
       action: 'authoritative-rewrite',
       mediaRole: 'segment',
-      url: expect.stringContaining('NICKELODEON_AVATAR_105_V1_c23_1080p_3347410_5400/seg_4.m4s')
+      url: expect.stringContaining('SAMPLE_CARTOON_101_V1_c23_1080p_2000021_5400/seg_4.m4s')
     }));
   });
 
@@ -150,13 +150,13 @@ describe('Avatar legacy catalog regression', () => {
     ]);
 
     const plan = planRequest(
-      `${CONTENT_ROOT}NICKELODEON_AVATAR_105_V1_c24_540p_3347410_2000/seg_4.m4s?CMCD=br%3D1607%2Cot%3Dv%2Ctb%3D5463`
+      `${CONTENT_ROOT}SAMPLE_CARTOON_101_V1_c24_540p_2000021_2000/seg_4.m4s?CMCD=br%3D1607%2Cot%3Dv%2Ctb%3D5463`
     );
 
     expect(plan).toEqual(expect.objectContaining({
       action: 'inferred-probe',
       strategy: 'paramount-vod:legacy-catalog-c23',
-      url: expect.stringContaining('NICKELODEON_AVATAR_105_V1_c23_1080p_3347410_5400/seg_4.m4s')
+      url: expect.stringContaining('SAMPLE_CARTOON_101_V1_c23_1080p_2000021_5400/seg_4.m4s')
     }));
   });
 });

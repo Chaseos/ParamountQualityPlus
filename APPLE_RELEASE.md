@@ -6,7 +6,7 @@ Website follow-up: support now covers all browser editions, and the existing pri
 
 Setup now includes localized troubleshooting guidance to fully quit and reopen Safari if quality options disappear after installation or an update. The independence disclaimer remains on the native setup screen and has been removed from the Safari popup at the owner's request. This supersedes the earlier notes about sharing the disclaimer across both Apple surfaces. Live debugging restored the missing ladder by fully restarting Safari after a reinstall; no playback-code change was needed.
 
-The current local candidate supersedes the older version/build references below. Closing the containing app's main window now quits it, retaining purchase guards and support URL routing. The dedicated support page is implemented in ChaseosPortfolio; Apple configuration points to its planned public URL, but publication and the portal URL update are still pending. All three consumable drafts were inspected and still require inclusion with the corrected uploaded app. See [the resolution record and reviewer drafts](docs/APPLE_REVIEW_RESOLUTION.md) for current checks, publication sequence and outstanding runtime evidence. No archive, upload, review submission, public deployment, commit or push was performed.
+Release-specific investigation records and reviewer drafts are kept locally and excluded from the public repository.
 
 Updated 2026-08-31. This is a macOS-only containing app and Safari Web Extension. Implementation and local verification do not authorize publication or establish release readiness.
 
