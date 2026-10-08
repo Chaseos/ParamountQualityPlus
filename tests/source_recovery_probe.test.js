@@ -47,7 +47,7 @@ test.each([
 test('probe re-reads the exact observed session URL once and does not publish its ladder',async()=>{
   const post=jest.spyOn(window,'postMessage').mockImplementation(()=>{});
   try {
-    expect(controller.handleError(failure,player)).toBe(true);controller.handleError(failure,player);video.remove();await advance(100);
+    expect(controller.handleError(failure,player)).toBe(true);controller.handleError(failure,player);video.remove();await advance(300);
     expect(fetch).toHaveBeenCalledTimes(1);expect(fetch).toHaveBeenCalledWith(url,{credentials:'omit',redirect:'error',signal:expect.any(AbortSignal)});
     expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);expect(post).not.toHaveBeenCalled();
     expect(JSON.stringify(getDiagnosticSnapshot())).not.toContain('SECRET');

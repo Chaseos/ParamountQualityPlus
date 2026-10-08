@@ -17,12 +17,25 @@ test('reports declared and active source context without guessing or exposing cr
   const video = document.createElement('video'); document.body.append(video);
   video.player = { resource: { ad: { ssai: { contentSourceId: '222' } } } };
   const report = createDiagnosticReport();
-  expect(report.sourceContext).toEqual({ sdkAvailable: true, declaredSourceId: '111', catalogPath: 'https://cdn.test/package/stream.mpd' });
+  expect(report.sourceContext).toEqual({ sdkAvailable: true, declaredSourceId: '111', catalogPath: 'https://cdn.test/package/stream.mpd', errorOverlayVisible: null });
   expect(report.players[0].resourceSourceId).toBe('222');
   expect(JSON.stringify(report)).not.toContain('SECRET');
 });
+test('reports whether the SDK error overlay covers the player and how many frames were decoded', () => {
+  window.SmartTag = { list: [{ uuid: 'abc-123', API: { VIDEO: { load() {} } } }] };
+  const overlay = document.createElement('div'); overlay.setAttribute('smart-tag-overlay', 'abc-123'); document.body.append(overlay);
+  const video = document.createElement('video'); document.body.append(video);
+  video.getVideoPlaybackQuality = () => ({ totalVideoFrames: 240, droppedVideoFrames: 3 });
+  overlay.getBoundingClientRect = () => ({ width: 1280, height: 720, bottom: 720, right: 1280 });
+  let report = createDiagnosticReport();
+  expect(report.sourceContext.errorOverlayVisible).toBe(true);
+  expect(report.players[0].frames).toEqual({ total: 240, dropped: 3 });
+  // Smart Tag lowers the overlay by moving it far above the player.
+  overlay.getBoundingClientRect = () => ({ width: 1280, height: 720, bottom: -9280, right: 1280 });
+  expect(createDiagnosticReport().sourceContext.errorOverlayVisible).toBe(false);
+});
 test('missing or ambiguous SDK context is explicit and does not make report collection fail', () => {
-  const absent = { sdkAvailable: false, declaredSourceId: null, catalogPath: null };
+  const absent = { sdkAvailable: false, declaredSourceId: null, catalogPath: null, errorOverlayVisible: null };
   expect(createDiagnosticReport().sourceContext).toEqual(absent);
   window.SmartTag = { list: [{}, {}] };
   expect(createDiagnosticReport().sourceContext).toEqual(absent);

@@ -41,7 +41,7 @@ test.each([true,false,null])('fatal zero-position startup with ad status %s wait
   tag.API.VIDEO.load.mockImplementation(async()=>{
     const next=makeVideo('111',true,432,false);next.video.dispatchEvent(new Event('playing',{bubbles:true}));
   });
-  await advance(100);expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);
+  await advance(200);expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);
   await advance(105000);expect(recoverOriginal).not.toHaveBeenCalled();expect(document.querySelector('video').paused).toBe(false);
   const next=document.querySelector('video');next.player.isAd=false;next.videoHeight=1080;await advance(150);
   expect(next.paused).toBe(true);await advance(300);expect(controller.busy()).toBe(false);
@@ -54,20 +54,20 @@ test.each([true,false,null])('fatal zero-position startup with ad status %s wait
 test('SDK error dispatcher captures startup after the old video disappears',async()=>{
   player.isAd=true;video.remove();
   events.get('TagEvent.ON_PLAYER_EVENT')({type:'TagEvent.ON_PLAYER_EVENT',data:{playerEvent:{detail:{error:failure}}}});
-  await advance(1);expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);expect(onFailure).toHaveBeenCalledTimes(1);
+  await advance(300);expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);expect(onFailure).toHaveBeenCalledTimes(1);
 });
 test('a hidden old video is not mistaken for a destroyed startup player',async()=>{
   player.isAd=true;controller.handleError(failure,player);video.getBoundingClientRect=()=>({width:0});await advance(100);
   expect(tag.API.VIDEO.load).not.toHaveBeenCalled();
   events.get('TagEvent.ON_DESTROY_PLAYER_SUCCESS')({type:'TagEvent.ON_DESTROY_PLAYER_SUCCESS'});
-  await advance(100);expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);
+  await advance(200);expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);
 });
 test('the quality-reload handoff retains paused content position through preroll startup',async()=>{
   tag.API.PLAYER.contentTime=120;video.paused=true;controller.stagePosition();
   expect(JSON.parse(window.sessionStorage.getItem('pqiSourceResume'))).toMatchObject({time:120,paused:true,path:window.location.pathname});
   controller.dispose();tag.API.PLAYER.contentTime=0;video.paused=false;video.videoHeight=540;
   controller=createSourceRecovery({fetch,onAttempt,onFailure,recoverOriginal,enabled:true,now:()=>Date.now()});observe();
-  player.isAd=true;controller.handleError(failure,player);video.remove();await advance(100);
+  player.isAd=true;controller.handleError(failure,player);video.remove();await advance(300);
   expect(tag.API.VIDEO.load.mock.calls[0][0].CONTENT.globalResumeTime).toBe(120);
   expect(getDiagnosticSnapshot().recentEvents.find(e=>e.detail.outcome==='started').detail.paused).toBe(true);
   expect(window.sessionStorage.getItem('pqiSourceResume')).toBeNull();
@@ -125,25 +125,55 @@ test('an initializing autoplay player retains the requested program position ins
   controller=createSourceRecovery({fetch,onAttempt,onFailure,recoverOriginal,enabled:true,now:()=>Date.now()});observe();
   await advance(500);controller.handleError(failure,player);video.remove();
   tag.API.VIDEO.load.mockImplementation(async()=>makeVideo('111',false,1080,false));
-  await advance(100);
+  await advance(300);
   expect(tag.API.VIDEO.load.mock.calls[0][0].CONTENT.globalResumeTime).toBe(600);
   expect(getDiagnosticSnapshot().recentEvents.find(e=>e.detail.outcome==='started').detail.paused).toBe(false);
   const next=document.querySelector('video');await advance(250);next.currentTime=4;await advance(250);
   expect(next.pause).not.toHaveBeenCalled();expect(logOutcomes()).toContain('recovered');
+});
+test('the desktop site autoplay=false flag does not pause a startup recovery the viewer started',async()=>{
+  controller.dispose();video.readyState=1;video.paused=true;
+  tag.params.CONTENT.globalResumeTime=6;tag.params.CONTENT.autoplay=false;
+  controller=createSourceRecovery({fetch,onAttempt,onFailure,recoverOriginal,enabled:true,now:()=>Date.now()});observe();
+  await advance(500);controller.handleError(failure,player);video.remove();
+  tag.API.VIDEO.load.mockImplementation(async()=>makeVideo('111',false,1080,false));
+  await advance(300);
+  expect(tag.API.VIDEO.load.mock.calls[0][0].CONTENT).toMatchObject({globalResumeTime:6,autoplay:true});
+  expect(getDiagnosticSnapshot().recentEvents.find(e=>e.detail.outcome==='started').detail.paused).toBe(false);
+  const next=document.querySelector('video');next.dispatchEvent(new Event('playing',{bubbles:true}));
+  await advance(250);next.currentTime=4;await advance(250);
+  expect(next.pause).not.toHaveBeenCalled();expect(tag.API.PLAYER.pause).not.toHaveBeenCalled();expect(logOutcomes()).toContain('recovered');
+});
+test('a retry waits for the late SDK error overlay so it cannot cover the recovered video',async()=>{
+  // Model Smart Tag: the fatal-error overlay rises 100 ms after the error and
+  // is lowered when a player is created or a clear-error event is dispatched.
+  let overlay=false;const dispatched=[];
+  tag.getTagEventVO=type=>({type});
+  tag.dispatchTagEvent=event=>{dispatched.push(event.type);if(event.type==='TagEvent.ON_REQUEST_TO_CLEAR_ERROR')overlay=false;};
+  tag.API.PLAYER.contentTime=10;video.paused=false;await advance(500);
+  tag.API.VIDEO.load.mockImplementation(async()=>{overlay=false;return makeVideo('111',false,1080,false);});
+  controller.handleError(failure,player);await advance(50);
+  events.get('TagEvent.ON_FATAL_ERROR')({type:'TagEvent.ON_FATAL_ERROR',data:{fatalError:{code:'2103'}}});
+  setTimeout(()=>{overlay=true;},100);
+  await advance(200);expect(tag.API.VIDEO.load).not.toHaveBeenCalled();expect(overlay).toBe(true);
+  await advance(100);expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);expect(overlay).toBe(false);
+  const next=document.querySelector('video');await advance(250);next.currentTime=4;await advance(250);
+  expect(logOutcomes()).toContain('recovered');expect(overlay).toBe(false);
+  expect(dispatched.filter(type=>type==='TagEvent.ON_REQUEST_TO_CLEAR_ERROR')).toHaveLength(2);
 });
 test('a pending preroll frame cannot overwrite the requested resume state',async()=>{
   controller.dispose();video.paused=false;
   player.getAdapter=()=>({adBreakInProgress:false,breakPending:true});
   tag.params.CONTENT.globalResumeTime=600;tag.params.CONTENT.autoplay=true;
   controller=createSourceRecovery({fetch,onAttempt,onFailure,recoverOriginal,enabled:true,now:()=>Date.now()});observe();
-  await advance(500);controller.handleError(failure,player);video.remove();await advance(100);
+  await advance(500);controller.handleError(failure,player);video.remove();await advance(300);
   expect(tag.API.VIDEO.load.mock.calls[0][0].CONTENT.globalResumeTime).toBe(600);
 });
 test('program recovery preserves position and verifies advancing 1080p',async()=>{
   tag.params.CONTENT.globalResumeTime=600;tag.params.CONTENT.autoplay=false;
   tag.API.PLAYER.contentTime=1250;video.paused=false;await advance(500);
   tag.API.VIDEO.load.mockImplementation(async()=>makeVideo('111',false,1080,false));
-  expect(controller.handleError(failure,player)).toBe(true);await advance(1);
+  expect(controller.handleError(failure,player)).toBe(true);await advance(300);
   const next=document.querySelector('video');await advance(250);next.currentTime=4;await advance(250);
   expect(controller.busy()).toBe(false);expect(logOutcomes()).toContain('recovered');
   expect(tag.API.VIDEO.load.mock.calls[0][0].CONTENT.globalResumeTime).toBe(1250);
@@ -151,7 +181,7 @@ test('program recovery preserves position and verifies advancing 1080p',async()=
 test('a failed SDK retry forwards original recovery once and never changes preferences',async()=>{
   setConfig({forcedHeight:1080});const config={...getConfig()};
   tag.API.PLAYER.contentTime=10;await advance(500);tag.API.VIDEO.load.mockRejectedValue(new Error('PRIVATE signed URL'));
-  controller.handleError(failure,player);await advance(300);
+  controller.handleError(failure,player);await advance(600);
   expect(recoverOriginal).toHaveBeenCalledTimes(1);expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);
   expect(controller.handleError(failure,player)).toBe(false);
   expect(getConfig()).toEqual(config);
@@ -160,7 +190,7 @@ test('a failed SDK retry forwards original recovery once and never changes prefe
 test('a fatal error from the replacement source returns to original recovery without another SDK load',async()=>{
   tag.API.PLAYER.contentTime=10;await advance(500);
   tag.API.VIDEO.load.mockImplementation(async()=>makeVideo('111',false,1080,false));
-  controller.handleError(failure,player);await advance(250);
+  controller.handleError(failure,player);await advance(500);
   events.get('TagEvent.ON_FATAL_ERROR')({type:'TagEvent.ON_FATAL_ERROR',data:{error:{code:'3005',fatal:true}}});
   await advance(250);expect(recoverOriginal).toHaveBeenCalledTimes(1);expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);
 });
@@ -182,13 +212,13 @@ test('a prior episode video cannot seed the next episode playback position',asyn
   controller.observeManifest({supported:true,url:nextUrl,representations:readDashRepresentations(indexedXml,nextUrl)});
   await advance(500); // The old video is still attached during the transition.
   player.resource.ad.ssai.videoId='next-episode';player.resource.location.mediaUrl=nextUrl;tag.API.PLAYER.contentTime=0;
-  controller.handleError(failure,player);video.remove();await advance(100);
+  controller.handleError(failure,player);video.remove();await advance(300);
   expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);expect(tag.API.VIDEO.load.mock.calls[0][0].CONTENT.globalResumeTime).toBe(0);
 });
 test('duplicate effective selection and representation-ID reconciliation do not cancel a retry',async()=>{
   controller.handleError(failure,player);await advance(10);
   setConfig({forcedHeight:1080,forcedId:'reconciled'});window.dispatchEvent(new MessageEvent('message',{source:window,data:{type:'PQI_CONFIG',payload:{forcedHeight:1080}}}));
-  video.remove();await advance(100);expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);
+  video.remove();await advance(300);expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);
 });
 test('ordinary successful playback samples do not read Shaka manifests or generate reports',async()=>{
   const shaka=player.getAdapter('playback').player;await advance(60000);

@@ -12,6 +12,12 @@ const sdkEvents = ['ON_CREATE_PLAYER_SUCCESS', 'ON_RESOURCE_LOAD_STARTED', 'ON_R
 const safely = fn => { try { return fn(); } catch { return null; } };
 const qualityKey = config => JSON.stringify([Boolean(config.forceMax), config.forcedHeight || null, config.forcedId || null]);
 const SOURCE_RESUME_KEY = 'pqiSourceResume';
+// Smart Tag raises its black fatal-error overlay 100 ms after the error and
+// lowers it when the next player is created. A sooner retry is created first,
+// so the late overlay then covers the recovered video while audio plays.
+const ERROR_OVERLAY_SETTLE_MS = 250;
+const clearSdkError = tag => safely(() =>
+  tag.dispatchTagEvent(tag.getTagEventVO('TagEvent.ON_REQUEST_TO_CLEAR_ERROR', tag)));
 
 function consumeSourcePosition() {
   return safely(() => {
@@ -153,14 +159,14 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
       if (!indexedContext) { resume = null; stopMonitoring(); return; }
     }
     if (!resume && current.sourceId) {
-      // Loading players report time 0 and paused even when resuming autoplay.
-      // Until a program frame is ready, retain the SDK's requested position and
-      // play intent rather than treating that temporary state as a user pause.
+      // Loading players report time 0 and paused even when resuming playback,
+      // and the desktop site leaves CONTENT.autoplay false after the viewer
+      // presses play. Until a program frame is ready, retain the SDK's
+      // requested position and keep the playback the viewer just started.
       const content = safely(() => tag.params.CONTENT);
       const time = !programReady && Number.isFinite(content?.globalResumeTime)
         ? content.globalResumeTime : current.contentTime;
-      const paused = !programReady && typeof content?.autoplay === 'boolean' ? !content.autoplay : current.paused === true;
-      if (Number.isFinite(time)) resume = { time: Math.max(0, time), paused };
+      if (Number.isFinite(time)) resume = { time: Math.max(0, time), paused: programReady && current.paused === true };
     }
     if (programReady && Number.isFinite(current.contentTime))
       resume = { time: Math.max(0, current.contentTime), paused: video.paused };
@@ -169,6 +175,7 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
     if (disposed) return;
     if (event.type === 'TagEvent.ON_DESTROY_PLAYER_SUCCESS' && pending?.phase === 'checking' &&
         lastPlayer === pending.context.player) pending.teardownConfirmed = true;
+    if (event.type === 'TagEvent.ON_FATAL_ERROR' && pending?.phase === 'checking') pending.fatalAt = now();
     const error = findPlayerError(event);
     if (error) handleError(error, activeVideo()?.player || lastPlayer);
     else sample();
@@ -292,7 +299,12 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
       } else if (activeVideo()?.player !== job.context.player || job.context.player.isAd !== false) {
         throw new Error('player-changed');
       }
+      while (now() - Math.max(job.failedAt, job.fatalAt || 0) < ERROR_OVERLAY_SETTLE_MS) {
+        if (!valid(job)) return;
+        await sleep(50);
+      }
       if (!valid(job)) return;
+      clearSdkError(job.tag);
       const current = job.tag.params.CONTENT;
       if (!current?.millstone || !job.tag.API.VIDEO?.load || !Number.isFinite(job.resume.time)) throw new Error('unsupported-resource');
       const content = { ...current, globalResumeTime: job.resume.time, autoplay: true,
@@ -319,6 +331,8 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
         if (elapsed.expired) throw new Error('playback-timeout');
         if (loadState === 'loaded' && sameSource && player.isAd === false && video.readyState === 4 &&
             Math.abs(video.videoHeight - job.targetHeight) <= 16) {
+          // Covers an overlay raised late on a slow main thread.
+          if (!job.errorCleared) { job.errorCleared = true; clearSdkError(job.tag); }
           if ((job.resume.paused && video.paused && job.pauseRestored) ||
               (!job.resume.paused && !video.paused && firstTime !== null && video.currentTime - firstTime >= 3)) {
             log('recovered', { selectedHeight: job.targetHeight, decodedHeight: video.videoHeight,
@@ -370,7 +384,7 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
     pending = { tag, context: { ...context, session, selection: selected, failure,
       declaredSourceId, catalogUrl: safely(() => tag.model.apiMetadata.streamingUrl) },
       failure, resume: saved, targetHeight: selected.height, configKey: qualityKey(getConfig()),
-      generation, controller: new AbortController(), phase: 'checking', cancelled: false };
+      generation, controller: new AbortController(), phase: 'checking', cancelled: false, failedAt: now() };
     onFailure(failure.detail);
     void recover(pending);
     return true;

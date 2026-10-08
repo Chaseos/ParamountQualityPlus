@@ -70,8 +70,10 @@ function playerReport() {
     const tracks = safely(() => shaka.getVariantTracks());
     const parsed = safely(() => shaka.getManifest());
     const restrictionFields = ['minWidth','maxWidth','minHeight','maxHeight','minPixels','maxPixels','minBandwidth','maxBandwidth','maxChannelsCount'];
+    const quality = safely(() => video.getVideoPlaybackQuality());
     return {
       decodedWidth: number(video.videoWidth), decodedHeight: number(video.videoHeight),
+      frames: quality ? { total: number(quality.totalVideoFrames), dropped: number(quality.droppedVideoFrames) } : null,
       currentTime: number(video.currentTime), paused: Boolean(video.paused), seeking: Boolean(video.seeking),
       readyState: number(video.readyState), nativeError: number(video.error?.code),
       isAd: typeof player?.isAd === 'boolean' ? player.isAd : null,
@@ -92,10 +94,17 @@ function playerReport() {
 }
 function sourceContextReport() {
   const tag = safely(() => window.SmartTag?.list?.length === 1 ? window.SmartTag.list[0] : null);
+  // The SDK lowers its black error overlay by moving it off-screen.
+  const overlay = safely(() => /^[\w-]{1,64}$/.test(tag.uuid)
+    ? document.querySelector(`[smart-tag-overlay="${tag.uuid}"]`) : null);
   return {
     sdkAvailable: safely(() => typeof tag?.API?.VIDEO?.load === 'function') === true,
     declaredSourceId: sourceId(safely(() => tag.model.TagConstants.ADOPS_ID.CMSID)),
-    catalogPath: reportPath(safely(() => tag.model.apiMetadata.streamingUrl))
+    catalogPath: reportPath(safely(() => tag.model.apiMetadata.streamingUrl)),
+    errorOverlayVisible: overlay ? safely(() => {
+      const rect = overlay.getBoundingClientRect();
+      return getComputedStyle(overlay).display !== 'none' && rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.right > 0;
+    }) : null
   };
 }
 // Deliberately do not serialize arbitrary event payloads, player configuration,

@@ -28,10 +28,7 @@ export function maybePrefetchSegments(url, originalFetch) {
   prefetchQueue.add(normalizedUrl);
 
   const match = url.match(SEGMENT_NUMBER_REGEX);
-  if (!match) {
-    console.log(`[PQI Debug] URL did not match segment regex: ${url}`);
-    return;
-  }
+  if (!match) return;
 
   const [, prefix, numStr, suffix] = match;
   let currentNum = parseInt(numStr, 10);
@@ -47,7 +44,6 @@ export function maybePrefetchSegments(url, originalFetch) {
     if (!prefetchQueue.has(nextNormalizedUrl)) {
       prefetchQueue.add(nextNormalizedUrl);
       prefetchedCount++;
-      console.log(`[PQI Debug] Prefetching future segment: ${nextUrl}`);
       // Fire and forget the background fetch using the raw fetch function.
       // The browser's network stack will cache the response.
       const startedAt = diagnosticNow();
@@ -75,10 +71,7 @@ export function maybePrefetchSegments(url, originalFetch) {
     }
   }
   
-  if (prefetchedCount > 0) {
-    recordDiagnosticEvent('prefetch_batch', { count: prefetchedCount });
-    console.log(`[PQI Debug] Triggered ${prefetchedCount} prefetch(es) based on: ${url}`);
-  }
+  if (prefetchedCount > 0) recordDiagnosticEvent('prefetch_batch', { count: prefetchedCount });
 }
 
 // Exported for testing

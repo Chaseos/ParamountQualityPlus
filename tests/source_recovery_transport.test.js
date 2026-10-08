@@ -63,7 +63,7 @@ test.each(['fetch','xhr'])('%s manifest supplies original program-key proof; SDK
   expect(text).toContain('id="1080"');expect(text).not.toContain('id="540"');expect(getRepresentations().map(r=>r.height)).toEqual([1080,540]);
   video.player.isAd=true;video.remove();
   events.get('TagEvent.ON_PLAYER_EVENT')({type:'TagEvent.ON_PLAYER_EVENT',data:{playerEvent:{detail:{error:failure}}}});
-  await jest.advanceTimersByTimeAsync(100);
+  await jest.advanceTimersByTimeAsync(300);
   expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);expect(messages('PQI_ORIGINAL_STREAM_RECOVERY')).toHaveLength(0);
   expect(messages('PQI_QUALITY_STRATEGY').at(-1)[0].payload.strategy).toBeNull();
   // The old indexed controller must no longer reload when the replacement uses
