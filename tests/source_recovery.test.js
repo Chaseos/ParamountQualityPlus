@@ -161,6 +161,36 @@ test('a retry waits for the late SDK error overlay so it cannot cover the recove
   expect(logOutcomes()).toContain('recovered');expect(overlay).toBe(false);
   expect(dispatched.filter(type=>type==='TagEvent.ON_REQUEST_TO_CLEAR_ERROR')).toHaveLength(2);
 });
+test('a viewer pause after the replacement target frame is a recovery, not a fallback reload',async()=>{
+  tag.API.PLAYER.contentTime=10;video.paused=false;await advance(500);
+  tag.API.VIDEO.load.mockImplementation(async()=>makeVideo('111',false,1080,false));
+  controller.handleError(failure,player);await advance(300);
+  const next=document.querySelector('video');await advance(250);next.paused=true;await advance(250);
+  expect(logOutcomes()).toContain('recovered');expect(controller.busy()).toBe(false);
+  await advance(60000);expect(recoverOriginal).not.toHaveBeenCalled();
+});
+test('a viewer pause during a replacement ad ends validation without reloading at Auto',async()=>{
+  tag.API.PLAYER.contentTime=10;video.paused=false;await advance(500);
+  tag.API.VIDEO.load.mockImplementation(async()=>makeVideo('111',true,432,true));
+  controller.handleError(failure,player);await advance(300);await advance(300000);
+  expect(recoverOriginal).not.toHaveBeenCalled();expect(logOutcomes()).toContain('unverified');expect(controller.busy()).toBe(false);
+});
+test('a quality change while the program is loading stages the requested position, not zero and paused',async()=>{
+  controller.dispose();video.readyState=1;video.paused=true;
+  tag.params.CONTENT.globalResumeTime=1500;tag.params.CONTENT.autoplay=false;
+  controller=createSourceRecovery({fetch,onAttempt,onFailure,recoverOriginal,enabled:true,now:()=>Date.now()});observe();
+  await advance(500);controller.stagePosition();
+  expect(JSON.parse(window.sessionStorage.getItem('pqiSourceResume'))).toMatchObject({time:1500,paused:false});
+});
+test('a failed replacement hands its program position to the original-stream reload',async()=>{
+  tag.API.PLAYER.contentTime=1250;video.paused=false;await advance(500);
+  tag.API.VIDEO.load.mockImplementation(async()=>makeVideo('111',false,1080,false));
+  controller.handleError(failure,player);await advance(300);
+  tag.API.PLAYER.contentTime=1262;await advance(500);
+  events.get('TagEvent.ON_FATAL_ERROR')({type:'TagEvent.ON_FATAL_ERROR',data:{error:{code:'3005',fatal:true}}});
+  await advance(300);expect(recoverOriginal).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(window.sessionStorage.getItem('pqiSourceResume'))).toMatchObject({time:1262,paused:false,path:window.location.pathname});
+});
 test('a pending preroll frame cannot overwrite the requested resume state',async()=>{
   controller.dispose();video.paused=false;
   player.getAdapter=()=>({adBreakInProgress:false,breakPending:true});

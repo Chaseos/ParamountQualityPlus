@@ -320,6 +320,10 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
       Promise.resolve(job.tag.API.VIDEO.load({ CONTENT: content })).then(() => { loadState = 'loaded'; }, () => { loadState = 'failed'; });
       const clock = createSourceRecoveryClock(now());
       let firstTime = null, wasAd = false;
+      const finish = (outcome, detail) => {
+        log(outcome, { selectedHeight: job.targetHeight, ...detail });
+        job.clearPause?.(); pending = null; resume = null; stopMonitoring();
+      };
       while (valid(job)) {
         if (loadState === 'failed' || job.alternativeFailed) throw new Error('sdk-load-failed');
         const video = activeVideo(), player = video?.player;
@@ -328,16 +332,27 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
         const isAd = sameSource && player.isAd === true;
         const elapsed = clock(now(), isAd);
         if (isAd !== wasAd) { wasAd = isAd; log('ad-wait', { active: isAd, ...elapsed }); }
-        if (elapsed.expired) throw new Error('playback-timeout');
+        if (elapsed.expired) {
+          // A viewer pause, including during a replacement ad, is not a
+          // playback failure and must not reload the page at Auto.
+          if (sameSource && video.paused) { finish('unverified', { reason: 'viewer-paused' }); return; }
+          throw new Error('playback-timeout');
+        }
+        if (sameSource && player.isAd === false && video.readyState >= 3) {
+          const contentTime = safely(() => job.tag.API.PLAYER.contentTime);
+          if (Number.isFinite(contentTime) && contentTime > 0) job.programTime = contentTime;
+        }
         if (loadState === 'loaded' && sameSource && player.isAd === false && video.readyState === 4 &&
             Math.abs(video.videoHeight - job.targetHeight) <= 16) {
           // Covers an overlay raised late on a slow main thread.
           if (!job.errorCleared) { job.errorCleared = true; clearSdkError(job.tag); }
-          if ((job.resume.paused && video.paused && job.pauseRestored) ||
-              (!job.resume.paused && !video.paused && firstTime !== null && video.currentTime - firstTime >= 3)) {
-            log('recovered', { selectedHeight: job.targetHeight, decodedHeight: video.videoHeight,
+          // Once the target frame is ready the viewer may pause or resume.
+          const settled = !job.resume.paused || job.pauseRestored;
+          if (settled && (video.paused ? firstTime !== null || job.pauseRestored
+            : firstTime !== null && video.currentTime - firstTime >= 3)) {
+            finish('recovered', { decodedHeight: video.videoHeight,
               contentTime: safely(() => job.tag.API.PLAYER.contentTime), paused: video.paused });
-            job.clearPause?.(); pending = null; resume = null; stopMonitoring(); return;
+            return;
           }
           if (firstTime === null) firstTime = video.currentTime;
         } else firstTime = null;
@@ -349,7 +364,12 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
       log('failed', { reason: reasons.includes(error.message) ? error.message : 'sdk-unavailable', selectedHeight: job.targetHeight });
       // Unproven ad failures are left with the site. A failed, validated retry
       // returns to the original stream using the existing once-only mechanism.
-      if (error.message !== 'player-changed' && (job.phase === 'retrying' || job.context.isAd === false)) recoverOriginal(job.failure.detail);
+      if (error.message !== 'player-changed' && (job.phase === 'retrying' || job.context.isAd === false)) {
+        // The retry already cleared the content script's indexed strategy, so
+        // it no longer saves the position before its reload; stage it here.
+        if (job.phase === 'retrying') stageResume({ time: job.programTime ?? job.resume.time, paused: job.resume.paused });
+        recoverOriginal(job.failure.detail);
+      }
     } finally {
       job.clearPause?.(); job.controller.abort();
       if (pending === job) pending = null;
@@ -380,7 +400,7 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
     const key = `${generation}|${selected.height}`;
     if (attempts.has(key)) return false;
     attempts.add(key);
-    const saved = resume || { time: Math.max(0, context.contentTime), paused: context.paused === true };
+    const saved = resume || { time: Math.max(0, context.contentTime), paused: context.hasProgramPlayback === true && context.paused === true };
     pending = { tag, context: { ...context, session, selection: selected, failure,
       declaredSourceId, catalogUrl: safely(() => tag.model.apiMetadata.streamingUrl) },
       failure, resume: saved, targetHeight: selected.height, configKey: qualityKey(getConfig()),
@@ -396,14 +416,21 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
     if (tag) sample();
   };
   const dispose = () => { reset(); disposed = true; window.removeEventListener('message', changed); };
+  function stageResume(saved) {
+    if (!saved || !Number.isFinite(saved.time)) return;
+    safely(() => window.sessionStorage.setItem(SOURCE_RESUME_KEY, JSON.stringify({
+      path: page, time: Math.max(0, saved.time), paused: saved.paused === true, savedAt: Date.now()
+    })));
+  }
   const stagePosition = () => {
     if (!enabled || disposed) return;
     sync();
     const video = activeVideo(), current = video ? snapshot(video.player) : null;
-    if (!current || current.isAd !== false || current.videoId !== videoId || !Number.isFinite(current.contentTime)) return;
-    safely(() => window.sessionStorage.setItem(SOURCE_RESUME_KEY, JSON.stringify({
-      path: page, time: Math.max(0, current.contentTime), paused: video.paused, savedAt: Date.now()
-    })));
+    if (!current || current.isAd !== false || current.videoId !== videoId) return;
+    // A loading or failed player reports time 0 and paused; keep the
+    // requested position and play intent until program playback has begun.
+    stageResume(current.hasProgramPlayback && video.readyState >= 3 && Number.isFinite(current.contentTime)
+      ? { time: current.contentTime, paused: video.paused } : resume);
   };
   if (enabled) {
     window.addEventListener('message', changed);
