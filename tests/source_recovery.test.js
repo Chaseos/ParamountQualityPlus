@@ -265,3 +265,77 @@ test('disabled Safari/native controller observes nothing and leaves playback unt
   controller.dispose();controller=createSourceRecovery({fetch,onAttempt,onFailure,recoverOriginal,enabled:false});observe();
   expect(events.size).toBe(0);expect(controller.handleError(failure,player)).toBe(false);expect(tag.API.VIDEO.load).not.toHaveBeenCalled();
 });
+const makeCatalogVideo=(height,paused=false)=>{
+  const next=makeVideo('111',false,height,paused);
+  next.player.resource={ad:{ssai:null},location:{mediaUrl:catalog}};return next;
+};
+const recoveryEvents=()=>getDiagnosticSnapshot().recentEvents.filter(e=>e.detail.checkpoint==='source_recovery').map(e=>e.detail);
+test('Smart Tag DAI failover to the catalog manifest is kept when it decodes the selected quality',async()=>{
+  tag.model.apiMetadata.contentId='episode';tag.API.PLAYER.contentTime=10;video.paused=false;await advance(500);
+  let resolveLoad;tag.API.VIDEO.load.mockImplementation(()=>new Promise(resolve=>{resolveLoad=resolve;makeVideo('111',false,0,false);}));
+  controller.handleError(failure,player);await advance(300);expect(tag.API.VIDEO.load).toHaveBeenCalledTimes(1);
+  // Each rejected DAI stream request is a fatal SDK player event before failover.
+  for(let attempt=0;attempt<2;attempt++){
+    events.get('TagEvent.ON_PLAYER_EVENT')({type:'TagEvent.ON_PLAYER_EVENT',data:{playerEvent:{detail:{error:{code:'4201',fatal:true}}}}});
+    await advance(1000);
+  }
+  expect(recoverOriginal).not.toHaveBeenCalled();expect(controller.busy()).toBe(true);
+  const next=makeCatalogVideo(1080).video;await advance(250);next.currentTime=4;await advance(250);
+  expect(recoverOriginal).not.toHaveBeenCalled();expect(controller.busy()).toBe(false);
+  expect(recoveryEvents().find(e=>e.outcome==='recovered')).toMatchObject({strategy:'catalog',decodedHeight:1080,alternativeSourceId:'111'});
+  resolveLoad();await advance(60000);expect(recoverOriginal).not.toHaveBeenCalled();
+});
+test('a catalog failover for a different title is not accepted',async()=>{
+  tag.model.apiMetadata.contentId='other';tag.API.PLAYER.contentTime=10;video.paused=false;await advance(500);
+  tag.API.VIDEO.load.mockImplementation(async()=>makeCatalogVideo(1080));
+  controller.handleError(failure,player);await advance(300);
+  const next=document.querySelector('video');await advance(250);next.currentTime=4;await advance(250);
+  expect(logOutcomes()).not.toContain('recovered');expect(controller.busy()).toBe(true);
+});
+test('a fatal error from the catalog failover returns to original recovery',async()=>{
+  tag.model.apiMetadata.contentId='episode';tag.API.PLAYER.contentTime=10;video.paused=false;await advance(500);
+  tag.API.VIDEO.load.mockImplementation(async()=>makeCatalogVideo(540));
+  controller.handleError(failure,player);await advance(500);
+  controller.handleError({code:'3005',fatal:true},document.querySelector('video').player);await advance(250);
+  expect(recoverOriginal).toHaveBeenCalledTimes(1);expect(logOutcomes()).toContain('failed');
+});
+test('a replacement still playing below the selected quality is kept instead of reloading at Auto',async()=>{
+  tag.API.PLAYER.contentTime=10;video.paused=false;await advance(500);
+  tag.API.VIDEO.load.mockImplementation(async()=>makeVideo('111',false,720,false));
+  controller.handleError(failure,player);await advance(300);
+  const next=document.querySelector('video');
+  for(let second=1;second<=45;second++){next.currentTime=second;await advance(1000);}
+  expect(recoverOriginal).not.toHaveBeenCalled();expect(controller.busy()).toBe(false);
+  expect(recoveryEvents().find(e=>e.outcome==='unverified')).toMatchObject({reason:'target-not-confirmed',strategy:'alternative',decodedHeight:720});
+});
+test('a replacement that never plays still falls back to the original stream',async()=>{
+  tag.API.PLAYER.contentTime=10;video.paused=false;await advance(500);
+  tag.API.VIDEO.load.mockImplementation(async()=>makeVideo('111',false,720,false));
+  controller.handleError(failure,player);await advance(45000);
+  expect(recoverOriginal).toHaveBeenCalledTimes(1);
+  expect(recoveryEvents().find(e=>e.outcome==='failed')).toMatchObject({reason:'playback-timeout',sourceId:'222',alternativeSourceId:'111'});
+});
+test('declined indexed failures record which condition rejected the retry',async()=>{
+  tag.API.PLAYER.contentTime=10;await advance(500);
+  tag.model.TagConstants.ADOPS_ID.CMSID='222';
+  expect(controller.handleError(failure,player)).toBe(false);expect(controller.handleError(failure,player)).toBe(false);
+  tag.model.TagConstants.ADOPS_ID.CMSID='111';
+  const restricted={...failure,cause:{...failure.cause,data:[{...failure.cause.data[0],restrictedKeyStatuses:['output-restricted']}]}};
+  expect(controller.handleError(restricted,player)).toBe(false);
+  expect(controller.handleError({code:'3005',fatal:true},player)).toBe(false);
+  expect(recoveryEvents().filter(e=>e.outcome==='declined')).toEqual([
+    expect.objectContaining({reason:'no-alternative-source'}),
+    expect.objectContaining({reason:'unsupported-failure',shakaCode:4012})
+  ]);
+  expect(tag.API.VIDEO.load).not.toHaveBeenCalled();
+});
+test('the retry outcome is saved with the failure snapshot for a report after the fallback reload',async()=>{
+  const { persistDiagnosticReport, exportDiagnosticReport } = await import('../injected/diagnostic-report.js');
+  onFailure.mockImplementation(detail=>persistDiagnosticReport(getDiagnosticSnapshot(),detail));
+  tag.API.PLAYER.contentTime=10;video.paused=false;await advance(500);
+  tag.API.VIDEO.load.mockImplementation(async()=>makeVideo('111',false,720,false));
+  controller.handleError(failure,player);await advance(45000);
+  const saved=exportDiagnosticReport(getDiagnosticSnapshot()).previousFailure;
+  expect(saved.failure).toMatchObject({playerCode:'2103',shakaCode:4012});
+  expect(saved.sourceRecovery).toMatchObject({outcome:'failed',reason:'playback-timeout',alternativeSourceId:'111'});
+});

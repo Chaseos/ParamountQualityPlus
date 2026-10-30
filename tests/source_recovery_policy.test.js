@@ -1,7 +1,7 @@
 import { test, expect } from '@jest/globals';
 import { readDashRepresentations } from '../injected/manifest-parser.js';
-import { canRestoreProgramPause, chooseRecoverySource, createSourceRecoveryClock,
-  indexedProgramEvidence, missingKeyFailure, programSession } from '../injected/source-recovery-policy.js';
+import { canRestoreProgramPause, chooseRecoverySource, createSourceRecoveryClock, indexedProgramEvidence,
+  isDaiFailoverError, missingKeyFailure, programSession, replacementSource } from '../injected/source-recovery-policy.js';
 import { sourceRecoverySupported } from '../injected/source-recovery.js';
 import { catalog, failure, hdKey, indexedXml, sdKey, url } from './fixtures/source-recovery.js';
 
@@ -56,4 +56,21 @@ test('only desktop SDK browsers and HTTPS DASH program sessions are eligible', (
   for(const ua of ['Safari/605','iPhone Chrome/130','Android Chrome/130'])expect(sourceRecoverySupported(ua)).toBe(false);
   for(const value of [url.replace('https:','http:'),url.replace('/dash/','/hls/'),url.replace('pubads.g.doubleclick.net','ad.test'),url.replace('manifest.mpd','video.mp4')])
     expect(programSession(value)).toBeNull();
+});
+test('the alternative DAI source or Smart Tag catalog failover for the same title is the replacement', () => {
+  const candidate={sourceId:'111',catalogUrl:catalog};
+  const dai=(source,video='episode')=>({ad:{ssai:{contentSourceId:source,videoId:video}},location:{mediaUrl:url}});
+  expect(replacementSource(dai('111'),candidate,'episode')).toBe('alternative');
+  for(const resource of [dai('222'),dai('111','other'),null])expect(replacementSource(resource,candidate,'episode')).toBeNull();
+  // Smart Tag's DAI failover drops SSAI and plays the catalog manifest it was given.
+  const failover={ad:{ssai:null},location:{mediaUrl:catalog.replace('?catalog=SECRET','?cb=1')}};
+  expect(replacementSource(failover,candidate,'episode','episode')).toBe('catalog');
+  expect(replacementSource(failover,candidate,'episode')).toBe('catalog');
+  expect(replacementSource(failover,candidate,'episode','other')).toBeNull();
+  for(const mediaUrl of [catalog.replace('/asset/','/other/'),catalog.replace('vod.pplus.paramount.tech','elsewhere.test'),url,undefined])
+    expect(replacementSource({ad:{ssai:null},location:{mediaUrl}},candidate,'episode','episode')).toBeNull();
+});
+test('only Smart Tag DAI stream failures are left to its own failover', () => {
+  for(const code of ['4200','4201',4202])expect(isDaiFailoverError({code,fatal:true})).toBe(true);
+  for(const code of ['2103','3304','3005',undefined])expect(isDaiFailoverError({code,fatal:true})).toBe(false);
 });

@@ -3,9 +3,9 @@ import { readBoundedManifest } from './manifest-body.js';
 import { getConfig, getRepresentations } from './state.js';
 import { selectRepresentation } from './stream-model.js';
 import { recordPlaybackCheckpoint } from './diagnostics.js';
-import { recordSourceRecoveryReport, reportPath } from './diagnostic-report.js';
-import { canRestoreProgramPause, chooseRecoverySource, createSourceRecoveryClock,
-  indexedProgramEvidence, missingKeyFailure, programSession } from './source-recovery-policy.js';
+import { recordSourceRecoveryReport, reportPath, updatePersistedSourceRecovery } from './diagnostic-report.js';
+import { canRestoreProgramPause, chooseRecoverySource, createSourceRecoveryClock, indexedProgramEvidence,
+  isDaiFailoverError, missingKeyFailure, programSession, replacementSource } from './source-recovery-policy.js';
 
 const sdkEvents = ['ON_CREATE_PLAYER_SUCCESS', 'ON_RESOURCE_LOAD_STARTED', 'ON_RESOURCE_LOAD_COMPLETED',
   'ON_PLAYER_EVENT', 'ON_FATAL_ERROR', 'ON_DESTROY_PLAYER_SUCCESS'].map(type => `TagEvent.${type}`);
@@ -76,7 +76,15 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
   const log = (outcome, detail = {}) => {
     recordSourceRecoveryReport(outcome, detail);
     recordPlaybackCheckpoint('source_recovery', { outcome, ...detail });
+    // The saved failure snapshot predates the retry. Keep the retry's result
+    // with it so a report taken after a fallback reload still explains it.
+    if (['recovered', 'unverified', 'failed'].includes(outcome)) updatePersistedSourceRecovery();
   };
+  // Explain each declined failure so a report shows which condition rejected it.
+  const declined = new WeakSet();
+  const decline = (reason, detail = {}) => { log('declined', { reason, ...detail }); return false; };
+  const replacementOf = (job, player) => player ? replacementSource(player.resource, job.candidate,
+    job.context.videoId, safely(() => job.tag.model.apiMetadata.contentId)) : null;
   const snapshot = player => {
     const video = Array.from(document.querySelectorAll('video')).find(v => v.player === player);
     const contentTime = safely(() => tag.API.PLAYER.contentTime);
@@ -265,14 +273,14 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
       const player = video.player, ad = safely(() => player.getAdapter('ad'));
       if (canRestoreProgramPause({ isAd: player.isAd, adBreakInProgress: ad?.adBreakInProgress,
         breakPending: ad?.breakPending, readyState: video.readyState, height: video.videoHeight,
-        sourceId: player.resource?.ad?.ssai?.contentSourceId }, job.candidate)) {
+        sourceId: replacementOf(job, player) ? job.candidate.sourceId : null }, job.candidate)) {
         clear(); video.pause(); safely(() => job.tag.API.PLAYER.pause()); job.pauseRestored = true;
         log('pause-restored', { selectedHeight: job.targetHeight, contentTime: safely(() => job.tag.API.PLAYER.contentTime) });
       } else if (video.requestVideoFrameCallback) frame = video.requestVideoFrameCallback(check);
       else poll = setTimeout(check, 100);
     };
     function playing(event) {
-      if (event.target?.tagName !== 'VIDEO' || String(event.target.player?.resource?.ad?.ssai?.contentSourceId) !== job.candidate.sourceId) return;
+      if (event.target?.tagName !== 'VIDEO' || !replacementOf(job, event.target.player)) return;
       if (video && frame !== null) video.cancelVideoFrameCallback?.(frame);
       clearTimeout(poll); video = event.target;
       if (video.requestVideoFrameCallback) frame = video.requestVideoFrameCallback(check);
@@ -319,30 +327,42 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
       let loadState = 'pending';
       Promise.resolve(job.tag.API.VIDEO.load({ CONTENT: content })).then(() => { loadState = 'loaded'; }, () => { loadState = 'failed'; });
       const clock = createSourceRecoveryClock(now());
-      let firstTime = null, wasAd = false;
+      let firstTime = null, wasAd = false, lastTime = null, progressAt = null;
       const finish = (outcome, detail) => {
-        log(outcome, { selectedHeight: job.targetHeight, ...detail });
+        log(outcome, { selectedHeight: job.targetHeight, sourceId: String(job.context.sourceId),
+          alternativeSourceId: job.candidate.sourceId, ...detail });
         job.clearPause?.(); pending = null; resume = null; stopMonitoring();
       };
       while (valid(job)) {
         if (loadState === 'failed' || job.alternativeFailed) throw new Error('sdk-load-failed');
         const video = activeVideo(), player = video?.player;
-        const sameSource = String(player?.resource?.ad?.ssai?.contentSourceId) === job.candidate.sourceId &&
-          player?.resource?.ad?.ssai?.videoId === job.context.videoId;
+        const via = replacementOf(job, player), sameSource = Boolean(via);
         const isAd = sameSource && player.isAd === true;
         const elapsed = clock(now(), isAd);
         if (isAd !== wasAd) { wasAd = isAd; log('ad-wait', { active: isAd, ...elapsed }); }
+        if (sameSource && player.isAd === false && !video.paused && video.readyState >= 3) {
+          if (lastTime !== null && video.currentTime > lastTime) progressAt = now();
+          lastTime = video.currentTime;
+        }
         if (elapsed.expired) {
           // A viewer pause, including during a replacement ad, is not a
           // playback failure and must not reload the page at Auto.
           if (sameSource && video.paused) { finish('unverified', { reason: 'viewer-paused' }); return; }
+          // Nor is a replacement still playing below the target: the Auto
+          // reload would return to the source that just failed.
+          if (sameSource && progressAt !== null && now() - progressAt < 5000) {
+            finish('unverified', { reason: 'target-not-confirmed', strategy: via, decodedHeight: video.videoHeight });
+            return;
+          }
           throw new Error('playback-timeout');
         }
         if (sameSource && player.isAd === false && video.readyState >= 3) {
           const contentTime = safely(() => job.tag.API.PLAYER.contentTime);
           if (Number.isFinite(contentTime) && contentTime > 0) job.programTime = contentTime;
         }
-        if (loadState === 'loaded' && sameSource && player.isAd === false && video.readyState === 4 &&
+        // Smart Tag's DAI failover runs its own loads, so the retry's load
+        // promise does not describe a catalog replacement.
+        if ((loadState === 'loaded' || via === 'catalog') && sameSource && player.isAd === false && video.readyState === 4 &&
             Math.abs(video.videoHeight - job.targetHeight) <= 16) {
           // Covers an overlay raised late on a slow main thread.
           if (!job.errorCleared) { job.errorCleared = true; clearSdkError(job.tag); }
@@ -350,7 +370,7 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
           const settled = !job.resume.paused || job.pauseRestored;
           if (settled && (video.paused ? firstTime !== null || job.pauseRestored
             : firstTime !== null && video.currentTime - firstTime >= 3)) {
-            finish('recovered', { decodedHeight: video.videoHeight,
+            finish('recovered', { strategy: via, decodedHeight: video.videoHeight,
               contentTime: safely(() => job.tag.API.PLAYER.contentTime), paused: video.paused });
             return;
           }
@@ -361,7 +381,8 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
     } catch (error) {
       if (!valid(job)) return;
       const reasons = ['unproven-source', 'player-teardown-timeout', 'player-changed', 'unsupported-resource', 'sdk-load-failed', 'playback-timeout'];
-      log('failed', { reason: reasons.includes(error.message) ? error.message : 'sdk-unavailable', selectedHeight: job.targetHeight });
+      log('failed', { reason: reasons.includes(error.message) ? error.message : 'sdk-unavailable', selectedHeight: job.targetHeight,
+        sourceId: String(job.context.sourceId), alternativeSourceId: job.candidate?.sourceId });
       // Unproven ad failures are left with the site. A failed, validated retry
       // returns to the original stream using the existing once-only mechanism.
       if (error.message !== 'player-changed' && (job.phase === 'retrying' || job.context.isAd === false)) {
@@ -378,27 +399,38 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
   function handleError(error, player) {
     if (!enabled || disposed) return false;
     sync(); bindTag();
-    if (!tag) return false;
-    const live = snapshot(player || activeVideo()?.player || lastPlayer);
+    // Only the indexed manifest failure that falls back to Auto is explained.
+    const reject = (reason, detail) => {
+      if (String(error?.code) !== '2103' || error.cause?.category !== 4 || declined.has(error)) return false;
+      declined.add(error);
+      return decline(reason, detail);
+    };
+    if (!tag) return reject('sdk-unavailable');
+    const failed = player || activeVideo()?.player || lastPlayer;
+    const live = snapshot(failed);
     const context = live.sourceId ? live : lastSnapshot;
-    if (!context) return false;
-    if (pending?.phase === 'retrying' && error?.fatal === true && context.videoId === pending.context.videoId &&
-        String(context.sourceId) === pending.candidate.sourceId) {
-      pending.alternativeFailed = true; return true;
+    if (pending?.phase === 'retrying' && error?.fatal === true) {
+      // Smart Tag fails over by itself after a DAI stream error.
+      if (isDaiFailoverError(error)) return true;
+      if (replacementOf(pending, failed) || (context?.videoId === pending.context.videoId &&
+          String(context?.sourceId) === pending.candidate.sourceId)) {
+        pending.alternativeFailed = true; return true;
+      }
     }
+    if (!context) return reject('no-player-context');
     const failure = missingKeyFailure(error);
-    if (!failure) return false;
+    if (!failure) return reject('unsupported-failure', { shakaCode: error?.cause?.code });
     if (pending) return context.videoId === pending.context.videoId;
     const selected = selection();
-    if (!(selected?.height >= 720)) return false;
+    if (!(selected?.height >= 720)) return reject('selection-below-hd');
     const session = programSession(context.url);
-    if (!session || session.videoId !== videoId || session.sourceId !== String(context.sourceId) || session.videoId !== context.videoId) return false;
-    if (context.isAd !== false && !(context.hasProgramPlayback === false && context.contentTime >= 0 && context.contentTime <= 0.25)) return false;
-    if (!resume && !Number.isFinite(context.contentTime)) return false;
+    if (!session || session.videoId !== videoId || session.sourceId !== String(context.sourceId) || session.videoId !== context.videoId) return reject('unrecognized-session');
+    if (context.isAd !== false && !(context.hasProgramPlayback === false && context.contentTime >= 0 && context.contentTime <= 0.25)) return reject('ad-playback');
+    if (!resume && !Number.isFinite(context.contentTime)) return reject('unknown-position');
     const declaredSourceId = safely(() => tag.model.TagConstants.ADOPS_ID.CMSID);
-    if (!/^\d+$/.test(String(declaredSourceId || '')) || String(declaredSourceId) === String(context.sourceId)) return false;
+    if (!/^\d+$/.test(String(declaredSourceId || '')) || String(declaredSourceId) === String(context.sourceId)) return reject('no-alternative-source');
     const key = `${generation}|${selected.height}`;
-    if (attempts.has(key)) return false;
+    if (attempts.has(key)) return reject('retry-used');
     attempts.add(key);
     const saved = resume || { time: Math.max(0, context.contentTime), paused: context.hasProgramPlayback === true && context.paused === true };
     pending = { tag, context: { ...context, session, selection: selected, failure,

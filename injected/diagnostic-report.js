@@ -28,7 +28,8 @@ export function resetReportContext() { manifest = null; requests = []; sourceRec
 export function recordSourceRecoveryReport(outcome, detail = {}) {
   const safe = eventReport({ type: 'source_recovery', timestamp: Date.now(), detail: { ...detail, outcome } });
   const fields = Object.fromEntries(Object.entries(safe.detail).filter(([, value]) => value !== null));
-  sourceRecovery = { ...sourceRecovery, ...fields, at: safe.at };
+  // A declined failure is its own record, not a later step of an earlier retry.
+  sourceRecovery = { ...(outcome === 'declined' ? null : sourceRecovery), ...fields, at: safe.at };
 }
 export function recordManifestReport(result) {
   safely(() => {
@@ -154,6 +155,20 @@ export function persistDiagnosticReport(snapshot, failure = {}) {
     window.sessionStorage.setItem(STORAGE_KEY, text);
     return true;
   });
+}
+// Source recovery ends after its failure snapshot was saved. Attach the outcome
+// to that snapshot while keeping the failure-time player and manifest state.
+export function updatePersistedSourceRecovery() {
+  return safely(() => {
+    const text = window.sessionStorage.getItem(STORAGE_KEY);
+    const report = text && text.length <= MAX_BYTES ? JSON.parse(text) : null;
+    if (report?.schemaVersion !== 1 || report.page !== reportPath(window.location.href) || !sourceRecovery) return false;
+    report.sourceRecovery = { ...sourceRecovery };
+    const next = JSON.stringify(report);
+    if (new Blob([next]).size > MAX_BYTES) return false;
+    window.sessionStorage.setItem(STORAGE_KEY, next);
+    return true;
+  }) === true;
 }
 export function exportDiagnosticReport(snapshot) {
   const previousFailure = safely(() => {

@@ -57,6 +57,27 @@ export function chooseRecoverySource(context) {
   } catch { return null; }
 }
 
+// Smart Tag answers these DAI stream failures with its own failover loads,
+// so they do not mean the alternative source failed.
+const DAI_FAILOVER_CODES = new Set(['4200', '4201', '4202']);
+export const isDaiFailoverError = error => DAI_FAILOVER_CODES.has(String(error?.code));
+
+const samePath = (value, other) => {
+  try {
+    const url = new URL(value), expected = new URL(other);
+    return url.origin === expected.origin && url.pathname === expected.pathname;
+  } catch { return false; }
+};
+
+// The retried stream is either the alternative DAI source or Smart Tag's DAI
+// failover, which plays the declared catalog manifest with no SSAI at all.
+export function replacementSource(resource, candidate, videoId, catalogVideoId) {
+  const ssai = resource?.ad?.ssai;
+  if (ssai) return String(ssai.contentSourceId) === candidate.sourceId && ssai.videoId === videoId ? 'alternative' : null;
+  if (catalogVideoId && catalogVideoId !== videoId) return null;
+  return samePath(resource?.location?.mediaUrl, candidate.catalogUrl) ? 'catalog' : null;
+}
+
 export function canRestoreProgramPause(sample, candidate) {
   return sample.isAd === false && sample.adBreakInProgress !== true && sample.breakPending !== true &&
     sample.readyState === 4 && String(sample.sourceId || '') === candidate.sourceId &&

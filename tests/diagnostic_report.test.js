@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
-import { createDiagnosticReport, exportDiagnosticReport, initReportMetadata, persistDiagnosticReport, recordManifestReport, recordMediaReport, resetReportContext } from '../injected/diagnostic-report.js';
+import { createDiagnosticReport, exportDiagnosticReport, initReportMetadata, persistDiagnosticReport, recordManifestReport, recordMediaReport,
+  recordSourceRecoveryReport, resetReportContext, updatePersistedSourceRecovery } from '../injected/diagnostic-report.js';
 import { setConfig } from '../injected/state.js';
 
 beforeEach(() => {
@@ -94,4 +95,27 @@ test('bounds requests, manifests, events and storage; handles corrupt or unavail
 test('missing and throwing player APIs leave a usable report', () => {
   const video=document.createElement('video');document.body.append(video); video.player={getAdapter(){throw Error('disposed');}};
   expect(createDiagnosticReport().players[0].playerAvailable).toBe(false);
+});
+test('attaches the later source recovery outcome to the saved failure of the same page only', () => {
+  recordManifestReport(fixture());
+  expect(persistDiagnosticReport({}, {playerCode:'2103',shakaCode:4012})).toBe(true);
+  recordSourceRecoveryReport('started', {sourceId:'222',alternativeSourceId:'111'});
+  recordSourceRecoveryReport('failed', {reason:'playback-timeout',url:'https://cdn.test/catalog.mpd?token=SECRET'});
+  expect(updatePersistedSourceRecovery()).toBe(true);
+  const saved=exportDiagnosticReport({}).previousFailure;
+  expect(saved.sourceRecovery).toMatchObject({outcome:'failed',reason:'playback-timeout',sourceId:'222',alternativeSourceId:'111'});
+  expect(saved.failure.shakaCode).toBe(4012);expect(saved.manifest.selectedHeight).toBe(1080);
+  expect(JSON.stringify(saved)).not.toContain('SECRET');
+  window.history.replaceState({},'','/shows/video/other/');
+  recordSourceRecoveryReport('recovered', {decodedHeight:1080});
+  expect(updatePersistedSourceRecovery()).toBe(false);
+  expect(exportDiagnosticReport({}).previousFailure.sourceRecovery.outcome).toBe('failed');
+  window.history.replaceState({},'','/');
+});
+test('a declined failure starts its own source recovery record', () => {
+  recordSourceRecoveryReport('recovered', {strategy:'catalog',decodedHeight:1080});
+  recordSourceRecoveryReport('declined', {reason:'retry-used'});
+  const { sourceRecovery } = createDiagnosticReport();
+  expect(sourceRecovery).toMatchObject({outcome:'declined',reason:'retry-used'});
+  expect(sourceRecovery.strategy).toBeUndefined();expect(sourceRecovery.decodedHeight).toBeUndefined();
 });
