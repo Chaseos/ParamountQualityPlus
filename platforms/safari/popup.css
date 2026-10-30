@@ -16,6 +16,10 @@ body { box-sizing: border-box; width: 372px; overflow-x: hidden; }
 .safari-action:is(:hover, :focus-visible) { opacity: 1; background: #ffffff0d; border-color: currentColor; }
 .safari-action:is(:hover, :focus-visible) .safari-action-label { grid-template-columns: 1fr; margin-inline-start: 6px; }
 .safari-action:focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; }
+.safari-site { color: #ecc9ad; }
+.safari-site img { display: block; width: 18px; height: 18px; flex: 0 0 18px; }
+.safari-site .safari-action-label > span { font-size: 9.5px; font-weight: 800; }
+.safari-site:is(:hover, :focus-visible) { background: rgba(189, 125, 89, 0.12); border-color: rgba(214, 150, 108, 0.55); }
 .advanced-content.expanded { max-height: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

@@ -80,7 +80,7 @@ test('Safari metadata validation resolves manifest messages and enforces both te
 
 test('non-Apple runtime remains byte-for-byte identical, with browser-specific manifests', () => {
     for (const browser of ['chromium','firefox']) {
-        for (const file of ['popup.js','popup.html','content.js','icon.png','kofi_symbol.svg','simple-video-speed-controller-icon.png','youtube-ui-cleaner-icon.png',...files('injected'),...files('_locales').filter(x=>x.endsWith('.json'))]) {
+        for (const file of ['popup.js','popup.html','content.js','icon.png','chaseos_symbol.png','kofi_symbol.svg','simple-video-speed-controller-icon.png','youtube-ui-cleaner-icon.png',...files('injected'),...files('_locales').filter(x=>x.endsWith('.json'))]) {
             expect(readFileSync(`dist/${browser}/${file}`)).toEqual(readFileSync(file));
         }
         const manifest=JSON.parse(read(`dist/${browser}/manifest.json`));
@@ -211,4 +211,34 @@ test('Safari drops automatic footer focus but preserves deliberate keyboard focu
     expect(document.activeElement).not.toBe(rate);
     handlers.keydown({key:'Tab'}); rate.focus(); handlers.focusin();
     expect(document.activeElement).toBe(rate);
+});
+
+test('browser popups put the Chaseos Apps link beside the Ko-fi link with its shared styles', () => {
+    document.body.innerHTML=read('popup.html');
+    const links=[...document.querySelectorAll('.header-actions .creator-links > a')];
+    expect(links.map(link=>link.id)).toEqual(['site-link','kofi-link']);
+    const site=links[0];
+    expect(site.className).toBe('kofi-link site-link');
+    expect([site.getAttribute('href'),site.target,site.rel,site.title,site.getAttribute('aria-label')])
+        .toEqual(['https://chaseos.app','_blank','noopener noreferrer','Chaseos Apps','Chaseos Apps']);
+    expect(site.querySelector('img.kofi-icon').getAttribute('src')).toBe('chaseos_symbol.png');
+    expect(site.querySelector('.kofi-message.site-wordmark').textContent).toBe('Chaseos Apps°');
+    expect(site.querySelector('.site-wordmark > [aria-hidden="true"]').textContent).toBe('°');
+    expect(site.querySelector('[data-i18n]')).toBeNull();
+});
+
+test('Safari keeps the Chaseos Apps link as a third app action', () => {
+    expect(readFileSync('dist/safari/chaseos_symbol.png')).toEqual(readFileSync('chaseos_symbol.png'));
+    const html=read('dist/safari/popup.html');
+    document.body.innerHTML=html;
+    expect([...document.querySelectorAll('.safari-actions > .safari-action')].map(link=>link.id)).toEqual(['apple-rate','apple-support','apple-site']);
+    const site=document.getElementById('apple-site');
+    expect([site.getAttribute('href'),site.target,site.rel,site.getAttribute('aria-label')])
+        .toEqual(['https://chaseos.app','_blank','noopener noreferrer','Chaseos Apps']);
+    expect(site.querySelector('img').getAttribute('src')).toBe('chaseos_symbol.png');
+    expect(site.querySelector('.safari-action-label > .site-wordmark').textContent).toBe('Chaseos Apps°');
+    expect(document.querySelector('.creator-links, #site-link, #kofi-link')).toBeNull();
+    // The shared wordmark style must survive the Safari support-style removal.
+    expect(html).toMatch(/\.site-wordmark \{[\s\S]*?font-weight: 800;/);
+    expect(read('dist/safari/safari-popup.css')).toMatch(/\.safari-site:is\(:hover, :focus-visible\)/);
 });

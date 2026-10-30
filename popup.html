@@ -77,6 +77,18 @@
       flex-shrink: 0;
     }
 
+    /* Mirrors the Chaseos Apps site wordmark; the Safari popup uses it too. */
+    .site-wordmark {
+      font-family: "Geist", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .site-wordmark span {
+      color: #c98a62;
+    }
+
     .kofi-link {
       position: relative;
       box-sizing: border-box;
@@ -152,6 +164,43 @@
       100% {
         transform: scale(1) rotate(0deg);
       }
+    }
+
+    .creator-links {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+
+    /* The header has no room for a second link (the title would truncate), so
+       this one rests on the Ko-fi link's hidden label space beside its icon
+       and opens leftward over it. It steps aside while Ko-fi's label shows. */
+    .site-link {
+      position: absolute;
+      right: 31px;
+      top: 0;
+      width: 30px;
+      padding: 0 5px;
+      z-index: 1;
+    }
+
+    .site-link:hover,
+    .site-link:focus-visible {
+      background: rgba(189, 125, 89, 0.12);
+      border-color: rgba(214, 150, 108, 0.55);
+      box-shadow: 0 0 12px rgba(189, 125, 89, 0.22);
+      padding: 0 8px;
+      width: 122px;
+    }
+
+    .site-link .kofi-message {
+      color: #ecc9ad;
+      font-size: 9px;
+    }
+
+    .creator-links:has(#kofi-link:is(:hover, :focus-visible)) .site-link {
+      opacity: 0;
+      pointer-events: none;
     }
 
     .status-dot {
@@ -549,11 +598,19 @@
       <span class="brand-title">Paramount Quality<sup class="brand-plus">+</sup></span>
     </div>
     <div class="header-actions">
-      <a id="kofi-link" href="https://ko-fi.com/chaseos" target="_blank" rel="noopener noreferrer" class="kofi-link"
-        data-i18n-title="supportMyWork" data-i18n-aria-label="supportMyWork" title="Support my work" aria-label="Support my work">
-        <span class="kofi-message" data-i18n="supportMyWorkCta">Support my work</span>
-        <img src="kofi_symbol.svg" alt="" class="kofi-icon">
-      </a>
+      <div class="creator-links">
+        <!-- Shares the Ko-fi link's hover box, label reveal, and icon pop. -->
+        <a id="site-link" href="https://chaseos.app" target="_blank" rel="noopener noreferrer" class="kofi-link site-link"
+          title="Chaseos Apps" aria-label="Chaseos Apps">
+          <span class="kofi-message site-wordmark">Chaseos Apps<span aria-hidden="true">°</span></span>
+          <img src="chaseos_symbol.png" alt="" class="kofi-icon">
+        </a>
+        <a id="kofi-link" href="https://ko-fi.com/chaseos" target="_blank" rel="noopener noreferrer" class="kofi-link"
+          data-i18n-title="supportMyWork" data-i18n-aria-label="supportMyWork" title="Support my work" aria-label="Support my work">
+          <span class="kofi-message" data-i18n="supportMyWorkCta">Support my work</span>
+          <img src="kofi_symbol.svg" alt="" class="kofi-icon">
+        </a>
+      </div>
       <div class="status-dot" id="connection-dot" role="status" aria-live="polite"
         data-i18n-title="notConnected" data-i18n-aria-label="notConnected" title="Not connected" aria-label="Not connected"></div>
     </div>
