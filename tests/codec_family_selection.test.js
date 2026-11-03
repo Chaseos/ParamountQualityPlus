@@ -78,6 +78,24 @@ describe('codec-family request selection', () => {
     }));
   });
 
+  test('flags a manual pick that had to play lower, including when the request is already the fallback', () => {
+    setConfig({ forceMax: false, forcedId: representationAt(2160).id, forcedHeight: 2160 });
+    const cap = { streamKey: expect.any(String), requestedHeight: 2160, playingHeight: 1080 };
+
+    expect(planRequest(avcSegment).qualityCap).toEqual(cap);
+    expect(planRequest(`${CONTENT_ROOT}${tierPath(20, 1080, 5400)}/seg_5.m4s`)).toEqual(expect.objectContaining({
+      action: 'pass-through', reason: 'already-target', qualityCap: cap
+    }));
+  });
+
+  test('does not flag selections that play in their own codec', () => {
+    setConfig({ forceMax: false, forcedId: representationAt(720).id, forcedHeight: 720 });
+    expect(planRequest(avcSegment).qualityCap).toBeUndefined();
+
+    setConfig({ forceMax: false, forcedId: representationAt(2160).id, forcedHeight: 2160 });
+    expect(planRequest(`${CONTENT_ROOT}${tierPath(50, 1440, 9000)}/seg_5.m4s`).qualityCap).toBeUndefined();
+  });
+
   test('an unrecognized request in a mixed-codec ladder is never sent to the HEVC tier', () => {
     const plan = planRequest(`${CONTENT_ROOT}${tierPath(26, 360, 450)}/seg_5.m4s`);
 

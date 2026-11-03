@@ -10,6 +10,7 @@ let currentConfig = {
     prefetchCount: 5
 };
 let activeRuntimeConfig = null;
+let shownQualityCap = null;
 
 const KOFI_URL = 'https://ko-fi.com/chaseos';
 const REVIEW_STORE_URLS = Object.freeze({
@@ -444,6 +445,7 @@ function startPolling() {
                     setConnectionStatus(true);
                     activeRuntimeConfig = response.appliedConfig || null;
                     updateStats(response);
+                    showQualityCapNotice(response);
 
                     renderQualityList(response.manifestQualities || []);
                     updateSelectionUI();
@@ -486,6 +488,24 @@ function updateStats(data) {
     }
 
     updateGeolocationNotice(data);
+}
+
+// A manual pick in another codec than the player opened plays at the best
+// rendition the player can decode; say so once per selection.
+function showQualityCapNotice(data) {
+    const cap = data.qualityCap;
+    if (!cap) {
+        shownQualityCap = null;
+        return;
+    }
+    const config = data.appliedConfig || currentConfig;
+    const key = `${cap.requestedHeight}|${cap.playingHeight}|${config.forcedId}|${config.forcedHeight}`;
+    if (config.forceMax || key === shownQualityCap) return;
+    shownQualityCap = key;
+    const requested = `${cap.requestedHeight}p`;
+    const playing = `${cap.playingHeight}p`;
+    showToast(chrome.i18n.getMessage('qualityCapped', [requested, playing]) ||
+        `Can't play ${requested} on this stream. Using ${playing}.`);
 }
 
 function updateGeolocationNotice(data) {

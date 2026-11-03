@@ -23,6 +23,7 @@ let streamState = {
     appliedConfig: null,
     qualityStrategy: null,
     manifestQualities: [],
+    qualityCap: null, // selection played lower because it is in another codec
     initializedAt: Date.now()
 };
 let lastDecodedHeight = null;
@@ -45,6 +46,7 @@ function resetStreamDisplay(streamKey = null) {
     streamState.qualitySource = null;
     lastDecodedHeight = null;
     streamState.qualityStrategy = null;
+    streamState.qualityCap = null;
 }
 
 function boundedStoredInteger(value, fallback, minimum, maximum) {
@@ -347,6 +349,13 @@ window.addEventListener('message', (event) => {
             streamState.isEstimated = false; // Known from playlist URL match
             streamState.qualitySource = 'manifest';
             streamState.timestamp = Date.now();
+        } else if (event.data.type === 'PQI_QUALITY_CAP') {
+            const { streamKey, requestedHeight, playingHeight } = event.data.payload || {};
+            const sameStream = !streamKey || !streamState.manifestStreamKey ||
+                streamKey === streamState.manifestStreamKey;
+            if (sameStream && Number.isInteger(requestedHeight) && Number.isInteger(playingHeight)) {
+                streamState.qualityCap = { requestedHeight, playingHeight };
+            }
         } else if (event.data.type === 'PQI_GEOLOCATION_PERMISSION') {
             streamState.geolocationPermission = event.data.payload?.state || 'unknown';
         } else if (event.data.type === 'PQI_ORIGINAL_STREAM_RECOVERY' && !recoveryReloadRequested) {
@@ -414,6 +423,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     } else if (request.type === 'APPLY_QUALITY_CHANGE') {
         streamState.recoveryActive = false;
+        streamState.qualityCap = null;
         streamState.appliedConfig = request.payload;
         if (request.reloadLivePlayback && isLivePlaybackPath()) {
             try {

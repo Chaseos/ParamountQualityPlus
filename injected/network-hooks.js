@@ -85,6 +85,18 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     });
   }
 
+  // Lets the popup explain why a selection in another codec plays lower.
+  let reportedQualityCap = null;
+  function reportQualityCap(plan) {
+    const cap = plan?.qualityCap;
+    if (!cap) return;
+    const { forceMax, forcedId, forcedHeight } = getConfig();
+    const key = JSON.stringify([cap, forceMax, forcedId, forcedHeight]);
+    if (key === reportedQualityCap) return;
+    reportedQualityCap = key;
+    window.postMessage({ type: 'PQI_QUALITY_CAP', payload: cap }, '*');
+  }
+
   const recovery = createRecoveryController({
     canFallbackToOriginal,
     recordDiagnosticEvent,
@@ -460,6 +472,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
 
         const headers = new Headers(args[1]?.headers || args[0]?.headers);
         rewritePlan = planWithDiscovery(url, getRequestMethod(args) === 'GET' && !headers.has('Range'));
+        reportQualityCap(rewritePlan);
         if (rewritePlan?.action === 'pass-through' &&
             !recordedPassThroughReasons.has(rewritePlan.reason)) {
           recordedPassThroughReasons.add(rewritePlan.reason);
@@ -666,6 +679,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       if (isSegmentUrl(finalUrl) || isManifestUrl(finalUrl)) {
         const originalUrl = finalUrl;
         const rewritePlan = planWithDiscovery(originalUrl, String(method).toUpperCase() === 'GET');
+        reportQualityCap(rewritePlan);
         if (rewritePlan?.action === 'inferred-probe' && rewritePlan.needsValidation) {
           if (rewritePlan.mediaRole === 'initialization') {
             // XHR cannot be redirected after an asynchronous probe without

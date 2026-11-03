@@ -238,6 +238,27 @@ test('clears stale quality state when the main-world stream session resets', () 
   }));
 });
 
+test('keeps a quality cap for the current stream until the selection or stream changes', () => {
+  const page = loadContentScript();
+  page.sendWindowMessage({
+    type: 'PQI_MANIFEST_DATA',
+    payload: [{ id: '2160', height: 2160, bandwidth: 16000000, streamKey: 'title' }]
+  });
+
+  page.sendWindowMessage({ type: 'PQI_QUALITY_CAP', payload: { streamKey: 'other-title', requestedHeight: 2160, playingHeight: 1080 } });
+  expect(page.getState().qualityCap).toBeNull();
+
+  page.sendWindowMessage({ type: 'PQI_QUALITY_CAP', payload: { streamKey: 'title', requestedHeight: 2160, playingHeight: 1080 } });
+  expect(page.getState().qualityCap).toEqual({ requestedHeight: 2160, playingHeight: 1080 });
+
+  page.sendRuntimeMessage({ type: 'APPLY_QUALITY_CHANGE', payload: { forceMax: false, forcedId: '720', forcedHeight: 720 } });
+  expect(page.getState().qualityCap).toBeNull();
+
+  page.sendWindowMessage({ type: 'PQI_QUALITY_CAP', payload: { streamKey: 'title', requestedHeight: 2160, playingHeight: 1080 } });
+  page.sendWindowMessage({ type: 'PQI_STREAM_RESET', payload: { streamKey: 'next-title' } });
+  expect(page.getState().qualityCap).toBeNull();
+});
+
 test('ignores malformed page messages instead of corrupting extension state', () => {
   const page = loadContentScript();
 

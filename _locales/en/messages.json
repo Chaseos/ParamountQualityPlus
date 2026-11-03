@@ -51,6 +51,20 @@
     "message": "Updating quality… The buffer may take 10–20 seconds to clear.",
     "description": "Longer notification message explaining that video quality updates take time"
   },
+  "qualityCapped": {
+    "message": "Can't play $REQUESTED$ on this stream. Using $PLAYING$.",
+    "description": "Short notification shown when a manually selected quality cannot play on the current stream and a lower quality is used instead",
+    "placeholders": {
+      "requested": {
+        "content": "$1",
+        "example": "2160p"
+      },
+      "playing": {
+        "content": "$2",
+        "example": "1080p"
+      }
+    }
+  },
   "leaveReview": {
     "message": "Finding it useful? Leave a review",
     "description": "Prompt asking the user to review the extension"

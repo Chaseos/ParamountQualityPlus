@@ -51,6 +51,20 @@
     "message": "Mise à jour de la qualité… La mémoire tampon peut mettre 10 à 20 secondes à se vider.",
     "description": "Message de notification plus long expliquant que les mises à jour de qualité vidéo prennent du temps"
   },
+  "qualityCapped": {
+    "message": "Impossible de lire $REQUESTED$ sur ce flux. Lecture en $PLAYING$.",
+    "description": "Short notification shown when a manually selected quality cannot play on the current stream and a lower quality is used instead",
+    "placeholders": {
+      "requested": {
+        "content": "$1",
+        "example": "2160p"
+      },
+      "playing": {
+        "content": "$2",
+        "example": "1080p"
+      }
+    }
+  },
   "leaveReview": {
     "message": "Cette extension vous est utile ? Laissez un avis",
     "description": "Invite demandant à l'utilisateur d'évaluer l'extension"

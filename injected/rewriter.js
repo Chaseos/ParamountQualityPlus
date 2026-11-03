@@ -367,6 +367,15 @@ export function planRequest(url, options = {}) {
   const authoritativePlan = targetUrl
     ? buildPlan(url, targetUrl, targetRep, strategy)
     : passThrough(url, 'unrecognized-family-request');
+  const targetCodec = getCodecFamily(targetRep);
+  if (targetUrl && targetCodec && selectedRep.height > targetRep.height &&
+      !getRepresentationVariants(selectedRep).some(rep => getCodecFamily(rep) === targetCodec)) {
+    authoritativePlan.qualityCap = {
+      streamKey: targetRep.streamKey || null,
+      requestedHeight: selectedRep.height,
+      playingHeight: targetRep.height
+    };
+  }
 
   if (authoritativePlan.action !== 'pass-through') return authoritativePlan;
 

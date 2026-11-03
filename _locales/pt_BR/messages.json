@@ -51,6 +51,20 @@
     "message": "Atualizando a qualidade… O buffer pode levar de 10 a 20 segundos para esvaziar.",
     "description": "Mensagem de notificação mais longa explicando que as atualizações de qualidade de vídeo levam tempo"
   },
+  "qualityCapped": {
+    "message": "Não é possível reproduzir $REQUESTED$ nesta transmissão. Usando $PLAYING$.",
+    "description": "Short notification shown when a manually selected quality cannot play on the current stream and a lower quality is used instead",
+    "placeholders": {
+      "requested": {
+        "content": "$1",
+        "example": "2160p"
+      },
+      "playing": {
+        "content": "$2",
+        "example": "1080p"
+      }
+    }
+  },
   "leaveReview": {
     "message": "Achou útil? Deixe uma avaliação",
     "description": "Aviso pedindo ao usuário para avaliar a extensão"

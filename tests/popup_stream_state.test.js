@@ -38,3 +38,28 @@ test('renders ladder labels as text rather than manifest-provided HTML', () => {
   expect(button.querySelector('img')).toBeNull();
   expect(button.textContent).toContain('<img src=x>p');
 });
+
+test('explains a capped manual selection once and stays quiet for Force Max', () => {
+  const popup = loadPopup();
+  document.body.insertAdjacentHTML('beforeend', '<div id="toast"></div>');
+  popup.chrome.i18n.getMessage = jest.fn((key, values) => key === 'qualityCapped'
+    ? `Can't play ${values[0]} on this stream. Using ${values[1]}.` : '');
+  const toast = document.getElementById('toast');
+  const manual = { forceMax: false, forcedId: 's1-4', forcedHeight: 2160 };
+  const cap = { requestedHeight: 2160, playingHeight: 1080 };
+
+  popup.showQualityCapNotice({ qualityCap: cap, appliedConfig: { ...manual, forceMax: true } });
+  expect(toast.classList.contains('visible')).toBe(false);
+
+  popup.showQualityCapNotice({ qualityCap: cap, appliedConfig: manual });
+  expect(toast.textContent).toBe("Can't play 2160p on this stream. Using 1080p.");
+  expect(toast.classList.contains('visible')).toBe(true);
+
+  toast.textContent = '';
+  popup.showQualityCapNotice({ qualityCap: cap, appliedConfig: manual });
+  expect(toast.textContent).toBe('');
+
+  popup.showQualityCapNotice({ qualityCap: null, appliedConfig: manual });
+  popup.showQualityCapNotice({ qualityCap: cap, appliedConfig: manual });
+  expect(toast.textContent).toBe("Can't play 2160p on this stream. Using 1080p.");
+});

@@ -51,6 +51,20 @@
     "message": "Actualizando la calidad… El búfer puede tardar entre 10 y 20 segundos en vaciarse.",
     "description": "Mensaje que explica que los cambios de calidad de video pueden tardar en aplicarse"
   },
+  "qualityCapped": {
+    "message": "No se puede reproducir $REQUESTED$ en esta transmisión. Usando $PLAYING$.",
+    "description": "Short notification shown when a manually selected quality cannot play on the current stream and a lower quality is used instead",
+    "placeholders": {
+      "requested": {
+        "content": "$1",
+        "example": "2160p"
+      },
+      "playing": {
+        "content": "$2",
+        "example": "1080p"
+      }
+    }
+  },
   "leaveReview": {
     "message": "¿Te resulta útil? Deja una reseña",
     "description": "Invitación a dejar una reseña de la extensión"

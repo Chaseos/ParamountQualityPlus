@@ -51,6 +51,20 @@
     "message": "화질을 업데이트하는 중입니다… 버퍼가 비워지는 데 10~20초 정도 걸릴 수 있습니다.",
     "description": "동영상 화질 업데이트에 시간이 걸릴 수 있음을 설명하는 알림 메시지"
   },
+  "qualityCapped": {
+    "message": "이 스트림에서는 $REQUESTED$ 화질로 재생할 수 없습니다. $PLAYING$ 화질로 재생합니다.",
+    "description": "Short notification shown when a manually selected quality cannot play on the current stream and a lower quality is used instead",
+    "placeholders": {
+      "requested": {
+        "content": "$1",
+        "example": "2160p"
+      },
+      "playing": {
+        "content": "$2",
+        "example": "1080p"
+      }
+    }
+  },
   "leaveReview": {
     "message": "유용하셨나요? 리뷰를 남겨 주세요",
     "description": "사용자에게 확장 프로그램 리뷰를 요청하는 문구"

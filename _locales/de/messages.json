@@ -51,6 +51,20 @@
     "message": "Qualität wird aktualisiert … Das Leeren des Puffers kann 10–20 Sekunden dauern.",
     "description": "Längere Benachrichtigung, die erklärt, dass Aktualisierungen der Videoqualität Zeit in Anspruch nehmen"
   },
+  "qualityCapped": {
+    "message": "$REQUESTED$ kann in diesem Stream nicht abgespielt werden. Wiedergabe in $PLAYING$.",
+    "description": "Short notification shown when a manually selected quality cannot play on the current stream and a lower quality is used instead",
+    "placeholders": {
+      "requested": {
+        "content": "$1",
+        "example": "2160p"
+      },
+      "playing": {
+        "content": "$2",
+        "example": "1080p"
+      }
+    }
+  },
   "leaveReview": {
     "message": "Nützlich? Bewertung abgeben",
     "description": "Aufforderung an den Benutzer, die Erweiterung zu bewerten"

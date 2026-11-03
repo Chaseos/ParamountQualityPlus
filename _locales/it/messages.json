@@ -51,6 +51,20 @@
     "message": "Aggiornamento della qualità… Lo svuotamento del buffer potrebbe richiedere 10–20 secondi.",
     "description": "Messaggio di notifica più lungo che spiega che gli aggiornamenti della qualità del video richiedono tempo"
   },
+  "qualityCapped": {
+    "message": "Impossibile riprodurre $REQUESTED$ su questo stream. Riproduzione in $PLAYING$.",
+    "description": "Short notification shown when a manually selected quality cannot play on the current stream and a lower quality is used instead",
+    "placeholders": {
+      "requested": {
+        "content": "$1",
+        "example": "2160p"
+      },
+      "playing": {
+        "content": "$2",
+        "example": "1080p"
+      }
+    }
+  },
   "leaveReview": {
     "message": "Ti è utile? Lascia una recensione",
     "description": "Richiesta all'utente di recensire l'estensione"
