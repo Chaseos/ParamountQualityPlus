@@ -4,6 +4,7 @@ import {
   getParamountPackaging,
   deriveStreamKey,
   getHlsTier,
+  getVideoCodecFamily,
   mergeRuntimeTelemetry,
   selectRepresentation
 } from './stream-model.js';
@@ -189,10 +190,28 @@ function resolveParamountVodTarget(request, selectedVariants) {
   return selectedVariants.find(rep => getRepresentationVodIdentity(rep) === requestIdentity) || null;
 }
 
+function getCodecFamily(representation) {
+  const codecs = representation?.codecs || representation?.request?.codecs;
+  return codecs ? getVideoCodecFamily(codecs) : null;
+}
+
+// Rewritten media is appended to the player's existing decoder, which only
+// accepts the codec it was opened with. A selection in another codec (such as
+// a 2160p HEVC row over an AVC stream) falls back to the highest rendition at
+// or below it in the request's codec instead.
+function getSameCodecVariants(selectedRepresentation, representations, codecFamily) {
+  const sameCodec = rep => getCodecFamily(rep) === codecFamily;
+  const selectedVariants = getRepresentationVariants(selectedRepresentation).filter(sameCodec);
+  if (selectedVariants.length) return selectedVariants;
+  const ceiling = selectedRepresentation.height || Infinity;
+  const substitute = representations.find(rep => (rep.height || 0) <= ceiling &&
+    getRepresentationVariants(rep).some(sameCodec));
+  return substitute ? getRepresentationVariants(substitute).filter(sameCodec) : [];
+}
+
 function resolveCompatibleTarget(url, selectedRepresentation, representations) {
   if (!selectedRepresentation) return null;
   const allVariants = getAllRepresentationVariants(representations);
-  const selectedVariants = getRepresentationVariants(selectedRepresentation);
   const matchingSources = allVariants.filter(rep => representationMatchesRequest(url, rep));
   const matchingCompatibilityKeys = new Set(
     matchingSources.map(rep => rep.compatibilityKey).filter(Boolean)
@@ -200,6 +219,15 @@ function resolveCompatibleTarget(url, selectedRepresentation, representations) {
   // A tier/path reused by multiple codec families is still ambiguous. Only
   // select a source family when every matching descriptor agrees.
   const source = matchingCompatibilityKeys.size <= 1 ? matchingSources[0] : null;
+  const sourceCodec = getCodecFamily(source);
+  const ladderCodecs = new Set(allVariants.map(getCodecFamily).filter(Boolean));
+  // Without a recognized source, a mixed-codec ladder gives no safe way to
+  // know which decoder the player opened.
+  if (!sourceCodec && ladderCodecs.size > 1) return null;
+  const selectedVariants = sourceCodec
+    ? getSameCodecVariants(selectedRepresentation, representations, sourceCodec)
+    : getRepresentationVariants(selectedRepresentation);
+  if (!selectedVariants.length) return null;
 
   if (source?.compatibilityKey) {
     const exactCompatibleTarget = selectedVariants.find(rep => rep.compatibilityKey === source.compatibilityKey);

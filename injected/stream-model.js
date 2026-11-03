@@ -139,6 +139,16 @@ export function getDeliveryFamily({ variantUrl, hlsTier, template, pathId, rawId
   return 'unknown';
 }
 
+export function getVideoCodecFamily(codecs) {
+  const value = String(codecs || '').toLowerCase();
+  if (/\b(?:avc1|avc3)\b/.test(value)) return 'avc';
+  if (/\b(?:hev1|hvc1)\b/.test(value)) return 'hevc';
+  if (/\b(?:dvhe|dvh1)\b/.test(value)) return 'dolby-vision';
+  if (/\bav01\b/.test(value)) return 'av1';
+  if (/\bvp0?9\b/.test(value)) return 'vp9';
+  return value || 'unknown';
+}
+
 export function normalizeRepresentations(representations, context = {}) {
   return representations
     .map(rep => {
