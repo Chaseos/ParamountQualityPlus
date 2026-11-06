@@ -1,10 +1,10 @@
 {
   "appName": {
-    "message": "Paramount Quality+",
+    "message": "Paramount Quality+: Mudar qualidade do vídeo",
     "description": "O nome da extensão"
   },
   "appDesc": {
-    "message": "Gerencie a resolução de vídeos sob demanda e transmissões ao vivo no Paramount+ com controles simples e informações claras.",
+    "message": "Mude a qualidade do vídeo no Paramount+. Veja resolução e taxa de bits, escolha a qualidade ou force a máxima, inclusive ao vivo.",
     "description": "A descrição da extensão exibida na web store e na página de extensões do navegador"
   },
   "notConnected": {

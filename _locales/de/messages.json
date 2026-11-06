@@ -1,10 +1,10 @@
 {
   "appName": {
-    "message": "Paramount Quality+",
+    "message": "Paramount Quality+: Videoqualität ändern",
     "description": "Der Name der Erweiterung"
   },
   "appDesc": {
-    "message": "Steuern Sie die Wiedergabeauflösung von On-Demand-Videos und Livestreams auf Paramount+ – einfach und mit klaren Statusmeldungen.",
+    "message": "Videoqualität auf Paramount+ ändern: Auflösung und Bitrate sehen, Qualität wählen oder die höchste erzwingen, auf Abruf und live.",
     "description": "Die Beschreibung der Erweiterung, die im Web Store und auf der Browser-Erweiterungsseite angezeigt wird"
   },
   "notConnected": {

@@ -16,6 +16,8 @@ Final reviewer-supplied changes:
 - `appDesc`: `Paramount+ 온디맨드 서비스/콘탠츠과 라이브 스트림의 재생 해상도를 간편하게 컨트롤 할 수 있습니다`
 - `enablePrefetch`: `Prefetch 버퍼`
 
+`appName` and `appDesc` were rewritten on 2026-11-06 for the store listing and are outside this review. They have model review only and need a fluent Korean reviewer. All other reviewed keys are unchanged.
+
 Mechanical validation, product-context mapping, accessibility verification,
 runtime tests, packaging checks, and rendered UI fit remain part of the
 repository localization evaluation and do not replace the native review.

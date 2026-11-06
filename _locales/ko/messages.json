@@ -1,10 +1,10 @@
 {
   "appName": {
-    "message": "Paramount Quality+",
+    "message": "Paramount Quality+: 동영상 화질 변경",
     "description": "확장 프로그램의 이름"
   },
   "appDesc": {
-    "message": "Paramount+ 온디맨드 서비스/콘탠츠과 라이브 스트림의 재생 해상도를 간편하게 컨트롤 할 수 있습니다",
+    "message": "Paramount+ 동영상 화질을 변경하세요. 현재 해상도와 비트레이트를 확인하고, 화질을 직접 고르거나 제공되는 최고 화질을 우선 적용할 수 있습니다. 주문형과 라이브 모두 지원합니다.",
     "description": "웹 스토어 및 브라우저 확장 프로그램 페이지에 표시되는 설명"
   },
   "notConnected": {

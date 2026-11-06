@@ -1,10 +1,10 @@
 {
   "appName": {
-    "message": "Paramount Quality+",
+    "message": "Paramount Quality+: Change Video Quality",
     "description": "The name of the extension"
   },
   "appDesc": {
-    "message": "Control playback resolution for Paramount+ on-demand videos and live streams with simple controls and clear status updates.",
+    "message": "Change Paramount+ video quality. See the active resolution and bitrate, pick a quality, or force the highest, on demand or live.",
     "description": "The description of the extension shown in the web store and browser extensions page"
   },
   "notConnected": {

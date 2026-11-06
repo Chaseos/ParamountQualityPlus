@@ -4,7 +4,7 @@
   <img src="icon.png" alt="Paramount Quality+ icon" width="128">
 </p>
 
-Paramount Quality+ is a free, open-source browser extension for seeing and controlling the video quality Paramount+ actually delivers. Its lightweight popup reports the active resolution and bitrate, shows the qualities available for the current stream, and lets you use automatic playback, choose a specific resolution, or force the highest available quality.
+Paramount Quality+ is a free, open-source browser extension for changing Paramount+ video quality and seeing what the player actually delivers. The Paramount+ web player has no quality setting of its own. Its lightweight popup reports the active resolution and bitrate, shows the qualities available for the current stream, and lets you use automatic playback, choose a specific resolution, or force the highest available quality.
 
 It supports movies, episodes, older catalog titles, live TV channels, live events, and sports on `paramountplus.com`.
 
@@ -35,7 +35,6 @@ Brave and other Chromium-based browsers can install the extension from the Chrom
 - **Optional network recovery:** Retries eligible failed playback requests with a configurable limit of 1–10 attempts.
 - **Optional buffer prefetching:** Preloads 1–20 eligible upcoming segments to help reduce buffering while avoiding unsupported, encrypted, ad, and live-stream requests.
 - **Location-permission guidance:** Explains when blocked site location may prevent Paramount+ from exposing quality options and can trigger the site's permission request.
-- **Automatic limited-mode detection:** Disables unavailable controls for recently archived live streams while Paramount+ is still processing the on-demand version.
 - **Ad-blocker-friendly and fail-open behavior:** Playback requests that cannot be safely inspected or changed continue on their original URL.
 - **Private by design:** No personal data, browsing history, analytics, or telemetry is collected or transmitted by the extension. See the [privacy policy](PRIVACYPOLICY.md).
 
