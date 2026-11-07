@@ -26,6 +26,7 @@ Brave and other Chromium-based browsers can install the extension from the Chrom
 
 
 - **Real-time playback details:** See the active resolution and bitrate instead of relying on the player's quality label.
+- **Toolbar resolution badge:** Shows the height of the video playing in the tab, such as 1080, on the extension icon.
 - **Three quality modes:** Leave Paramount+ on Auto, select an available resolution, or use Force Max Quality to prefer the highest representation (1080p or higher when offered by Paramount+).
 - **Available-quality list:** Inspect the resolution and bitrate ladder exposed for the current title or live stream.
 - **Remembered preferences:** Quality mode, preferred resolution, and advanced network settings are saved with browser extension storage. A preferred height is remapped when representation IDs differ between titles.

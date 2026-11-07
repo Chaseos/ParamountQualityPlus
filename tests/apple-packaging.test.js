@@ -85,6 +85,8 @@ test('non-Apple runtime remains byte-for-byte identical, with browser-specific m
         }
         const manifest=JSON.parse(read(`dist/${browser}/manifest.json`));
         expect(Boolean(manifest.browser_specific_settings)).toBe(browser==='firefox');
+        expect(readFileSync(`dist/${browser}/background.js`)).toEqual(readFileSync('background.js'));
+        expect(manifest.background).toEqual(browser==='firefox' ? {scripts:['background.js']} : {service_worker:'background.js'});
     }
 });
 

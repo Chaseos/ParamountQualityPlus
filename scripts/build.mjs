@@ -12,7 +12,7 @@ const requested = process.argv.find(arg => arg.startsWith('--target='))?.split('
 if (requested && !['safari', 'chromium', 'firefox'].includes(requested)) throw Error('Unknown build target');
 const targets = requested ? [requested] : ['chromium', 'firefox', 'safari'];
 const runtimeFiles = ['content.js', 'popup.html', 'popup.js', 'icon.png', 'chaseos_symbol.png', ...manifest.web_accessible_resources.flatMap(entry => entry.resources), ...['de', 'en', 'es', 'es_419', 'fr', 'it', 'ko', 'pt_BR'].map(locale => `_locales/${locale}/messages.json`)];
-const browserFiles = [...new Set(runtimeFiles), 'kofi_symbol.svg', 'simple-video-speed-controller-icon.png', 'youtube-ui-cleaner-icon.png', 'README.md', 'PRIVACYPOLICY.md', 'LOCALIZATION_REVIEW.md'];
+const browserFiles = [...new Set(runtimeFiles), 'background.js', 'kofi_symbol.svg', 'simple-video-speed-controller-icon.png', 'youtube-ui-cleaner-icon.png', 'README.md', 'PRIVACYPOLICY.md', 'LOCALIZATION_REVIEW.md'];
 const safariFiles = [...new Set(runtimeFiles), 'PRIVACYPOLICY.md'];
 const safariNativeModules = ['native-master.js', 'native-captions.js', 'native-session.js', 'native-playback.js'];
 const removedKeys = ['leaveReview', 'supportMyWork', 'supportMyWorkCta', 'simpleVideoSpeedControllerAdLineOne', 'simpleVideoSpeedControllerAdLineTwo', 'youtubeUiCleanerAdLineOne', 'youtubeUiCleanerAdLineTwo', 'updatingQuality'];
@@ -123,6 +123,8 @@ for (const target of targets) {
   }
   const outputManifest = structuredClone(manifest);
   if (target !== 'firefox') delete outputManifest.browser_specific_settings;
+  if (target === 'firefox') outputManifest.background = { scripts: ['background.js'] };
+  if (target === 'safari') delete outputManifest.background;
   if (target === 'safari') outputManifest.web_accessible_resources[0].resources.push(...safariNativeModules.map(file => `injected/safari/${file}`));
   await writeFile(path.join(destination, 'manifest.json'), JSON.stringify(outputManifest, null, 4) + '\n');
   if (target === 'safari') {

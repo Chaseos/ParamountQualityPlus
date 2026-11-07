@@ -187,6 +187,27 @@ function getStreamStateSnapshot() {
     return state;
 }
 
+// Chrome clips badges to four characters, so "1080p" is shown as "1080". The
+// path is part of the signature because navigation can clear a tab's badge.
+// Packages without a background script, like Safari's, have no badge.
+function startResolutionBadge() {
+    if (!chrome.runtime.getManifest?.()?.background) return;
+    let lastSignature = `${window.location.pathname}:`;
+    const timer = setInterval(() => {
+        if (!chrome.runtime?.id) {
+            clearInterval(timer); // The extension was reloaded or removed.
+            return;
+        }
+        const text = String(getDecodedPlaybackQuality()?.height ?? '');
+        const signature = `${window.location.pathname}:${text}`;
+        if (signature === lastSignature) return;
+        lastSignature = signature;
+        chrome.runtime.sendMessage({ type: 'SET_RESOLUTION_BADGE', text }, () => {
+            void chrome.runtime.lastError;
+        });
+    }, 1000);
+}
+
 // --- Injection Logic ---
 function injectScript() {
     injectionFailed = false;
@@ -512,6 +533,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
         syncConfig();
     }
 });
+
+startResolutionBadge();
 
 /* PLATFORM_CONTENT */
 })();
