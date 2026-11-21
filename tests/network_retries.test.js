@@ -32,6 +32,29 @@ afterEach(() => {
 
 describe('Fetch Retries for Segments', () => {
 
+    test('retry warnings identify the host and failure without exposing the signed URL', async () => {
+        setConfig({ enableRetries: true, maxRetries: 3, enablePrefetch: false });
+        const url = 'https://media.example.test/private-title/seg_1.m4s?signature=fixture';
+        originalFetchMock
+            .mockResolvedValueOnce({ ok: false, status: 503 })
+            .mockRejectedValueOnce(new TypeError(`Cannot fetch ${url}`))
+            .mockResolvedValueOnce({ ok: true, status: 200 });
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+            const request = window.fetch(url);
+            await jest.advanceTimersByTimeAsync(1500);
+            await expect(request).resolves.toMatchObject({ ok: true });
+            const warnings = warn.mock.calls.map(args => args.join(' '));
+            expect(warnings).toEqual([
+                expect.stringMatching(/media\.example\.test.*503.*2\/3/),
+                expect.stringMatching(/media\.example\.test.*network error.*3\/3/)
+            ]);
+            for (const warning of warnings) expect(warning).not.toMatch(/private-title|signature|fixture/);
+        } finally {
+            warn.mockRestore();
+        }
+    });
+
     test('Should not retry successful requests', async () => {
         originalFetchMock.mockResolvedValue({ ok: true, status: 200, clone: () => ({ text: async () => '' }) });
         

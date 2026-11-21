@@ -13,8 +13,15 @@ import {
 } from './rewriter.js';
 import { maybePrefetchSegments } from './prefetch.js';
 import { createRecoveryController } from './recovery-controller.js';
-import { classifyMediaRequest, deriveStreamKey, getParamountPackaging } from './stream-model.js';
+import { classifyMediaRequest, deriveStreamKey, getParamountPackaging, toUrl } from './stream-model.js';
 import { diagnosticNow, recordDiagnosticEvent, recordPlaybackCheckpoint, recordRequestAttempt } from './diagnostics.js';
+
+function changesOrigin(plan) {
+  if (!plan || plan.action === 'pass-through') return false;
+  const source = toUrl(plan.originalUrl, document.baseURI);
+  const target = toUrl(plan.url, document.baseURI);
+  return !source || !target || source.origin === 'null' || source.origin !== target.origin;
+}
 
 // Monkey-patch fetch/XMLHttpRequest to inspect and optionally rewrite network
 // requests. This lets the extension force specific quality tiers while still
@@ -357,9 +364,9 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       recordInferredFallbackResult(candidate.streamKey, false);
       console.warn(`[PQI] Inferred XHR max-quality paths failed (${lastStatus || 'validation'}); keeping the original stream.`);
     })()
-      .catch(error => {
+      .catch(() => {
         recordInferredFallbackResult(candidate.streamKey, false);
-        console.warn('[PQI] Inferred XHR max-quality probe failed; keeping the original stream.', error);
+        console.warn('[PQI] Inferred XHR max-quality probe failed; keeping the original stream.');
       })
       .finally(() => xhrInferenceProbes.delete(candidate.streamKey));
 
@@ -396,6 +403,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
 
     const maxRetries = config.maxRetries ?? 3;
     for (let i = 0; i < maxRetries; i++) {
+      let failure;
       try {
         const response = await observedFetch(thisArg, args, urlInfo, i + 1, maxRetries);
         const requestSignal = getRequestSignal(args);
@@ -403,12 +411,14 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
         if (response.ok || requestSignal?.aborted || !retryableStatus || i === maxRetries - 1) {
           return response;
         }
-        console.warn(`[PQI] Fetch failed (${response.status}), retrying ${i + 1}/${maxRetries}: ${urlInfo}`);
+        failure = `HTTP ${response.status}`;
       } catch (err) {
         const requestSignal = getRequestSignal(args);
         if (err?.name === 'AbortError' || requestSignal?.aborted || i === maxRetries - 1) throw err;
-        console.warn(`[PQI] Network error, retrying ${i + 1}/${maxRetries}: ${urlInfo}`, err);
+        failure = 'network error';
       }
+      const host = toUrl(urlInfo, document.baseURI)?.host || 'unknown host';
+      console.warn(`[PQI] Playback request to ${host} failed (${failure}). Retrying attempt ${i + 2}/${maxRetries}.`);
       await new Promise(r => setTimeout(r, 500 * Math.pow(2, i)));
     }
   }
@@ -470,8 +480,15 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       // Check if it's a Segment OR a Manifest (for playlist rewriting)
       if (isSegmentUrl(url) || isManifestUrl(url)) {
 
-        const headers = new Headers(args[1]?.headers || args[0]?.headers);
-        rewritePlan = planWithDiscovery(url, getRequestMethod(args) === 'GET' && !headers.has('Range'));
+        const method = getRequestMethod(args);
+        const headers = new Headers(args[1]?.headers ?? resource?.headers);
+        rewritePlan = planWithDiscovery(url, method === 'GET' && !headers.has('Range'));
+        // A different CDN can serve a plain media request. Player-supplied
+        // headers (including provider-specific tokens) belong to the original origin.
+        if (changesOrigin(rewritePlan) && (Array.from(headers).length > 0 ||
+            (args[1]?.credentials ?? resource?.credentials) === 'include' || !['GET', 'HEAD'].includes(method))) {
+          rewritePlan = null;
+        }
         reportQualityCap(rewritePlan);
         if (rewritePlan?.action === 'pass-through' &&
             !recordedPassThroughReasons.has(rewritePlan.reason)) {
@@ -587,7 +604,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
             throw err;
           }
 
-          console.warn('[PQI] Network error during rewrite, reverting.', err);
+          console.warn('[PQI] Network error during rewrite, reverting to the original stream.');
 
           args[0] = originalResource;
           const fallbackResponse = await fetchWithRetry(this, args, true, url);
@@ -624,21 +641,33 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     return inspectManifestResponse(response, url);
   };
 
-  // open() chooses the URL before request headers are available. A byte range
-  // belongs to the source file; undo only a discovery rewrite if one is supplied.
+  function restoreOriginalXhr(xhr) {
+    const saved = { responseType: xhr.responseType, timeout: xhr.timeout, withCredentials: xhr.withCredentials };
+    ORIGINAL_XHR_OPEN.apply(xhr, xhr._pqi_originalOpenArgs);
+    for (const [key, value] of Object.entries(saved)) {
+      if (xhr[key] !== value) xhr[key] = value;
+    }
+    for (const header of xhr._pqi_discoveryHeaders) ORIGINAL_XHR_SET_HEADER.apply(xhr, header);
+    xhr._pqi_crossOriginRewrite = false;
+    xhr._pqi_rewritePlan = null;
+    xhr._pqi_url = xhr._pqi_originalUrl;
+    xhr._pqi_plannedUrl = xhr._pqi_originalUrl;
+  }
+
+  // XHR chooses its URL at open(), but the player sets headers afterwards.
   XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
     const result = ORIGINAL_XHR_SET_HEADER.apply(this, [name, value]);
+    if (this._pqi_crossOriginRewrite) {
+      // Native validation succeeded, so send() has not started. Reopen before
+      // sending and apply the first header again because open() clears headers.
+      restoreOriginalXhr(this);
+      ORIGINAL_XHR_SET_HEADER.apply(this, [name, value]);
+    }
     if (String(name).toLowerCase() === 'range') this._pqi_qualityRange = String(value);
     if (this._pqi_rewritePlan?.strategy !== 'package-manifest') return result;
     this._pqi_discoveryHeaders.push([name, value]);
     if (String(name).toLowerCase() !== 'range') return result;
-    const saved = { responseType: this.responseType, timeout: this.timeout, withCredentials: this.withCredentials };
-    ORIGINAL_XHR_OPEN.apply(this, this._pqi_discoveryOpenArgs);
-    for (const [key, value] of Object.entries(saved)) this[key] = value;
-    for (const header of this._pqi_discoveryHeaders) ORIGINAL_XHR_SET_HEADER.apply(this, header);
-    this._pqi_rewritePlan = null;
-    this._pqi_url = this._pqi_originalUrl;
-    this._pqi_plannedUrl = this._pqi_originalUrl;
+    restoreOriginalXhr(this);
     recordDiagnosticEvent('package_manifest_range_passthrough', {});
     return result;
   };
@@ -647,9 +676,10 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     // XMLHttpRequest instances can be reused. Do not let a prior rewrite or
     // completion suppress analysis for the next open/send cycle.
     this._pqi_rewritePlan = null;
+    this._pqi_crossOriginRewrite = false;
     this._pqi_discoveryHeaders = [];
     this._pqi_qualityRange = null;
-    this._pqi_discoveryOpenArgs = [method, url, ...rest];
+    this._pqi_originalOpenArgs = [method, url, ...rest];
     this._pqi_rewriteRecorded = false;
     this._pqi_originalUrl = null;
     this._pqi_plannedUrl = null;
@@ -678,7 +708,13 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
       this._pqi_qualityToken = qualityWatch.capture(finalUrl, this._pqi_observationSequence);
       if (isSegmentUrl(finalUrl) || isManifestUrl(finalUrl)) {
         const originalUrl = finalUrl;
-        const rewritePlan = planWithDiscovery(originalUrl, String(method).toUpperCase() === 'GET');
+        const requestMethod = String(method).toUpperCase();
+        let rewritePlan = planWithDiscovery(originalUrl, requestMethod === 'GET');
+        const crossOrigin = changesOrigin(rewritePlan);
+        // open(method, url, async, username, password) can carry credentials itself.
+        if (crossOrigin && (rest[1] != null || rest[2] != null || !['GET', 'HEAD'].includes(requestMethod))) {
+          rewritePlan = null;
+        }
         reportQualityCap(rewritePlan);
         if (rewritePlan?.action === 'inferred-probe' && rewritePlan.needsValidation) {
           if (rewritePlan.mediaRole === 'initialization') {
@@ -692,6 +728,11 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
         } else if (rewritePlan && rewritePlan.action !== 'pass-through') {
           finalUrl = rewritePlan.url;
           this._pqi_rewritePlan = rewritePlan;
+          this._pqi_crossOriginRewrite = crossOrigin;
+          if (crossOrigin) {
+            // A later <base> change must not redirect a restored relative URL.
+            this._pqi_originalOpenArgs[1] = toUrl(originalUrl, document.baseURI)?.href || originalUrl;
+          }
           recordDiagnosticEvent('rewrite_planned', {
             strategy: rewritePlan.strategy,
             action: rewritePlan.action,
@@ -786,6 +827,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
   };
 
   XMLHttpRequest.prototype.send = function (...args) {
+    if (this._pqi_crossOriginRewrite && this.withCredentials) restoreOriginalXhr(this);
     return ORIGINAL_XHR_SEND.apply(this, args);
   };
 
