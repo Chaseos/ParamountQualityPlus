@@ -33,6 +33,17 @@ export function normalizeConfig(value = {}) {
 let config = normalizeConfig();
 
 let availableRepresentations = [];
+// Whether this browser's DRM can decode HEVC/Dolby Vision video. null until
+// probed; unknown support never hides a rendition.
+let codecSupport = { hevc: null };
+
+export function getCodecSupport() {
+  return codecSupport;
+}
+
+export function setCodecSupport(support = {}) {
+  codecSupport = { hevc: typeof support.hevc === 'boolean' ? support.hevc : null };
+}
 let streamSession = {
   key: null,
   family: null,

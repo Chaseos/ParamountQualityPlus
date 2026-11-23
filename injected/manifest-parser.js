@@ -1,6 +1,6 @@
 import { getIndexedAddressing } from './indexed-dash.js';
 import { estimateResolutionFromBitrate } from './constants.js';
-import { getConfig, setRepresentations, getRepresentations } from './state.js';
+import { getCodecSupport, getConfig, setRepresentations, getRepresentations } from './state.js';
 import {
   classifyMediaRequest,
   deriveStreamKey,
@@ -8,6 +8,7 @@ import {
   getHlsTier,
   isAdReference,
   getVideoCodecFamily,
+  keepDecodable,
   normalizeRepresentations,
   resolveVariantUrl,
   selectRepresentation
@@ -142,7 +143,7 @@ export function parseHlsManifest(content, requestUrl) {
     // unique combination to present a clean list of available qualities.
     // For archived live streams, the same height may appear with different hlsTier values.
     const byKey = new Map();
-    for (const q of qualities) {
+    for (const q of keepDecodable(qualities, getCodecSupport())) {
       if (q.height) {
         // Use height+hlsTier as key to properly dedupe
         const key = `${q.height}_${q.hlsTier || 'none'}_${q.compatibilityKey}`;
@@ -442,7 +443,7 @@ export function readDashRepresentations(xmlString, requestUrl) {
     // Ignore ad-only manifests rather than replacing a valid content ladder.
     // For content, retain all same-height compatibility variants
     // internally and expose a single representative row to the popup.
-    const nonAdQualities = qualities.filter(q => !q.isAd);
+    const nonAdQualities = keepDecodable(qualities.filter(q => !q.isAd), getCodecSupport());
     if (nonAdQualities.length === 0) return [];
     const markedContentQualities = nonAdQualities.filter(q => q.isContent);
     const eligibleQualities = markedContentQualities.length > 0

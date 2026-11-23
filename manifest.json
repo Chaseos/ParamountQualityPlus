@@ -53,6 +53,7 @@
         "injected/indexed-session.js",
         "injected/source-recovery.js",
         "injected/source-recovery-policy.js",
+        "injected/startup-source.js",
         "injected/manifest-body.js",
         "injected/manifest-response.js",
         "injected/network-hooks.js",

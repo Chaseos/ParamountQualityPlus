@@ -200,6 +200,7 @@
 				"AB2F68F030451FEF00A1B7D4",
 				"AB2F68F130451FEF00A1B7D4",
 				"AB2F68F230451FEF00A1B7D4",
+				"FACED0000000000000000005",
 			);
 			"sourceTree" = "SOURCE_ROOT";
 		};
@@ -238,6 +239,7 @@
 				"AB2F68F830451FEF00A1B7D4",
 				"AB2F68F930451FEF00A1B7D4",
 				"AB2F68F730451FEF00A1B7D4",
+				"FACED0000000000000000006",
 			);
 			"runOnlyForDeploymentPostprocessing" = "0";
 		};
@@ -764,6 +766,8 @@
 		"FACED0000000000000000002" = {isa = PBXBuildFile; fileRef = "FACED0000000000000000001"; };
 		"FACED0000000000000000003" = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Native/SupportActionStrip.swift"; sourceTree = SOURCE_ROOT; };
 		"FACED0000000000000000004" = {isa = PBXBuildFile; fileRef = "FACED0000000000000000003"; };
+		"FACED0000000000000000005" = {isa = PBXFileReference; lastKnownFileType = image.png; name = "chaseos_symbol.png"; path = "../../../dist/safari/chaseos_symbol.png"; sourceTree = "<group>"; };
+		"FACED0000000000000000006" = {isa = PBXBuildFile; fileRef = "FACED0000000000000000005"; };
 	};
 	"rootObject" = "AB2F68B430451FEE00A1B7D4";
 }

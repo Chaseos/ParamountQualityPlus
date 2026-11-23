@@ -27,7 +27,8 @@ Brave and other Chromium-based browsers can install the extension from the Chrom
 
 - **Real-time playback details:** See the active resolution and bitrate instead of relying on the player's quality label.
 - **Toolbar resolution badge:** Shows the height of the video playing in the tab, such as 1080, on the extension icon.
-- **Three quality modes:** Leave Paramount+ on Auto, select an available resolution, or use Force Max Quality to prefer the highest representation (1080p or higher when offered by Paramount+).
+- **Three quality modes:** Leave Paramount+ on Auto, select an available resolution, or use Force Max Quality to prefer the highest representation this browser can play. Auto is Paramount's own choice and the extension leaves it untouched: about 540p in Chrome, Edge, and Firefox, and up to 1080p in Safari.
+- **4K HDR and Dolby Vision in Safari:** On a Mac whose Safari can decode HEVC, Force Max asks Paramount+ for its HEVC, HDR10, and Dolby Vision renditions, up to 2160p where a title offers them.
 - **Available-quality list:** Inspect the resolution and bitrate ladder exposed for the current title or live stream.
 - **Remembered preferences:** Quality mode, preferred resolution, and advanced network settings are saved with browser extension storage. A preferred height is remapped when representation IDs differ between titles.
 - **Broad stream support:** Detects and controls MPEG-DASH and HLS playback across on-demand content, live DASH streams, and Google DAI live channels and events.
@@ -40,6 +41,8 @@ Brave and other Chromium-based browsers can install the extension from the Chrom
 - **Private by design:** No personal data, browsing history, analytics, or telemetry is collected or transmitted by the extension. See the [privacy policy](PRIVACYPOLICY.md).
 
 Quality availability still depends on the title, subscription, region, device, DRM support, and representations supplied by Paramount+.
+
+Chrome, Edge, other Chromium-based browsers, and Firefox top out at 1080p on Paramount+. Paramount+ offers its higher resolutions only as HEVC and Dolby Vision, which these browsers' DRM cannot decode, so 4K needs Safari on a Mac or a Paramount+ TV or streaming-device app.
 
 ## Languages
 

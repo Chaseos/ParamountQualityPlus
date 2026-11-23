@@ -149,6 +149,18 @@ export function getVideoCodecFamily(codecs) {
   return value || 'unknown';
 }
 
+// HEVC and Dolby Vision renditions need DRM that can decode them. Hide them
+// only when the probe has established that this browser cannot.
+export function isDecodableVideo(codecs, support = {}) {
+  const family = getVideoCodecFamily(codecs);
+  return !(support.hevc === false && (family === 'hevc' || family === 'dolby-vision'));
+}
+
+export function keepDecodable(representations, support = {}) {
+  const decodable = representations.filter(rep => isDecodableVideo(rep.codecs, support));
+  return decodable.length ? decodable : representations;
+}
+
 export function normalizeRepresentations(representations, context = {}) {
   return representations
     .map(rep => {

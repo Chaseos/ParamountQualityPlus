@@ -1,4 +1,5 @@
-import { getParamountPackaging, selectRepresentation } from './stream-model.js';
+import { getParamountPackaging, isDecodableVideo, selectRepresentation } from './stream-model.js';
+import { getCodecSupport } from './state.js';
 
 const children = (node, name) => Array.from(node?.children || [])
   .filter(child => child.localName === name);
@@ -87,13 +88,24 @@ export function filterIndexedDash(text, manifestUrl, representations, config) {
     return { ...supported, reason: 'target-missing-in-period' };
   }
   const keep = new Set(selected.map(rep => rep.manifestNodeIndex));
-  for (const rep of variants) {
-    if (keep.has(rep.manifestNodeIndex)) continue;
-    const node = nodes[rep.manifestNodeIndex];
+  const remove = node => {
     const parent = node.parentNode;
     node.remove();
     if (parent.localName === 'AdaptationSet' && !children(parent, 'Representation').length) parent.remove();
+  };
+  for (const rep of variants) {
+    if (!keep.has(rep.manifestNodeIndex)) remove(nodes[rep.manifestNodeIndex]);
   }
+  // The ladder omits HEVC/Dolby Vision renditions this browser cannot decode.
+  // Remove them from the filtered manifest too, so the player cannot adapt to
+  // a rendition (and key) the selection never offered.
+  const support = getCodecSupport();
+  nodes.forEach((node, index) => {
+    if (keep.has(index) || !node.parentNode) return;
+    const codecs = node.getAttribute('codecs') || node.parentNode.getAttribute?.('codecs');
+    const mime = `${node.getAttribute('mimeType') || ''} ${node.parentNode.getAttribute?.('mimeType') || ''} ${node.parentNode.getAttribute?.('contentType') || ''}`;
+    if (codecs && !/audio|text|image/i.test(mime) && !isDecodableVideo(codecs, support)) remove(node);
+  });
   return { text: new XMLSerializer().serializeToString(doc), supported: true,
     selectedHeight: target.height, reason: 'selected', mediaUrls: selected.map(rep => rep.addressing.mediaUrl) };
 }

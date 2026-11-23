@@ -30,7 +30,7 @@ function consumeSourcePosition() {
   });
 }
 
-function findPlayerError(value, seen = new Set(), depth = 0) {
+export function findPlayerError(value, seen = new Set(), depth = 0) {
   if (!value || typeof value !== 'object' || depth > 8 || seen.has(value)) return null;
   seen.add(value);
   if (value.fatal === true && typeof value.code !== 'undefined') return value;
@@ -418,7 +418,10 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
       }
     }
     if (!context) return reject('no-player-context');
-    const failure = missingKeyFailure(error);
+    // PlayReady can deliver the HD key but mark it unusable for this output;
+    // the player's key statuses identify which key that was.
+    const keyStatuses = safely(() => failed.getAdapter('playback').player.getKeyStatuses());
+    const failure = missingKeyFailure(error, keyStatuses);
     if (!failure) return reject('unsupported-failure', { shakaCode: error?.cause?.code });
     if (pending) return context.videoId === pending.context.videoId;
     const selected = selection();

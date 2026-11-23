@@ -2,16 +2,42 @@ import { getParamountPackaging, isProgramManifest } from './stream-model.js';
 
 export const normalizeKeyId = value => String(value || '').replace(/-/g, '').toLowerCase();
 
-export function missingKeyFailure(error) {
+// PlayReady reports key IDs as little-endian GUIDs, so the same key can appear
+// with its first three groups byte-swapped relative to the manifest's KID.
+export function swapGuidKeyId(value) {
+  const key = normalizeKeyId(value);
+  if (!/^[0-9a-f]{32}$/.test(key)) return key;
+  const flip = part => part.match(/../g).reverse().join('');
+  return flip(key.slice(0, 8)) + flip(key.slice(8, 12)) + flip(key.slice(12, 16)) + key.slice(16);
+}
+
+// Statuses that mean a key was delivered but cannot be used for this output,
+// as PlayReady reports for an HD key whose output protection is not met.
+const UNUSABLE_KEY_STATUSES = new Set(['output-restricted', 'output-downscaled', 'internal-error']);
+
+// The selected HD video key is unavailable: either never delivered (Widevine
+// reports it missing) or delivered but unusable here (PlayReady reports it
+// restricted). Restricted keys only count when the player's key statuses name
+// them and another key is usable, so a wholly failed license never qualifies.
+export function missingKeyFailure(error, keyStatuses = null) {
   const cause = error?.cause, restrictions = cause?.data?.[0];
   if (String(error?.code) !== '2103' || error.fatal !== true || cause?.code !== 4012 || cause.category !== 4 ||
       restrictions?.hasAppRestrictions !== false || !Array.isArray(restrictions.missingKeys) ||
-      !restrictions.missingKeys.length || !Array.isArray(restrictions.restrictedKeyStatuses) ||
-      restrictions.restrictedKeyStatuses.length) return null;
-  const keys = [...new Set(restrictions.missingKeys.map(normalizeKeyId))];
-  if (keys.some(key => !/^[0-9a-f]{32}$/.test(key))) return null;
+      !Array.isArray(restrictions.restrictedKeyStatuses)) return null;
+  const restrictedStatuses = [...new Set(restrictions.restrictedKeyStatuses)];
+  let restrictedKeys = [];
+  if (restrictedStatuses.length) {
+    if (!restrictedStatuses.every(status => UNUSABLE_KEY_STATUSES.has(status)) ||
+        !keyStatuses || typeof keyStatuses !== 'object') return null;
+    const entries = Object.entries(keyStatuses).map(([key, status]) => [normalizeKeyId(key), status]);
+    restrictedKeys = entries.filter(([, status]) => UNUSABLE_KEY_STATUSES.has(status)).map(([key]) => key);
+    if (!restrictedKeys.length || !entries.some(([, status]) => status === 'usable')) return null;
+  }
+  const keys = [...new Set([...restrictions.missingKeys.map(normalizeKeyId), ...restrictedKeys])];
+  if (!keys.length || keys.some(key => !/^[0-9a-f]{32}$/.test(key))) return null;
   return { keys, detail: { playerCode: '2103', shakaCode: 4012, category: 'manifest',
-    missingKeyCount: keys.length, hasAppRestrictions: false, restrictedKeyStatuses: [] } };
+    missingKeyCount: restrictions.missingKeys.length, hasAppRestrictions: false,
+    restrictedKeyStatuses: restrictedStatuses, restrictedKeyCount: restrictedKeys.length } };
 }
 
 export function programSession(value) {
@@ -34,7 +60,62 @@ export function indexedProgramEvidence(representations, height, missingKeys) {
       item.schemeIdUri === 'urn:mpeg:dash:mp4protection:2011' && item.defaultKID).at(-1);
     return (declaration?.defaultKID || '').trim().split(/\s+/).map(normalizeKeyId);
   });
-  return { matched: Boolean(missingKeys.length && missingKeys.every(key => keys.includes(key))), paths };
+  const declared = key => keys.includes(key) || keys.includes(swapGuidKeyId(key));
+  return { matched: Boolean(missingKeys.length && missingKeys.every(declared)), paths };
+}
+
+const CATALOG_HOSTS = ['vod.pplus.paramount.tech', 'vod-gcs-cedexis.cbsaavideo.com'];
+
+// A page-declared catalog manifest on one of Paramount's VOD hosts.
+export function catalogManifest(value) {
+  try {
+    const catalog = new URL(value);
+    if (catalog.protocol !== 'https:' || catalog.username || catalog.password || catalog.hash ||
+        !CATALOG_HOSTS.includes(catalog.hostname) ||
+        !/\/[^/]+_cenc_(?:precon_)?dash\/stream\.mpd$/i.test(catalog.pathname)) return null;
+    return catalog;
+  } catch { return null; }
+}
+
+// An explicit HD choice (Force Max, or a manual pick of at least 720p). Auto
+// and SD picks leave Paramount's own playback untouched.
+export function explicitHdSelection(config) {
+  if (!config) return false;
+  return config.forceMax === true || Number.parseInt(config.forcedHeight, 10) >= 720;
+}
+
+// Before the first load, play an explicit HD choice through the page-declared
+// source when Paramount assigned a different one. Some assigned sources keep
+// 720p and 1080p under a key desktop Widevine never receives, which otherwise
+// shows an error and needs a second load to recover.
+export function chooseStartupSource({ config, daiCmsId, declaredSourceId, isLive = false, skipped = false } = {}) {
+  if (skipped) return { reason: 'previous-attempt-failed' };
+  if (isLive) return { reason: 'live' };
+  if (!explicitHdSelection(config)) return { reason: 'no-hd-selection' };
+  const assigned = String(daiCmsId ?? ''), declared = String(declaredSourceId ?? '');
+  if (!/^\d+$/.test(assigned)) return { reason: 'no-assigned-source' };
+  if (!/^\d+$/.test(declared)) return { reason: 'no-declared-source' };
+  if (assigned === declared) return { reason: 'already-declared' };
+  return { sourceId: declared, assignedSourceId: assigned };
+}
+
+const VIDEO_CODEC_EXCLUSION = /^codec:(?:hvc1|hev1|dvh|dvhe)/i;
+
+// Paramount asks its servers to drop HEVC, HDR10 and Dolby Vision renditions
+// for every browser. Lift only those video exclusions, and only when this
+// browser's DRM reports it can decode HEVC 2160p and the viewer chose more
+// than Paramount's default. Audio and language exclusions stay as sent.
+export function chooseCodecUnlock({ config, hevcSupported, daiExcl, streamingUrl, isLive = false, skipped = false } = {}) {
+  if (skipped) return { reason: 'previous-attempt-failed' };
+  if (isLive) return { reason: 'live' };
+  if (!config?.forceMax && !(Number.parseInt(config?.forcedHeight, 10) > 1080)) return { reason: 'no-uhd-selection' };
+  if (hevcSupported !== true) return { reason: 'hevc-unsupported' };
+  const exclusions = String(daiExcl || '').split(',').map(item => item.trim()).filter(Boolean);
+  const kept = exclusions.filter(item => !VIDEO_CODEC_EXCLUSION.test(item));
+  const url = typeof streamingUrl === 'string'
+    ? streamingUrl.replace(/\/v\((?:[a-z0-9.,-]*)\)(?=\/)/i, '') : streamingUrl;
+  if (kept.length === exclusions.length && url === streamingUrl) return { reason: 'nothing-excluded' };
+  return { daiExcl: kept.join(','), streamingUrl: url, removed: exclusions.filter(item => VIDEO_CODEC_EXCLUSION.test(item)) };
 }
 
 export function chooseRecoverySource(context) {
@@ -47,10 +128,8 @@ export function chooseRecoverySource(context) {
   const alternative = String(declaredSourceId || '');
   if (!/^\d+$/.test(alternative) || alternative === String(sourceId)) return null;
   try {
-    const catalog = new URL(catalogUrl);
-    if (catalog.protocol !== 'https:' || catalog.username || catalog.password || catalog.hash ||
-        !['vod.pplus.paramount.tech', 'vod-gcs-cedexis.cbsaavideo.com'].includes(catalog.hostname) ||
-        !/\/[^/]+_cenc_(?:precon_)?dash\/stream\.mpd$/i.test(catalog.pathname)) return null;
+    const catalog = catalogManifest(catalogUrl);
+    if (!catalog) return null;
     const asset = path => path.split('/').slice(0, -2).join('/');
     if (evidence.paths.some(path => asset(new URL(path).pathname) !== asset(catalog.pathname))) return null;
     return { sourceId: alternative, catalogUrl: catalog.href, targetHeight: selection.height, startup };

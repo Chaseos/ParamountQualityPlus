@@ -14,6 +14,8 @@ import { initNetworkHooks } from './network-hooks.js';
 import { estimateResolutionFromBitrate } from './constants.js';
 import { getConfig, getRepresentations, getStreamSession, setConfig, setRepresentations } from './state.js';
 import { getDiagnosticSnapshot, initDiagnostics, resetDiagnostics } from './diagnostics.js';
+import { installStartupSource } from './startup-source.js';
+import { sourceRecoverySupported } from './source-recovery.js';
 
 // Wire together config handling and network interception as soon as the module
 // loads so the injected script is fully operational without additional setup.
@@ -21,6 +23,9 @@ consumePendingConfig();
 initConfigListener();
 initDiagnostics();
 initNetworkHooks({ analyzeUrl, parseManifest });
+// Choose the stream an explicit quality pick can actually play before the
+// player's first load, rather than recovering after it fails.
+installStartupSource({ sourcePreference: sourceRecoverySupported() });
 initGeolocationPermissionObserver();
 initGeolocationRequestListener();
 
