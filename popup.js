@@ -16,7 +16,7 @@ const KOFI_URL = 'https://ko-fi.com/chaseos';
 const REVIEW_STORE_URLS = Object.freeze({
     chrome: "https://chromewebstore.google.com/detail/paramount-quality+/jdhjjddhdmhphkfgcfclekdngihnoann/reviews",
     edge: "https://microsoftedge.microsoft.com/addons/detail/paramount-quality/cpaekgjghoegidknadojliokbcldohjb",
-    firefox: "https://addons.mozilla.org/en-US/firefox/addon/paramount-quality/reviews/",
+    firefox: "https://addons.mozilla.org/en-US/firefox/addon/paramount-quality/",
     opera: "https://addons.opera.com/en/extensions/details/paramount-quality/#feedback-container",
     whale: "https://store.whale.naver.com/detail/lgkdongnlhpcjjopojpoabfkhcoenolg"
 });

@@ -55,7 +55,7 @@ describe('Review routing', () => {
             userAgent: 'Mozilla/5.0'
         });
 
-        expect(context.determineStoreUrl()).toBe('https://addons.mozilla.org/en-US/firefox/addon/paramount-quality/reviews/');
+        expect(context.determineStoreUrl()).toBe('https://addons.mozilla.org/en-US/firefox/addon/paramount-quality/');
     });
 
     test('routes Edge from user-agent client hints when available', () => {
