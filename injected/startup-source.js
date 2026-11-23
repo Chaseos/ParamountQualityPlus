@@ -2,6 +2,8 @@ import { getConfig, setCodecSupport } from './state.js';
 import { recordPlaybackCheckpoint } from './diagnostics.js';
 import { catalogManifest, chooseCodecUnlock, chooseStartupSource, isDaiFailoverError } from './source-recovery-policy.js';
 import { findPlayerError } from './source-recovery.js';
+import { getVideoCodecFamily } from './stream-model.js';
+import { readBoundedManifest } from './manifest-body.js';
 
 // Adjusts the Paramount player's stream request before its first load, so an
 // explicit quality choice starts on a stream that can deliver it instead of
@@ -11,19 +13,53 @@ const SKIP_KEY = 'pqiStartupAdjustSkip';
 const SKIP_TTL_MS = 120000;
 const FALLBACK_RELOAD_DELAY_MS = 1500;
 const safely = fn => { try { return fn(); } catch { return null; } };
+const CATALOG_TIMEOUT_MS = 5000;
+
+// The HEVC and Dolby Vision renditions above 1080p that a title's unfiltered
+// catalog manifest (HLS or DASH) lists, highest first, each with its peak bitrate.
+export function readUhdQualities(text) {
+  const found = new Map();
+  const add = (height, bandwidth, codecs) => {
+    const family = getVideoCodecFamily(codecs);
+    if (!Number.isInteger(height) || height <= 1080 || (family !== 'hevc' && family !== 'dolby-vision')) return;
+    found.set(height, Math.max(found.get(height) || 0, Number.isFinite(bandwidth) ? bandwidth : 0));
+  };
+  if (String(text).trimStart().startsWith('#EXTM3U')) {
+    for (const line of text.split(/\r?\n/)) {
+      if (!line.startsWith('#EXT-X-STREAM-INF:')) continue;
+      add(Number.parseInt(line.match(/RESOLUTION=\d+x(\d+)/)?.[1], 10),
+        Number.parseInt(line.match(/[:,]BANDWIDTH=(\d+)/)?.[1], 10), line.match(/CODECS="([^"]+)"/)?.[1]);
+    }
+  } else {
+    const doc = new DOMParser().parseFromString(String(text), 'application/xml');
+    for (const rep of Array.from(doc.getElementsByTagNameNS('*', 'Representation'))) {
+      add(Number.parseInt(rep.getAttribute('height'), 10), Number.parseInt(rep.getAttribute('bandwidth'), 10),
+        rep.getAttribute('codecs') || rep.parentNode?.getAttribute?.('codecs'));
+    }
+  }
+  return [...found].map(([height, bandwidth]) => ({ height, bandwidth })).sort((a, b) => b.height - a.height);
+}
 const HEVC_UHD = 'video/mp4; codecs="hvc1.2.4.L150.90"';
 
-// FairPlay is the only browser DRM confirmed to decode Paramount's HEVC and
-// Dolby Vision renditions. Widevine on desktop cannot, and PlayReady on
-// Windows Edge is unverified, so neither unlocks 4K.
-export async function probeHevcSupport(nav = globalThis.navigator) {
+// FairPlay (Safari) is confirmed to decode Paramount's HEVC and Dolby Vision
+// renditions. PlayReady with hardware security (Edge on some Windows PCs) may
+// as well and is accepted on its own report, unverified; a failed start falls
+// back through the one-reload skip. Desktop Widevine reports no HEVC support.
+const HEVC_KEY_SYSTEMS = [
+  ['com.apple.fps', { initDataTypes: ['sinf', 'skd'], videoCapabilities: [{ contentType: HEVC_UHD }] }],
+  ['com.microsoft.playready.recommendation',
+    { initDataTypes: ['cenc'], videoCapabilities: [{ contentType: HEVC_UHD, robustness: '3000' }] }]
+];
+export async function probeHevcSupport(nav = globalThis.navigator, mediaSource = globalThis.MediaSource) {
   if (typeof nav?.requestMediaKeySystemAccess !== 'function') return false;
-  try {
-    await nav.requestMediaKeySystemAccess('com.apple.fps', [{
-      initDataTypes: ['sinf', 'skd'], videoCapabilities: [{ contentType: HEVC_UHD }]
-    }]);
-    return true;
-  } catch { return false; }
+  for (const [keySystem, configuration] of HEVC_KEY_SYSTEMS) {
+    try {
+      await nav.requestMediaKeySystemAccess(keySystem, [configuration]);
+      // PlayReady content plays through Media Source, which must take HEVC too.
+      if (keySystem === 'com.apple.fps' || safely(() => mediaSource.isTypeSupported(HEVC_UHD)) === true) return true;
+    } catch { /* This DRM is absent or cannot decode HEVC. */ }
+  }
+  return false;
 }
 
 function consumeSkip(storage, path, now) {
@@ -70,8 +106,13 @@ export function adjustLoadParams(params, { config, declaredSourceId, declaredCat
   };
 }
 
+// What an adjustment does to the stream itself. The failover catalog is left
+// out: it only matters if Smart Tag later fails over.
+const streamSignature = changes => `${changes?.source?.to || ''}|${changes?.codecUnlock ? 'unlock' : ''}`;
+
 export function installStartupSource({ sourcePreference, storage = safely(() => window.sessionStorage),
-  now = () => Date.now(), hevcProbe = probeHevcSupport(), reload = () => window.location.reload() } = {}) {
+  now = () => Date.now(), hevcProbe = probeHevcSupport(), reload = () => window.location.reload(),
+  stagePosition = () => {}, fetchCatalog = null } = {}) {
   let hevcSupported = null;
   const path = window.location.pathname;
   const skipped = storage ? consumeSkip(storage, path, now()) : false;
@@ -81,13 +122,54 @@ export function installStartupSource({ sourcePreference, storage = safely(() => 
   // Per tag, the Millstone the page supplied and the one this module stored
   // in its place, so a later Auto choice can put the page's own one back.
   const storedMillstone = new WeakMap();
-  let adjusted = null, watching = null, confirmTimer = null, originalRecovery = false;
+  // Per tag, the page's own content of the last load and the adjustment that
+  // load was started with.
+  const loaded = new WeakMap();
+  let adjusted = null, watching = null, confirmTimer = null, originalRecovery = false, reloadRequested = false;
 
-  const adjust = (params, tag, record = true) => {
+  const evaluate = (params, tag, config = getConfig()) => {
     const declaredSourceId = safely(() => tag.model.TagConstants.ADOPS_ID.CMSID);
     const declaredCatalogUrl = safely(() => tag.model.apiMetadata.streamingUrl);
-    const result = adjustLoadParams(params, { config: getConfig(), declaredSourceId, declaredCatalogUrl, hevcSupported,
+    return adjustLoadParams(params, { config, declaredSourceId, declaredCatalogUrl, hevcSupported,
       sourcePreference, skipped });
+  };
+  // Auto leaves Paramount's request alone, so its stream has no HEVC renditions
+  // to list. Read the title's unfiltered catalog (a request of this module's
+  // own, never the player's) and tell the popup which heights a pick would
+  // really add after a reload. Nothing is offered if that cannot be read.
+  let offeredCatalog = '';
+  const offer = qualities => window.postMessage({ type: 'PQI_UNLOCKABLE_QUALITIES', payload: { qualities } }, '*');
+  const publishUnlockable = tag => {
+    const last = loaded.get(tag);
+    const unlocked = last && !last.signature.endsWith('|unlock')
+      ? evaluate({ CONTENT: last.content }, tag, { forcedHeight: 2160 }) : null;
+    const catalog = unlocked?.changes?.codecUnlock ? safely(() => {
+      const url = new URL(unlocked.params.CONTENT.millstone.streamingUrl);
+      return url.protocol === 'https:' && !url.username && !url.password ? url.href : null;
+    }) : null;
+    const key = (typeof fetchCatalog === 'function' && catalog) || '';
+    if (key === offeredCatalog) return;
+    offeredCatalog = key;
+    offer([]);
+    if (!key) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CATALOG_TIMEOUT_MS);
+    Promise.resolve().then(() => fetchCatalog(key, { credentials: 'omit', signal: controller.signal }))
+      .then(async response => response?.ok ? readUhdQualities(await readBoundedManifest(response, controller.signal)) : [])
+      .catch(() => [])
+      .then(qualities => {
+        clearTimeout(timer);
+        if (offeredCatalog !== key || !qualities.length) return;
+        recordPlaybackCheckpoint('startup_adjustment', { outcome: 'offered', maxHeight: qualities[0].height });
+        offer(qualities);
+      });
+  };
+  const adjust = (params, tag, record = true) => {
+    const result = evaluate(params, tag);
+    if (record && params?.CONTENT?.millstone) {
+      loaded.set(tag, { content: params.CONTENT, signature: streamSignature(result.changes) });
+      publishUnlockable(tag);
+    }
     if (!result.changes) {
       if (record && !result.reasons.includes('no-millstone'))
         recordPlaybackCheckpoint('startup_adjustment', { outcome: 'unchanged', reasons: result.reasons.join(',') });
@@ -172,12 +254,27 @@ export function installStartupSource({ sourcePreference, storage = safely(() => 
           catalogManifest(safely(() => tag.model.apiMetadata.streamingUrl))) adjustStoredParams(tag, false);
     }, 1000);
   };
+  // A stream keeps the source and codec list it was created with. When a new
+  // selection calls for a different adjustment than the playing stream got
+  // (Auto after an unlocked start, or the reverse), only a new page load can
+  // apply it, so ask the content script for one with the position staged.
+  const reloadIfStreamOutdated = tag => {
+    const last = loaded.get(tag);
+    if (!last || reloadRequested || streamSignature(evaluate({ CONTENT: last.content }, tag).changes) === last.signature) return;
+    reloadRequested = true;
+    safely(stagePosition);
+    recordPlaybackCheckpoint('startup_adjustment', { outcome: 'reload', reason: 'selection-changed' });
+    window.postMessage({ type: 'PQI_STARTUP_RELOAD', payload: { config: getConfig() } }, '*');
+  };
   window.addEventListener('message', event => {
     if (event.source !== window) return;
     if (event.data?.type === 'PQI_ORIGINAL_STREAM_RECOVERY') originalRecovery = true;
     // Smart Tag's own in-page reloads read the stored params directly, so a
     // quality change (Auto in particular) updates them right away.
-    else if (event.data?.type === 'PQI_CONFIG') for (const tag of knownTags) adjustStoredParams(tag, false);
+    else if (event.data?.type === 'PQI_CONFIG') for (const tag of knownTags) {
+      adjustStoredParams(tag, false);
+      reloadIfStreamOutdated(tag);
+    }
   });
   window.addEventListener('pagehide', unwatch);
   // FairPlay support settles asynchronously. If it arrives after the page's
@@ -185,8 +282,9 @@ export function installStartupSource({ sourcePreference, storage = safely(() => 
   Promise.resolve(hevcProbe).then(value => { hevcSupported = value === true; }, () => { hevcSupported = false; })
     .then(() => {
       setCodecSupport({ hevc: hevcSupported });
-      if (!hevcSupported || programPlaying()) return;
-      for (const tag of knownTags) adjustStoredParams(tag);
+      if (!hevcSupported) return;
+      if (!programPlaying()) for (const tag of knownTags) adjustStoredParams(tag);
+      for (const tag of knownTags) publishUnlockable(tag);
     });
 
   const wrappedVideos = new WeakSet();
@@ -194,11 +292,18 @@ export function installStartupSource({ sourcePreference, storage = safely(() => 
     if (!video || typeof video !== 'object' || wrappedVideos.has(video) || typeof video.load !== 'function') return video;
     wrappedVideos.add(video);
     const load = video.load;
-    video.load = function pqiLoad(params, ...rest) {
-      if (params?.CONTENT?.millstone) return load.call(this, adjust(params, tag), ...rest);
-      adjustStoredParams(tag);
-      return load.call(this, params, ...rest);
-    };
+    // The page's own call must go through whatever happens in here: a failed
+    // adjustment loads the page's params, and a read-only load is left alone.
+    safely(() => {
+      video.load = function pqiLoad(params, ...rest) {
+        const next = safely(() => {
+          if (params?.CONTENT?.millstone) return adjust(params, tag);
+          adjustStoredParams(tag);
+          return params;
+        });
+        return load.call(this, next ?? params, ...rest);
+      };
+    });
     return video;
   };
   const findDescriptor = (object, name) => {
@@ -212,10 +317,15 @@ export function installStartupSource({ sourcePreference, storage = safely(() => 
   const interpose = (object, name, wrap) => {
     const descriptor = findDescriptor(object, name);
     if (!descriptor) return false;
-    if (typeof descriptor.get !== 'function') { wrap(descriptor.value); return true; }
+    if (typeof descriptor.get !== 'function') { safely(() => wrap(descriptor.value)); return true; }
     const get = descriptor.get;
     return safely(() => Object.defineProperty(object, name, {
-      configurable: true, enumerable: descriptor.enumerable, get() { return wrap(get.call(this)); }
+      configurable: true, enumerable: descriptor.enumerable,
+      get() {
+        const value = get.call(this);
+        safely(() => wrap(value));
+        return value;
+      }
     })) !== null;
   };
   // Smart Tag's tag.API getter returns an object it replaces during setup, and
@@ -242,12 +352,15 @@ export function installStartupSource({ sourcePreference, storage = safely(() => 
     // The page calls VIDEO.load right after create, before the tag is ready,
     // and Smart Tag queues it. The new tag is listed synchronously, so wrap it
     // before create returns to the page.
-    smartTag.create = function pqiCreate(...args) {
-      const result = create.apply(this, args);
-      for (const listed of safely(() => smartTag.list) || []) wrapTag(listed);
-      return result;
-    };
-    for (const listed of safely(() => smartTag.list) || []) wrapTag(listed);
+    const wrapListed = () => safely(() => { for (const listed of smartTag.list || []) wrapTag(listed); });
+    safely(() => {
+      smartTag.create = function pqiCreate(...args) {
+        const result = create.apply(this, args);
+        wrapListed();
+        return result;
+      };
+    });
+    wrapListed();
   };
 
   // Smart Tag loads after this module. Observe its global assignment so the
@@ -255,12 +368,12 @@ export function installStartupSource({ sourcePreference, storage = safely(() => 
   const existing = Object.getOwnPropertyDescriptor(window, 'SmartTag');
   if (existing && !existing.configurable) return;
   let value = window.SmartTag;
-  wrapSmartTag(value);
+  safely(() => wrapSmartTag(value));
   try {
     Object.defineProperty(window, 'SmartTag', {
       configurable: true, enumerable: true,
       get: () => value,
-      set: next => { value = next; wrapSmartTag(next); }
+      set: next => { value = next; safely(() => wrapSmartTag(next)); }
     });
   } catch { /* The page owns the global; leave its behavior unchanged. */ }
 }

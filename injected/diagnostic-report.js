@@ -1,5 +1,6 @@
 import { getConfig, getRepresentations } from './state.js';
 import { selectRepresentation } from './stream-model.js';
+import { UNUSABLE_KEY_STATUSES } from './source-recovery-policy.js';
 
 const STORAGE_KEY = 'pqiFailureReport';
 const MAX_BYTES = 128 * 1024;
@@ -144,7 +145,7 @@ export function persistDiagnosticReport(snapshot, failure = {}) {
       selectedHeight: number(failure.selectedHeight), hasAppRestrictions: failure.hasAppRestrictions === true,
       missingKeyCount: number(failure.missingKeyCount),
       restrictedKeyStatuses: (Array.isArray(failure.restrictedKeyStatuses) ? failure.restrictedKeyStatuses : [])
-        .filter(value => ['output-restricted','internal-error'].includes(value)).slice(0,10)
+        .filter(value => UNUSABLE_KEY_STATUSES.has(value)).slice(0,10)
     };
     let text = JSON.stringify(report);
     if (new Blob([text]).size > MAX_BYTES) {

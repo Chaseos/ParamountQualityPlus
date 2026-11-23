@@ -37,7 +37,7 @@ You already confirmed the subtitle fix; do not repeat that whole investigation.
 | ID | Do this | Expected result |
 | --- | --- | --- |
 | S1 | On a full movie and one live stream you can access, choose a lower quality, then higher/Auto; seek on the movie. | Program keeps playing with sound; displayed resolution changes; captions remain usable where available. Mark inaccessible content blocked. Ads/previews do not count. |
-| S2 | Open/close the popup; use keyboard navigation; open heart twice; dismiss support with Done and Escape. Test the heart once with the app quit. | Usable focus, one support sheet, no automatic purchase; warm/cold opening works. The unpublished rating explanation is expected. |
+| S2 | Open/close the popup; use keyboard navigation; open heart twice; dismiss support with Done and Escape. Test the heart once with the app quit. | Usable focus, one support sheet, no automatic purchase; warm/cold opening works. The star opens the App Store review page with no unpublished notice. |
 | S3 | Switch light/dark appearance, enlarge text where supported, and briefly check VoiceOver/Reduce Motion if available. | Readable labels/prices, no clipping or keyboard trap. Restore your original settings. Record unavailable checks rather than guessing. |
 
 ## Finish and report once

@@ -149,14 +149,30 @@ describe('Fetch Retries for Segments', () => {
         expect(originalFetchMock).toHaveBeenCalledTimes(1);
     });
 
-    test('preserves CMCD on the player request while normalizing prefetches', async () => {
+    test('preserves CMCD on the player request and prefetches nothing its changing URL could reuse', async () => {
         const url = 'https://host/video/seg_10.m4s?CMCD=br%3D1802%2Cot%3Dv%2Ctb%3D5812';
         originalFetchMock.mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'video/mp4' } });
 
         await window.fetch(url);
 
-        expect(originalFetchMock.mock.calls.some(([resource]) => resource === url)).toBe(true);
-        expect(originalFetchMock.mock.calls.filter(([resource]) => resource.includes('seg_10.m4s'))[0][0]).toBe(url);
+        expect(originalFetchMock.mock.calls.map(([resource]) => resource)).toEqual([url]);
+    });
+
+    test('never repeats a request that is not a GET', async () => {
+        const response = { ok: false, status: 503 };
+        originalFetchMock.mockResolvedValue(response);
+
+        await expect(window.fetch('https://host/upload/clip.mp4', { method: 'POST', body: 'data' })).resolves.toBe(response);
+        await expect(window.fetch('https://host/upload/list.m3u8', { method: 'put', body: 'data' })).resolves.toBe(response);
+        expect(originalFetchMock.mock.calls.filter(([resource]) => !String(resource?.url || resource).includes('seg_'))).toHaveLength(2);
+    });
+
+    test('a request that only names a segment in its query is neither retried nor prefetched', async () => {
+        const response = { ok: false, status: 500 };
+        originalFetchMock.mockResolvedValue(response);
+
+        await expect(window.fetch('https://host/beacon?segment=https%3A%2F%2Fhost%2Fvideo%2Fseg_10.m4s&name=seg_10.m4s')).resolves.toBe(response);
+        expect(originalFetchMock).toHaveBeenCalledTimes(1);
     });
 
     test('does not prefetch rewritten live initialization files', async () => {

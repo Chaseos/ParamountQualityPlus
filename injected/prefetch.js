@@ -9,6 +9,14 @@ const prefetchQueue = new Set();
 // E.g., 'seg_10.m4s' or 'video_1_10.ts'
 const SEGMENT_NUMBER_REGEX = /^(.*?)(\d+)(\.(?:m4s|ts|mp4)(?:\?.*)?)$/i;
 
+// A response only becomes a complete cache entry once its body has been read
+// to the end; an unread body stalls the download partway.
+async function drain(response) {
+  const reader = response?.body?.getReader?.();
+  if (!reader) return;
+  while (!(await reader.read()).done);
+}
+
 export function maybePrefetchSegments(url, originalFetch) {
   const config = getConfig();
   if (!url || config.enablePrefetch === false) return;
@@ -47,7 +55,8 @@ export function maybePrefetchSegments(url, originalFetch) {
       // Fire and forget the background fetch using the raw fetch function.
       // The browser's network stack will cache the response.
       const startedAt = diagnosticNow();
-      Promise.resolve(originalFetch(nextUrl, { priority: 'low' })).then(response => {
+      Promise.resolve(originalFetch(nextUrl, { priority: 'low' })).then(async response => {
+        if (response?.ok) await drain(response);
         recordRequestAttempt({
           transport: 'fetch',
           category: 'prefetch',

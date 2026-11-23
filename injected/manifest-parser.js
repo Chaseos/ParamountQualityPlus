@@ -40,7 +40,8 @@ export function parseHlsManifest(content, requestUrl) {
         let width = null;
         let height = null;
 
-        const bwMatch = attrs.match(/BANDWIDTH=(\d+)/);
+        // Anchored so AVERAGE-BANDWIDTH, which may come first, is not read as the peak.
+        const bwMatch = attrs.match(/(?:^|,)BANDWIDTH=(\d+)/);
         if (bwMatch) bandwidth = parseInt(bwMatch[1], 10);
 
         const resMatch = attrs.match(/RESOLUTION=(\d+)x(\d+)/);

@@ -140,5 +140,13 @@
   "locationPromptUnavailable": {
     "message": "Paramount+ 사이트 설정을 열어 위치 접근을 허용한 후 재생 페이지를 새로고침하세요.",
     "description": "브라우저에서 위치 권한 요청 메시지를 표시할 수 없을 때 나타나는 알림"
+  },
+  "reloadsToPlay": {
+    "message": "페이지 새로고침",
+    "description": "Shown beside a quality row that the current stream lacks; picking it reloads the page to play it."
+  },
+  "reloadingToApply": {
+    "message": "이 화질을 적용하기 위해 페이지를 새로고침하는 중…",
+    "description": "Toast shown when choosing a quality makes the page reload."
   }
 }

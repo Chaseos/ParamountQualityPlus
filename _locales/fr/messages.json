@@ -140,5 +140,13 @@
   "locationPromptUnavailable": {
     "message": "Ouvrez les paramètres du site Paramount+, autorisez l’accès à la position, puis rechargez la page de lecture.",
     "description": "Notification affichée lorsque le navigateur ne peut pas afficher l'invite d'autorisation de localisation"
+  },
+  "reloadsToPlay": {
+    "message": "Recharge la page",
+    "description": "Shown beside a quality row that the current stream lacks; picking it reloads the page to play it."
+  },
+  "reloadingToApply": {
+    "message": "Rechargement de la page pour appliquer cette qualité…",
+    "description": "Toast shown when choosing a quality makes the page reload."
   }
 }

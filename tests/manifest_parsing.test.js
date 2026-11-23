@@ -106,6 +106,18 @@ describe('Manifest Parsing', () => {
         window.postMessage.mockClear();
     });
 
+    test('reads the peak HLS bandwidth even when the average is listed first', () => {
+        parseManifest([
+            '#EXTM3U',
+            '#EXT-X-STREAM-INF:AVERAGE-BANDWIDTH=12000000,BANDWIDTH=17700000,RESOLUTION=3840x2160,CODECS="hvc1.2.4.L150.90"',
+            'uhd/playlist.m3u8',
+            '#EXT-X-STREAM-INF:BANDWIDTH=6000000,AVERAGE-BANDWIDTH=4500000,RESOLUTION=1920x1080,CODECS="hvc1.2.4.L120.90"',
+            'hd/playlist.m3u8'
+        ].join('\n'), 'https://example.test/vod/master.m3u8');
+
+        expect(getAvailableRepresentations().map(rep => [rep.height, rep.bandwidth])).toEqual([[2160, 17700000], [1080, 6000000]]);
+    });
+
     test('Should parse Type B (Bitrate-Based) manifests', () => {
         const xml = `
             <MPD>

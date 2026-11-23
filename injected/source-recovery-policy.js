@@ -13,29 +13,34 @@ export function swapGuidKeyId(value) {
 
 // Statuses that mean a key was delivered but cannot be used for this output,
 // as PlayReady reports for an HD key whose output protection is not met.
-const UNUSABLE_KEY_STATUSES = new Set(['output-restricted', 'output-downscaled', 'internal-error']);
+export const UNUSABLE_KEY_STATUSES = new Set(['output-restricted', 'output-downscaled', 'internal-error']);
 
 // The selected HD video key is unavailable: either never delivered (Widevine
 // reports it missing) or delivered but unusable here (PlayReady reports it
 // restricted). Restricted keys only count when the player's key statuses name
 // them and another key is usable, so a wholly failed license never qualifies.
+// The statuses cover every key in the license, so restricted keys are kept
+// apart from the missing ones: only the manifest can say which of them belongs
+// to the selected rendition.
 export function missingKeyFailure(error, keyStatuses = null) {
   const cause = error?.cause, restrictions = cause?.data?.[0];
   if (String(error?.code) !== '2103' || error.fatal !== true || cause?.code !== 4012 || cause.category !== 4 ||
       restrictions?.hasAppRestrictions !== false || !Array.isArray(restrictions.missingKeys) ||
       !Array.isArray(restrictions.restrictedKeyStatuses)) return null;
+  const validKey = key => /^[0-9a-f]{32}$/.test(key);
   const restrictedStatuses = [...new Set(restrictions.restrictedKeyStatuses)];
   let restrictedKeys = [];
   if (restrictedStatuses.length) {
     if (!restrictedStatuses.every(status => UNUSABLE_KEY_STATUSES.has(status)) ||
         !keyStatuses || typeof keyStatuses !== 'object') return null;
     const entries = Object.entries(keyStatuses).map(([key, status]) => [normalizeKeyId(key), status]);
-    restrictedKeys = entries.filter(([, status]) => UNUSABLE_KEY_STATUSES.has(status)).map(([key]) => key);
+    restrictedKeys = [...new Set(entries.filter(([key, status]) => UNUSABLE_KEY_STATUSES.has(status) && validKey(key))
+      .map(([key]) => key))];
     if (!restrictedKeys.length || !entries.some(([, status]) => status === 'usable')) return null;
   }
-  const keys = [...new Set([...restrictions.missingKeys.map(normalizeKeyId), ...restrictedKeys])];
-  if (!keys.length || keys.some(key => !/^[0-9a-f]{32}$/.test(key))) return null;
-  return { keys, detail: { playerCode: '2103', shakaCode: 4012, category: 'manifest',
+  const keys = [...new Set(restrictions.missingKeys.map(normalizeKeyId))];
+  if ((!keys.length && !restrictedKeys.length) || !keys.every(validKey)) return null;
+  return { keys, restrictedKeys, detail: { playerCode: '2103', shakaCode: 4012, category: 'manifest',
     missingKeyCount: restrictions.missingKeys.length, hasAppRestrictions: false,
     restrictedKeyStatuses: restrictedStatuses, restrictedKeyCount: restrictedKeys.length } };
 }
@@ -50,7 +55,10 @@ export function programSession(value) {
   } catch { return null; }
 }
 
-export function indexedProgramEvidence(representations, height, missingKeys) {
+// Every missing key must belong to the selected rendition. A license also
+// reports keys for other renditions (a restricted 2160p key beside the HD one),
+// so among restricted keys one that the selection declares is enough.
+export function indexedProgramEvidence(representations, height, missingKeys, restrictedKeys = []) {
   const variants = representations.flatMap(rep => rep.variants?.length ? rep.variants : [rep]);
   const selected = variants.filter(rep => rep.height === height && rep.isContent && !rep.isAd &&
     rep.addressing?.type === 'single-file-indexed' && getParamountPackaging(rep.addressing.mediaUrl) === 'single-file');
@@ -61,7 +69,7 @@ export function indexedProgramEvidence(representations, height, missingKeys) {
     return (declaration?.defaultKID || '').trim().split(/\s+/).map(normalizeKeyId);
   });
   const declared = key => keys.includes(key) || keys.includes(swapGuidKeyId(key));
-  return { matched: Boolean(missingKeys.length && missingKeys.every(declared)), paths };
+  return { matched: missingKeys.every(declared) && (missingKeys.length > 0 || restrictedKeys.some(declared)), paths };
 }
 
 const CATALOG_HOSTS = ['vod.pplus.paramount.tech', 'vod-gcs-cedexis.cbsaavideo.com'];

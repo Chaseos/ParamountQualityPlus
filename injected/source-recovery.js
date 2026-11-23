@@ -258,7 +258,7 @@ export function createSourceRecovery({ fetch, onAttempt, onFailure, recoverOrigi
       }).finally(() => clearTimeout(timeout)));
     }
     await probes.get(session.key);
-    return indexedProgramEvidence(manifests.get(session.key) || [], job.targetHeight, job.failure.keys);
+    return indexedProgramEvidence(manifests.get(session.key) || [], job.targetHeight, job.failure.keys, job.failure.restrictedKeys);
   };
   const installPause = job => {
     let video = null, frame = null, poll = null;

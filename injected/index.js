@@ -16,16 +16,21 @@ import { getConfig, getRepresentations, getStreamSession, setConfig, setRepresen
 import { getDiagnosticSnapshot, initDiagnostics, resetDiagnostics } from './diagnostics.js';
 import { installStartupSource } from './startup-source.js';
 import { sourceRecoverySupported } from './source-recovery.js';
+import { restorePlaybackPosition } from './position-handoff.js';
 
 // Wire together config handling and network interception as soon as the module
 // loads so the injected script is fully operational without additional setup.
 consumePendingConfig();
 initConfigListener();
 initDiagnostics();
-initNetworkHooks({ analyzeUrl, parseManifest });
+// The page's own fetch, before the network hooks replace it.
+const pageFetch = typeof window.fetch === 'function' ? window.fetch.bind(window) : null;
+restorePlaybackPosition();
+const hooks = initNetworkHooks({ analyzeUrl, parseManifest });
 // Choose the stream an explicit quality pick can actually play before the
 // player's first load, rather than recovering after it fails.
-installStartupSource({ sourcePreference: sourceRecoverySupported() });
+installStartupSource({ sourcePreference: sourceRecoverySupported(), stagePosition: hooks.stagePosition,
+  fetchCatalog: pageFetch });
 initGeolocationPermissionObserver();
 initGeolocationRequestListener();
 

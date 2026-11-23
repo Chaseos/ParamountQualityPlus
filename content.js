@@ -24,6 +24,7 @@ let streamState = {
     qualityStrategy: null,
     manifestQualities: [],
     qualityCap: null, // selection played lower because it is in another codec
+    unlockableQualities: [], // renditions a pick would add by reloading with HEVC allowed
     initializedAt: Date.now()
 };
 let lastDecodedHeight = null;
@@ -88,52 +89,24 @@ const PENDING_CONFIG_KEY = 'pqiPendingQualityConfig';
 const ORIGINAL_STREAM_RECOVERY_KEY = 'pqiOriginalStreamRecovery';
 let recoveryReloadRequested = false;
 let indexedReloadRequested = false;
-const INDEXED_RESUME_KEY = 'pqiIndexedResume';
+let startupReloadRequested = false;
 
-function saveIndexedPosition() {
-    const video = Array.from(document.querySelectorAll('video')).find(video =>
-        Number(video.videoHeight) > 0 && !video.player?.isAd);
-    if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
-    window.sessionStorage.setItem(INDEXED_RESUME_KEY, JSON.stringify({
-        path: window.location.pathname, time: video.currentTime, duration: video.duration,
-        paused: video.paused, savedAt: Date.now()
-    }));
+// The page-world module saves the viewer's position before asking for one of
+// these reloads; this side stages the selection so the reloaded page starts
+// with it.
+function reloadWithConfig(config) {
+    window.sessionStorage.setItem(PENDING_CONFIG_KEY, JSON.stringify(normalizeStoredConfig(config)));
+    reloadForQuality();
 }
 
-function restoreIndexedPosition() {
-    let saved;
+// An open popup otherwise tells the viewer to wait for the buffer to clear,
+// which does not apply to a page that is starting over.
+function reloadForQuality() {
     try {
-        saved = JSON.parse(window.sessionStorage.getItem(INDEXED_RESUME_KEY));
-        window.sessionStorage.removeItem(INDEXED_RESUME_KEY);
-    } catch { return; }
-    if (!saved || saved.path !== window.location.pathname || !Number.isFinite(saved.time) ||
-        !Number.isFinite(saved.duration) || saved.duration <= 0 ||
-        !Number.isFinite(saved.savedAt) || Date.now() - saved.savedAt > 120000) return;
-    let restored = false;
-    const restore = event => {
-        const video = event.target;
-        if (restored || video?.tagName !== 'VIDEO' || video.player?.isAd ||
-            !Number.isFinite(video.duration) || Math.abs(video.duration - saved.duration) > 2 ||
-            video.readyState < 1) return;
-        restored = true;
-        video.currentTime = Math.max(0, Math.min(saved.time, video.duration - 0.1));
-        if (saved.paused) {
-            video.pause();
-            // Some players autoplay after metadata, so retain the paused state
-            // through the first playing event after the restored seek.
-            const keepPaused = () => video.pause();
-            video.addEventListener('playing', keepPaused, { once: true });
-            setTimeout(() => video.removeEventListener('playing', keepPaused), 2000);
-        } else {
-            Promise.resolve(video.play()).catch(() => {});
-        }
-        document.removeEventListener('loadedmetadata', restore, true);
-        document.removeEventListener('canplay', restore, true);
-    };
-    document.addEventListener?.('loadedmetadata', restore, true);
-    document.addEventListener?.('canplay', restore, true);
+        chrome.runtime.sendMessage({ type: 'QUALITY_RELOADING' }, () => { void chrome.runtime.lastError; });
+    } catch { /* The extension was reloaded or no popup is listening. */ }
+    window.location.reload();
 }
-restoreIndexedPosition();
 
 function detectPlaybackContext() {
     const player = document.querySelector('video, [class*="player"], [id*="player"], [data-testid*="player"]');
@@ -337,13 +310,23 @@ window.addEventListener('message', (event) => {
             if (!indexedReloadRequested && streamState.qualityStrategy === 'indexed-manifest' &&
                 payload?.streamKey === streamState.manifestStreamKey && payload.config) {
                 try {
-                    const config = normalizeStoredConfig(payload.config);
-                    saveIndexedPosition();
-                    window.sessionStorage.setItem(PENDING_CONFIG_KEY, JSON.stringify(config));
+                    reloadWithConfig(payload.config);
                     indexedReloadRequested = true;
-                    window.location.reload();
                 } catch (error) {
                     console.warn('[PQI] Unable to stage indexed quality change.', error);
+                }
+            }
+        } else if (event.data.type === 'PQI_STARTUP_RELOAD') {
+            // The playing stream was created for another selection (a different
+            // source or codec list), so only a new page load can apply this one.
+            const payload = event.data.payload;
+            if (!startupReloadRequested && !indexedReloadRequested && !recoveryReloadRequested &&
+                payload?.config && typeof payload.config === 'object') {
+                try {
+                    reloadWithConfig(payload.config);
+                    startupReloadRequested = true;
+                } catch (error) {
+                    console.warn('[PQI] Unable to stage the quality change for reload.', error);
                 }
             }
         } else if (event.data.type === 'PQI_STREAM_RESET') {
@@ -377,6 +360,13 @@ window.addEventListener('message', (event) => {
             if (sameStream && Number.isInteger(requestedHeight) && Number.isInteger(playingHeight)) {
                 streamState.qualityCap = { requestedHeight, playingHeight };
             }
+        } else if (event.data.type === 'PQI_UNLOCKABLE_QUALITIES') {
+            const offered = event.data.payload?.qualities;
+            streamState.unlockableQualities = (Array.isArray(offered) ? offered : []).flatMap(quality => {
+                const height = quality?.height, bandwidth = Number(quality?.bandwidth);
+                return Number.isInteger(height) && height > 1080 && height <= 4320 && Number.isFinite(bandwidth) && bandwidth >= 0
+                    ? [{ height, bandwidth }] : [];
+            }).slice(0, 4);
         } else if (event.data.type === 'PQI_GEOLOCATION_PERMISSION') {
             streamState.geolocationPermission = event.data.payload?.state || 'unknown';
         } else if (event.data.type === 'PQI_ORIGINAL_STREAM_RECOVERY' && !recoveryReloadRequested) {
@@ -389,7 +379,6 @@ window.addEventListener('message', (event) => {
             };
             try {
                 if (streamState.qualityStrategy === 'indexed-manifest') {
-                    saveIndexedPosition();
                     window.sessionStorage.setItem(PENDING_CONFIG_KEY, JSON.stringify(normalizeStoredConfig({}, true)));
                 }
                 window.sessionStorage.setItem(ORIGINAL_STREAM_RECOVERY_KEY, '1');
@@ -452,7 +441,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             } catch (error) {
                 console.warn('[PQI] Unable to stage live quality configuration for reload.', error);
             }
-            window.location.reload();
+            reloadForQuality();
             return;
         }
         window.postMessage({ type: 'PQI_CONFIG', payload: request.payload }, '*');

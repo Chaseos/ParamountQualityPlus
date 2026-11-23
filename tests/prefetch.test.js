@@ -62,6 +62,24 @@ describe('Segment Prefetching', () => {
         expect(mockFetch).toHaveBeenCalledWith('https://host/video/seg_16.m4s', { priority: 'low' });
     });
 
+    test('reads each successful response to the end so the browser can cache it whole', async () => {
+        const read = jest.fn()
+            .mockResolvedValueOnce({ done: false, value: new Uint8Array(4) })
+            .mockResolvedValueOnce({ done: false, value: new Uint8Array(4) })
+            .mockResolvedValue({ done: true });
+        const failed = { ok: false, status: 404, body: { getReader: jest.fn() } };
+        const draining = jest.fn()
+            .mockResolvedValueOnce({ ok: true, status: 200, body: { getReader: () => ({ read }) } })
+            .mockResolvedValue(failed);
+        setConfig({ enablePrefetch: true, prefetchCount: 2 });
+
+        maybePrefetchSegments('https://host/video/seg_10.m4s', draining);
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(read).toHaveBeenCalledTimes(3);
+        expect(failed.body.getReader).not.toHaveBeenCalled();
+    });
+
     test('should ignore prefetch network failures (fire and forget)', async () => {
         const errorMockFetch = jest.fn(() => Promise.reject(new Error('Network drop')));
         

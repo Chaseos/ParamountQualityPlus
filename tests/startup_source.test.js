@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
-import { adjustLoadParams, installStartupSource } from '../injected/startup-source.js';
+import { TextDecoder, TextEncoder } from 'node:util';
+import { adjustLoadParams, installStartupSource, probeHevcSupport, readUhdQualities } from '../injected/startup-source.js';
 import { chooseCodecUnlock, chooseStartupSource, indexedProgramEvidence, missingKeyFailure,
   swapGuidKeyId } from '../injected/source-recovery-policy.js';
 import { readDashRepresentations } from '../injected/manifest-parser.js';
@@ -71,11 +72,26 @@ test('a PlayReady-restricted HD key qualifies only when its key ID is named and 
     restrictedKeyStatuses: ['output-restricted'] }] } };
   expect(missingKeyFailure(restricted)).toBeNull();
   expect(missingKeyFailure(restricted, { [hdKey]: 'output-restricted', [sdKey]: 'usable' }))
-    .toMatchObject({ keys: [hdKey], detail: { restrictedKeyStatuses: ['output-restricted'], restrictedKeyCount: 1 } });
+    .toMatchObject({ keys: [], restrictedKeys: [hdKey], detail: { restrictedKeyStatuses: ['output-restricted'], restrictedKeyCount: 1 } });
   expect(missingKeyFailure(restricted, { [hdKey]: 'output-restricted', [sdKey]: 'expired' })).toBeNull();
   const unknown = { ...restricted, cause: { ...restricted.cause, data: [{ ...restricted.cause.data[0], restrictedKeyStatuses: ['released'] }] } };
   expect(missingKeyFailure(unknown, { [hdKey]: 'released', [sdKey]: 'usable' })).toBeNull();
-  expect(missingKeyFailure(failure, {})).toMatchObject({ keys: [hdKey] });
+  expect(missingKeyFailure(failure, {})).toMatchObject({ keys: [hdKey], restrictedKeys: [] });
+});
+
+test('a restricted key of another rendition does not defeat the selected HD key proof', () => {
+  const uhdKey = 'ffffffffffffffffffffffffffffffff';
+  const restricted = { ...failure, cause: { ...failure.cause, data: [{ missingKeys: [], hasAppRestrictions: false,
+    restrictedKeyStatuses: ['output-restricted', 'output-downscaled'] }] } };
+  const found = missingKeyFailure(restricted, { [hdKey]: 'output-downscaled', [uhdKey]: 'output-restricted', [sdKey]: 'usable', '00': 'internal-error' });
+  expect(found).toMatchObject({ keys: [], restrictedKeys: [hdKey, uhdKey] });
+  const reps = readDashRepresentations(indexedXml, url);
+  expect(indexedProgramEvidence(reps, 1080, found.keys, found.restrictedKeys).matched).toBe(true);
+  // Restricted keys that the selection does not declare prove nothing.
+  expect(indexedProgramEvidence(reps, 1080, [], [uhdKey]).matched).toBe(false);
+  expect(indexedProgramEvidence(reps, 1080, [], []).matched).toBe(false);
+  // A missing key outside the selection still rejects the proof.
+  expect(indexedProgramEvidence(reps, 1080, [sdKey], [hdKey]).matched).toBe(false);
 });
 
 test('PlayReady little-endian key IDs still prove the selected HD representation', () => {
@@ -137,6 +153,21 @@ test('the indexed filter also drops HEVC and Dolby Vision nodes the ladder hid',
   expect(kept.text).not.toContain('hvc1');
 });
 
+test('HEVC support is taken from FairPlay, or from hardware PlayReady that Media Source can also play', async () => {
+  const nav = accepted => ({ requestMediaKeySystemAccess: jest.fn(async (keySystem, [config]) => {
+    if (!accepted.includes(keySystem)) throw new Error('NotSupportedError');
+    return { keySystem, config };
+  }) });
+  const mse = supported => ({ isTypeSupported: () => supported });
+  expect(await probeHevcSupport(nav(['com.apple.fps']), undefined)).toBe(true);
+  const edge = nav(['com.microsoft.playready.recommendation', 'com.widevine.alpha']);
+  expect(await probeHevcSupport(edge, mse(true))).toBe(true);
+  expect(edge.requestMediaKeySystemAccess.mock.calls.at(-1)[1][0].videoCapabilities[0]).toMatchObject({ robustness: '3000' });
+  expect(await probeHevcSupport(edge, mse(false))).toBe(false);
+  expect(await probeHevcSupport(nav(['com.widevine.alpha']), mse(true))).toBe(false);
+  expect(await probeHevcSupport({}, mse(true))).toBe(false);
+});
+
 describe('installed page hook', () => {
   let created, load, storage;
   const makeSmartTag = () => {
@@ -151,6 +182,7 @@ describe('installed page hook', () => {
     return { list: [], create(paramsVO) { tag.params = paramsVO; this.list.push(tag); return Promise.resolve({ msg: 'ready', tag }); } };
   };
   beforeEach(() => {
+    globalThis.TextDecoder = TextDecoder;
     resetDiagnostics();
     delete window.SmartTag;
     storage = new Map();
@@ -292,6 +324,134 @@ describe('installed page hook', () => {
     setConfig(forceMax);
     window.dispatchEvent(new MessageEvent('message', { data: { type: 'PQI_CONFIG', payload: forceMax }, source: window }));
     expect(created.params.CONTENT.millstone.daiParams.daiCmsId).toBe('111');
+  });
+
+  const reloadRequests = spy => spy.mock.calls.map(([data]) => data).filter(data => data?.type === 'PQI_STARTUP_RELOAD');
+  const choose = config => {
+    setConfig(config);
+    window.dispatchEvent(new MessageEvent('message', { data: { type: 'PQI_CONFIG', payload: config }, source: window }));
+  };
+
+  test('a selection that needs a different stream asks for one reload with the position staged', async () => {
+    const stagePosition = jest.fn(), post = jest.spyOn(window, 'postMessage');
+    installStartupSource({ sourcePreference: true, storage: sessionStore(), hevcProbe: Promise.resolve(false), stagePosition });
+    window.SmartTag = makeSmartTag();
+    window.SmartTag.create(params());
+    choose({ forcedHeight: 720 });
+    expect(reloadRequests(post)).toHaveLength(0);
+    await created.API.VIDEO.load({ CONTENT: {} });
+    // Another HD pick plays on the same declared source.
+    choose({ forcedHeight: 1080 });
+    expect(reloadRequests(post)).toHaveLength(0);
+    choose(auto);
+    expect(stagePosition).toHaveBeenCalledTimes(1);
+    expect(reloadRequests(post)).toEqual([{ type: 'PQI_STARTUP_RELOAD', payload: { config: expect.objectContaining({ forceMax: false, forcedHeight: null }) } }]);
+    expect(checkpoints().at(-1)).toMatchObject({ outcome: 'reload', reason: 'selection-changed' });
+    choose(forceMax);
+    expect(reloadRequests(post)).toHaveLength(1);
+    post.mockRestore();
+  });
+
+  test('a stream started on Auto reloads when Force Max would unlock HEVC, in both load styles', async () => {
+    for (const viaCreate of [true, false]) {
+      setConfig(auto);
+      const stagePosition = jest.fn(() => { throw new Error('unavailable'); }), post = jest.spyOn(window, 'postMessage');
+      installStartupSource({ sourcePreference: false, storage: sessionStore(), hevcProbe: Promise.resolve(true), stagePosition });
+      await Promise.resolve(); await Promise.resolve();
+      window.SmartTag = makeSmartTag();
+      if (viaCreate) { window.SmartTag.create(params()); await created.API.VIDEO.load({ CONTENT: {} }); }
+      else { const { tag } = await window.SmartTag.create({}); await tag.API.VIDEO.load(params()); }
+      choose({ forcedHeight: 1080 });
+      expect(reloadRequests(post)).toHaveLength(0);
+      choose(forceMax);
+      expect(reloadRequests(post)).toHaveLength(1);
+      post.mockRestore();
+      delete window.SmartTag;
+    }
+  });
+
+  const master = ['#EXTM3U',
+    '#EXT-X-STREAM-INF:AVERAGE-BANDWIDTH=12000000,BANDWIDTH=16280000,RESOLUTION=3840x2160,CODECS="dvh1.05.06,ec-3"', 'a.m3u8',
+    '#EXT-X-STREAM-INF:BANDWIDTH=15000000,RESOLUTION=3840x2160,CODECS="hvc1.2.4.L150.90"', 'b.m3u8',
+    '#EXT-X-STREAM-INF:BANDWIDTH=8460000,RESOLUTION=2560x1440,CODECS="hvc1.2.4.L150.90"', 'c.m3u8',
+    '#EXT-X-STREAM-INF:BANDWIDTH=6400000,RESOLUTION=1920x1080,CODECS="hvc1.2.4.L120.90"', 'd.m3u8',
+    '#EXT-X-STREAM-INF:BANDWIDTH=9000000,RESOLUTION=2560x1440,CODECS="avc1.640032"', 'e.m3u8'].join('\n');
+  const bodyOf = text => {
+    let sent = false;
+    return { ok: true, headers: { get: () => null }, body: { getReader: () => ({
+      read: async () => sent ? { done: true } : (sent = true, { done: false, value: new TextEncoder().encode(text) }),
+      cancel: async () => {}, releaseLock: () => {} }) } };
+  };
+  const offered = spy => spy.mock.calls.map(([data]) => data).filter(data => data?.type === 'PQI_UNLOCKABLE_QUALITIES').map(data => data.payload.qualities);
+  const settle = () => new Promise(resolve => setTimeout(resolve, 20));
+
+  test('reads only HEVC and Dolby Vision renditions above 1080p from either manifest format', () => {
+    expect(readUhdQualities(master)).toEqual([{ height: 2160, bandwidth: 16280000 }, { height: 1440, bandwidth: 8460000 }]);
+    expect(readUhdQualities(`<MPD><Period><AdaptationSet codecs="hvc1.2.4.L150.90"><Representation height="2160" bandwidth="15000000"/>
+      <Representation height="1080" bandwidth="6000000"/></AdaptationSet><AdaptationSet><Representation height="1440" bandwidth="9" codecs="avc1.640032"/>
+      </AdaptationSet></Period></MPD>`)).toEqual([{ height: 2160, bandwidth: 15000000 }]);
+    expect(readUhdQualities('not a manifest')).toEqual([]);
+  });
+
+  test("an Auto stream offers the title's real 4K renditions from its unfiltered catalog, untouched itself", async () => {
+    setConfig(auto);
+    const post = jest.spyOn(window, 'postMessage');
+    const fetchCatalog = jest.fn(async () => bodyOf(master));
+    installStartupSource({ sourcePreference: false, storage: sessionStore(), hevcProbe: Promise.resolve(true), fetchCatalog });
+    await Promise.resolve(); await Promise.resolve();
+    window.SmartTag = makeSmartTag();
+    window.SmartTag.create(params());
+    await created.API.VIDEO.load({ CONTENT: {} });
+    await settle();
+    expect(fetchCatalog).toHaveBeenCalledTimes(1);
+    expect(fetchCatalog.mock.calls[0]).toEqual([catalogPath.replace('/v(hvc,hdr10,dvh)', ''), expect.objectContaining({ credentials: 'omit' })]);
+    expect(offered(post).at(-1)).toEqual([{ height: 2160, bandwidth: 16280000 }, { height: 1440, bandwidth: 8460000 }]);
+    expect(created.params.CONTENT.millstone.daiParams['dai-excl']).toBe(exclusions);
+    expect(created.params.CONTENT.millstone.streamingUrl).toBe(catalogPath);
+    post.mockRestore();
+  });
+
+  test('nothing is offered without HEVC support, on an unlocked stream, for a 1080p title or a failed read', async () => {
+    const cases = [
+      { hevc: false, config: auto, fetchCatalog: jest.fn(async () => bodyOf(master)), fetched: 0 },
+      { hevc: true, config: forceMax, fetchCatalog: jest.fn(async () => bodyOf(master)), fetched: 0 },
+      { hevc: true, config: auto, fetchCatalog: jest.fn(async () => bodyOf(master.split('\n').slice(7).join('\n'))), fetched: 1 },
+      { hevc: true, config: auto, fetchCatalog: jest.fn(async () => ({ ok: false, status: 403 })), fetched: 1 },
+      { hevc: true, config: auto, fetchCatalog: jest.fn(async () => { throw new Error('offline'); }), fetched: 1 }
+    ];
+    for (const item of cases) {
+      setConfig(item.config);
+      const post = jest.spyOn(window, 'postMessage');
+      installStartupSource({ sourcePreference: false, storage: sessionStore(), hevcProbe: Promise.resolve(item.hevc), fetchCatalog: item.fetchCatalog });
+      await Promise.resolve(); await Promise.resolve();
+      window.SmartTag = makeSmartTag();
+      window.SmartTag.create(params());
+      await created.API.VIDEO.load({ CONTENT: {} });
+      await settle();
+      expect(item.fetchCatalog).toHaveBeenCalledTimes(item.fetched);
+      expect(offered(post).flat()).toEqual([]);
+      post.mockRestore();
+      delete window.SmartTag;
+    }
+  });
+
+  test('a read-only Smart Tag or a failing adjustment never breaks the page', async () => {
+    installStartupSource({ sourcePreference: true, storage: sessionStore(), hevcProbe: Promise.resolve(false) });
+    const frozenLoad = jest.fn(async () => 'loaded');
+    const frozenTag = { model: { TagConstants: { ADOPS_ID: { CMSID: '111' } } },
+      API: Object.create({ get VIDEO() { return Object.freeze({ load: frozenLoad }); } }) };
+    const frozen = Object.freeze({ list: [frozenTag], create: jest.fn(() => 'created') });
+    expect(() => { window.SmartTag = frozen; }).not.toThrow();
+    expect(window.SmartTag.create({})).toBe('created');
+    await expect(frozenTag.API.VIDEO.load(params())).resolves.toBe('loaded');
+
+    // A tag whose model throws on access still receives the page's own params.
+    window.SmartTag = makeSmartTag();
+    const { tag } = await window.SmartTag.create({});
+    Object.defineProperty(tag, 'params', { get() { throw new Error('unavailable'); } });
+    const page = { CONTENT: { autoplay: true } };
+    await tag.API.VIDEO.load(page);
+    expect(load).toHaveBeenLastCalledWith(page);
   });
 
   test('the startup watcher stops after its window even if playback never starts', async () => {

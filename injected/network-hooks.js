@@ -3,7 +3,7 @@ import { createPackageDiscovery, needsPackageDiscovery } from './package-discove
 import { createIndexedSession } from './indexed-session.js';
 import { installManifestXhrView, replaceManifestResponse } from './manifest-response.js';
 import { clearRepresentations, getConfig, getRepresentations, getStreamSession } from './state.js';
-import { isManifestUrl, isSegmentUrl, stripCMCD } from './url-utils.js';
+import { isManifestUrl, isSegmentUrl } from './url-utils.js';
 import {
   canFallbackToOriginal,
   planRequest,
@@ -258,8 +258,12 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     const request = classifyMediaRequest(url);
     const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
     const isEncryptedParamountVod = request.url?.pathname.toLowerCase().includes('_cenc_precon_dash/');
+    // The browser cache is keyed by the whole URL. A player that puts CMCD in
+    // the query sends a different URL for every segment request, so nothing
+    // fetched ahead of it could ever be reused.
+    const hasQueryTelemetry = Boolean(request.url?.searchParams.has('CMCD'));
     return isSegmentUrl(url) && !request.excluded && !request.isInitialization && !request.isLive &&
-      !isHidden && !isEncryptedParamountVod && getParamountPackaging(url) !== 'single-file';
+      !isHidden && !isEncryptedParamountVod && !hasQueryTelemetry && getParamountPackaging(url) !== 'single-file';
   }
 
   async function inspectManifestResponse(response, url) {
@@ -390,7 +394,9 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
 
   async function fetchWithRetry(thisArg, args, isRetryable, urlInfo) {
     const config = getConfig();
-    if (!isRetryable || config.enableRetries === false) {
+    // Repeating anything but a GET could apply a request twice or reuse a
+    // consumed body, so other methods get their single native attempt.
+    if (!isRetryable || config.enableRetries === false || getRequestMethod(args) !== 'GET') {
       return observedFetch(thisArg, args, urlInfo);
     }
 
@@ -497,7 +503,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
         try {
           const isInferredAttempt = rewritePlan.action === 'inferred-probe';
           if (shouldPrefetch(newUrl) && (!isInferredAttempt || !rewritePlan.needsValidation)) {
-            maybePrefetchSegments(stripCMCD(newUrl), ORIGINAL_FETCH);
+            maybePrefetchSegments(newUrl, ORIGINAL_FETCH);
           }
 
           const inferredResult = isInferredAttempt && rewritePlan.needsValidation
@@ -604,7 +610,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
 
       // For untouched requests, still mirror manifest responses to the parser so
       // available quality tiers stay in sync with the player session.
-      if (shouldPrefetch(url)) maybePrefetchSegments(stripCMCD(url), ORIGINAL_FETCH);
+      if (shouldPrefetch(url)) maybePrefetchSegments(url, ORIGINAL_FETCH);
       const isRetryable = isSegmentUrl(url) || isManifestUrl(url);
       const response = await fetchOriginal.call(this, args, url, isRetryable, discoveryToken, qualityToken);
       if (response.ok) analyzeUrl(url, { observationSequence: requestObservationSequence });
@@ -616,7 +622,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
     // and observe the response for manifests.
     const isRetryable = url && (isSegmentUrl(url) || isManifestUrl(url));
     if (url && isSegmentUrl(url) && shouldPrefetch(url)) {
-      maybePrefetchSegments(stripCMCD(url), ORIGINAL_FETCH);
+      maybePrefetchSegments(url, ORIGINAL_FETCH);
     }
 
     const response = await fetchOriginal.call(this, args, url, isRetryable, discoveryToken, qualityToken);
@@ -705,7 +711,7 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
         this._pqi_plannedUrl = finalUrl;
       }
       if (shouldPrefetch(finalUrl)) {
-        maybePrefetchSegments(stripCMCD(finalUrl), ORIGINAL_FETCH);
+        maybePrefetchSegments(finalUrl, ORIGINAL_FETCH);
       }
       this._pqi_url = finalUrl;
       this._pqi_manifestParsed = false;
@@ -790,4 +796,5 @@ export function initNetworkHooks({ analyzeUrl, parseManifest }) {
   };
 
   console.log('[PQI] Injected script active (v7.0).');
+  return { stagePosition: indexed.stagePosition };
 }

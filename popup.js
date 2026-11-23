@@ -260,6 +260,13 @@ function setMode(forceMax, forcedId, forcedHeight = null) {
     showToast(chrome.i18n.getMessage("updatingQuality") || "Updating quality… The buffer may take 10–20 seconds to clear.");
 }
 
+// The page reports when a selection makes it reload, where there is no buffer
+// to wait for; replace the buffer notice with what is actually happening.
+chrome.runtime.onMessage?.addListener((message, sender) => {
+    if (message?.type !== 'QUALITY_RELOADING' || sender?.tab?.active === false) return;
+    showToast(chrome.i18n.getMessage('reloadingToApply') || 'Reloading the page to apply this quality…');
+});
+
 function initNetworkControlsUI() {
     const cbRetries = document.getElementById('cb-retries');
     const numRetries = document.getElementById('num-retries');
@@ -447,7 +454,7 @@ function startPolling() {
                     updateStats(response);
                     showQualityCapNotice(response);
 
-                    renderQualityList(response.manifestQualities || []);
+                    renderQualityList(withUnlockableQualities(response.manifestQualities || [], response.unlockableQualities));
                     updateSelectionUI();
                 }
             });
@@ -528,6 +535,17 @@ function shouldShowGeolocationNotice(data, now = Date.now()) {
         locationMayBeBlocked;
 }
 
+// Renditions the title has but the playing stream does not carry: choosing one
+// reloads the page with them allowed. Shown only above the stream's own ladder.
+function withUnlockableQualities(qualities, offered) {
+    if (!qualities.length || !Array.isArray(offered)) return qualities;
+    const top = Math.max(...qualities.map(q => q.height));
+    const extra = offered.filter(q => q.height > top)
+        .sort((a, b) => b.height - a.height)
+        .map(q => ({ id: null, height: q.height, bandwidth: q.bandwidth, unlockable: true }));
+    return [...extra, ...qualities];
+}
+
 function renderQualityList(qualities) {
     const container = document.getElementById('quality-list-container');
     const list = document.getElementById('quality-list');
@@ -564,6 +582,7 @@ function renderQualityList(qualities) {
         btn.dataset.id = String(q.id);
         btn.dataset.height = String(q.height);
 
+        btn.dataset.id = q.id == null ? '' : String(q.id);
         const mbps = Math.round(q.bandwidth / 10000) / 100; // rough Mbps
         const resolution = document.createElement('span');
         resolution.textContent = `${q.height}p`;
@@ -571,6 +590,7 @@ function renderQualityList(qualities) {
         bitrate.style.opacity = '0.6';
         bitrate.style.fontSize = '11px';
         bitrate.textContent = `${mbps} Mbps`;
+        if (q.unlockable) btn.title = chrome.i18n.getMessage('reloadsToPlay') || 'Reloads page';
         btn.append(resolution, bitrate);
 
         // Click -> Specific Mode

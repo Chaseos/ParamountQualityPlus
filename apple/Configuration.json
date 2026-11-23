@@ -6,7 +6,7 @@
   "urlScheme": "paramountqualityplus",
   "sku": "PQP-MAC-001",
   "version": "1.40",
-  "build": "2",
+  "build": "3",
   "minimumMacOS": "13.0",
   "architectures": [
     "arm64",
@@ -15,7 +15,7 @@
   "category": "public.app-category.utilities",
   "primaryLanguage": "en-US",
   "appStoreID": "6806901993",
-  "appStorePublished": false,
+  "appStorePublished": true,
   "supportURL": "https://chaseos.app/extensions/paramount-quality-plus/support",
   "privacyURL": "https://chaseos.app/extensions/paramount-quality-plus/privacy",
   "products": [

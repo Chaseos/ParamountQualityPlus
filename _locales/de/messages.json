@@ -140,5 +140,13 @@
   "locationPromptUnavailable": {
     "message": "Öffnen Sie die Website-Einstellungen für Paramount+, erlauben Sie den Standortzugriff und laden Sie die Wiedergabeseite neu.",
     "description": "Toast, der angezeigt wird, wenn der Browser die Standortberechtigungsabfrage nicht anzeigen kann"
+  },
+  "reloadsToPlay": {
+    "message": "Lädt Seite neu",
+    "description": "Shown beside a quality row that the current stream lacks; picking it reloads the page to play it."
+  },
+  "reloadingToApply": {
+    "message": "Seite wird neu geladen, um die Qualität anzuwenden…",
+    "description": "Toast shown when choosing a quality makes the page reload."
   }
 }

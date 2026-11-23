@@ -5,6 +5,8 @@ import { getDiagnosticSnapshot, recordDiagnosticEvent, recordPlaybackCheckpoint 
 import { getConfig, getRepresentations } from './state.js';
 import { deriveStreamKey } from './stream-model.js';
 import { createSourceRecovery } from './source-recovery.js';
+import { UNUSABLE_KEY_STATUSES } from './source-recovery-policy.js';
+import { savePlaybackPosition } from './position-handoff.js';
 
 export function createIndexedSession({ fetch } = {}) {
   let current = null;
@@ -40,7 +42,7 @@ export function createIndexedSession({ fetch } = {}) {
         hasAppRestrictions: restrictions?.hasAppRestrictions === true,
         missingKeyCount: Array.isArray(restrictions?.missingKeys) ? restrictions.missingKeys.length : 0,
         restrictedKeyStatuses: Array.isArray(restrictions?.restrictedKeyStatuses)
-          ? restrictions.restrictedKeyStatuses.filter(status => ['output-restricted', 'internal-error'].includes(status)) : [] };
+          ? restrictions.restrictedKeyStatuses.filter(status => UNUSABLE_KEY_STATUSES.has(status)) : [] };
       handled = true;
       recordPlayerFailure(detail, result);
       recovery.requestRecovery({ streamKey: result.streamKey, strategy: 'indexed-manifest' }, detail, { terminal: true });
@@ -58,6 +60,8 @@ export function createIndexedSession({ fetch } = {}) {
     canFallbackToOriginal: () => false,
     postRecovery: payload => {
       if (!preserveSourceFailure) persistDiagnosticReport(getDiagnosticSnapshot(), payload.detail);
+      // The content script answers with a reload at Auto.
+      if (current) savePlaybackPosition();
       window.postMessage({ type: 'PQI_ORIGINAL_STREAM_RECOVERY', payload }, '*');
     },
     recordDiagnosticEvent,
@@ -124,11 +128,14 @@ export function createIndexedSession({ fetch } = {}) {
       streamKey: result.streamKey, reason: result.reason, selectedHeight: result.selectedHeight
     });
   };
+  // Both handoffs are staged: source recovery restores in program time through
+  // the SDK where it is supported, and the element-level one covers the rest.
+  const stagePosition = () => { sourceRecovery.stagePosition(); savePlaybackPosition(); };
   const configChanged = event => {
     if (event.source !== window || event.data?.type !== 'PQI_CONFIG' || !current || reloadRequested) return;
     const next = filterIndexedDash(current.original, current.url, current.representations, getConfig());
     if (!next.supported || next.selectedHeight === current.selectedHeight) return;
-    sourceRecovery.stagePosition();
+    stagePosition();
     reloadRequested = true;
     window.postMessage({ type: 'PQI_INDEXED_RELOAD', payload: {
       streamKey: current.streamKey, config: getConfig()
@@ -162,5 +169,5 @@ export function createIndexedSession({ fetch } = {}) {
       `video-error-${video.error.code}`, { terminal: true });
   }, true);
   window.addEventListener('pagehide', reset);
-  return { prepare, commit, reset, observe, handlesManifest: () => Boolean(current) };
+  return { prepare, commit, reset, observe, stagePosition, handlesManifest: () => Boolean(current) };
 }

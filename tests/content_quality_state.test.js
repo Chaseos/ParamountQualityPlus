@@ -5,7 +5,7 @@ import vm from 'node:vm';
 const contentSource = readFileSync(new URL('../content.js', import.meta.url), 'utf8');
 
 function loadContentScript({
-  storageState = {}, recoveryMarker = null, deferStorage = false, videoElements = [], resume = null
+  storageState = {}, recoveryMarker = null, deferStorage = false, videoElements = []
 } = {}) {
   const windowListeners = new Map();
   const documentListeners = new Map();
@@ -16,7 +16,7 @@ function loadContentScript({
   const windowObject = {
     location: { pathname: '/movies/video/avatar/', reload: jest.fn() },
     sessionStorage: {
-      getItem: jest.fn(key => key === 'pqiIndexedResume' ? resume : recoveryMarker),
+      getItem: jest.fn(() => recoveryMarker),
       setItem: jest.fn(),
       removeItem: jest.fn()
     },
@@ -84,6 +84,7 @@ function loadContentScript({
     releaseStorage() {
       storageCallback?.(storageState);
     },
+    setRuntimeSender(sender) { context.chrome.runtime.sendMessage = sender; },
     hasInjectedScript() {
       return Boolean(injectedScript);
     },
@@ -316,15 +317,37 @@ function enableIndexed(page, streamKey = 'indexed-title') {
   page.sendWindowMessage({ type: 'PQI_QUALITY_STRATEGY', payload: { streamKey, strategy: 'indexed-manifest' } });
 }
 
-test('indexed selection stages a single reload with episode position and paused state', () => {
+test('indexed selection stages a single reload with the chosen quality', () => {
   const page = loadContentScript({ videoElements: [{ videoHeight: 540, currentTime: 71, duration: 3000, paused: true }] });
   enableIndexed(page);
   const message = { type: 'PQI_INDEXED_RELOAD', payload: { streamKey: 'indexed-title', config: { forcedHeight: 1080 } } };
   page.sendWindowMessage(message); page.sendWindowMessage(message);
   expect(page.windowObject.location.reload).toHaveBeenCalledTimes(1);
-  const resume = page.windowObject.sessionStorage.setItem.mock.calls.find(([key]) => key === 'pqiIndexedResume');
-  expect(JSON.parse(resume[1])).toMatchObject({ path: '/movies/video/avatar/', time: 71, paused: true });
+  // The page-world module owns the position handoff; this side only stages the selection.
+  expect(page.windowObject.sessionStorage.setItem.mock.calls.map(([key]) => key)).not.toContain('pqiIndexedResume');
   expect(page.windowObject.sessionStorage.setItem).toHaveBeenCalledWith('pqiPendingQualityConfig', expect.stringContaining('1080'));
+});
+
+test('a stream created for another selection reloads once with the new one staged', () => {
+  const page = loadContentScript();
+  const message = { type: 'PQI_STARTUP_RELOAD', payload: { config: { forceMax: true, forcedHeight: null } } };
+  page.sendWindowMessage({ type: 'PQI_STARTUP_RELOAD', payload: {} });
+  expect(page.windowObject.location.reload).not.toHaveBeenCalled();
+  page.sendWindowMessage(message); page.sendWindowMessage(message);
+  expect(page.windowObject.location.reload).toHaveBeenCalledTimes(1);
+  const staged = page.windowObject.sessionStorage.setItem.mock.calls.filter(([key]) => key === 'pqiPendingQualityConfig').at(-1);
+  expect(JSON.parse(staged[1])).toMatchObject({ forceMax: true, forcedId: null, forcedHeight: null });
+});
+
+test('the startup reload does not repeat an indexed or recovery reload already under way', () => {
+  const indexed = loadContentScript(); enableIndexed(indexed);
+  indexed.sendWindowMessage({ type: 'PQI_INDEXED_RELOAD', payload: { streamKey: 'indexed-title', config: { forcedHeight: 1080 } } });
+  indexed.sendWindowMessage({ type: 'PQI_STARTUP_RELOAD', payload: { config: { forcedHeight: 1080 } } });
+  expect(indexed.windowObject.location.reload).toHaveBeenCalledTimes(1);
+  const recovering = loadContentScript();
+  recovering.sendWindowMessage({ type: 'PQI_ORIGINAL_STREAM_RECOVERY', payload: {} });
+  recovering.sendWindowMessage({ type: 'PQI_STARTUP_RELOAD', payload: { config: { forceMax: true } } });
+  expect(recovering.windowObject.location.reload).toHaveBeenCalledTimes(1);
 });
 
 test('ordinary video and stale indexed title messages never add reloads', () => {
@@ -346,23 +369,24 @@ test('indexed recovery stages Auto before the next bootstrap', () => {
   expect(page.windowObject.location.reload).toHaveBeenCalledTimes(1);
 });
 
-
-test.each([true, false])('indexed reload restores the playhead and paused=%s on the matching episode', paused => {
-  const page = loadContentScript({ resume: JSON.stringify({ path: '/movies/video/avatar/', time: 71,
-    duration: 3000, paused, savedAt: Date.now() }) });
-  const video = { tagName: 'VIDEO', currentTime: 0, duration: 3000, readyState: 2,
-    play: jest.fn(() => Promise.resolve()), pause: jest.fn(), addEventListener: jest.fn(), removeEventListener: jest.fn() };
-  page.emitVideo('loadedmetadata', { ...video, duration: 30, player: { isAd: true } });
-  expect(video.play).not.toHaveBeenCalled(); expect(video.pause).not.toHaveBeenCalled();
-  page.emitVideo('loadedmetadata', video);
-  expect(video.currentTime).toBe(71);
-  expect(paused ? video.pause : video.play).toHaveBeenCalledTimes(1);
-  video.currentTime = 80; page.emitVideo('canplay', video); expect(video.currentTime).toBe(80);
+test('offered renditions are kept for the popup and anything malformed is dropped', () => {
+  const page = loadContentScript();
+  expect(page.getState().unlockableQualities).toEqual([]);
+  page.sendWindowMessage({ type: 'PQI_UNLOCKABLE_QUALITIES', payload: { qualities: [{ height: 2160, bandwidth: 16280000 },
+    { height: 720, bandwidth: 1 }, { height: '1440', bandwidth: 1 }, { height: 1440 }, null, { height: 99999, bandwidth: 1 }] } });
+  expect(page.getState().unlockableQualities).toEqual([{ height: 2160, bandwidth: 16280000 }]);
+  page.sendWindowMessage({ type: 'PQI_UNLOCKABLE_QUALITIES', payload: {} });
+  expect(page.getState().unlockableQualities).toEqual([]);
 });
 
-test('resume data from another episode is ignored', () => {
-  const page = loadContentScript({ resume: JSON.stringify({ path: '/different/episode/', time: 71,
-    duration: 3000, paused: false, savedAt: Date.now() }) });
-  const video = { tagName: 'VIDEO', currentTime: 0, duration: 3000, readyState: 2 };
-  page.emitVideo('loadedmetadata', video); expect(video.currentTime).toBe(0);
+test('an open popup is told when a selection reloads the page', () => {
+  const page = loadContentScript();
+  const sent = [];
+  page.setRuntimeSender(message => sent.push(message));
+  page.sendWindowMessage({ type: 'PQI_STARTUP_RELOAD', payload: { config: { forceMax: true } } });
+  expect(sent).toEqual([{ type: 'QUALITY_RELOADING' }]);
+  expect(page.windowObject.location.reload).toHaveBeenCalledTimes(1);
+  // An in-place change sends nothing.
+  page.sendRuntimeMessage({ type: 'APPLY_QUALITY_CHANGE', payload: { forcedHeight: 720 } });
+  expect(sent).toHaveLength(1);
 });
