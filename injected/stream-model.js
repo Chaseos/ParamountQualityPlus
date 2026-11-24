@@ -209,7 +209,9 @@ export function mergeRuntimeTelemetry(targetUrl, currentUrl) {
   if (!target || !current) return targetUrl;
 
   const cmcd = current.searchParams.get('CMCD');
-  if (cmcd && !target.searchParams.has('CMCD')) target.searchParams.set('CMCD', cmcd);
+  if (cmcd && target.origin === current.origin && !target.searchParams.has('CMCD')) {
+    target.searchParams.set('CMCD', cmcd);
+  }
   return target.toString();
 }
 

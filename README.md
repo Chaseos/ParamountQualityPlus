@@ -116,6 +116,8 @@ The build validates the injected module graph, creates browser-specific manifest
 
 Paramount Quality+ requests only extension storage and access to `*.paramountplus.com`. Storage is used for playback preferences and advanced settings; site access is used to inspect and adjust Paramount+ playback requests. The extension does not collect personal data or send analytics to the developer.
 
+If a quality switch would send player-supplied headers or credentials to another media server, the extension keeps the original request. Retry warnings include only the media host, failure type and attempt number.
+
 ## Support
 
 <p align="center">
